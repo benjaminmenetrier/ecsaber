@@ -38,7 +38,6 @@ message( STATUS "  - ENABLE_VADER_DOC: ${ENABLE_VADER_DOC}" )
 find_package( Boost 1.64.0 REQUIRED )
 
 # Required
-find_package( jedicmake QUIET )  # Prefer find modules from jedi-cmake
 find_package( MPI REQUIRED COMPONENTS C Fortran )
 find_package( oops REQUIRED )
 find_package( oops_patch REQUIRED )

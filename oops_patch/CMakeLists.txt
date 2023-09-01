@@ -22,9 +22,6 @@ option( ENABLE_MKL "Use MKL for LAPACK implementation (if available)" ON )
 
 include( GNUInstallDirs )
 
-## Dependencies
-find_package( jedicmake QUIET )  # Prefer find modules from jedi-cmake
-
 if( ENABLE_MKL )
     find_package( MKL )
 else()

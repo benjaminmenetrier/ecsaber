@@ -37,7 +37,6 @@ include( ${PROJECT_NAME}_compiler_flags )
 
 ## Dependencies
 # Required
-find_package( jedicmake REQUIRED )  # Prefer find modules from jedi-cmake
 if(OPENMP)
   find_package( OpenMP REQUIRED COMPONENTS CXX Fortran )
 endif()

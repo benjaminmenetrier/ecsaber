@@ -16,9 +16,6 @@ endforeach()
 # Tests activated
 message( STATUS "SABER tests activated:" )
 
-# Use find_branch function in jedi-cmake
-include( git_functions )
-
 # Default SABER_TEST_TIER
 set( SABER_TEST_TIER 1 )
 

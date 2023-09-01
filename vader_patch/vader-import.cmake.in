@@ -2,10 +2,6 @@
 
 include(CMakeFindDependencyMacro)
 
-if( @jedicmake_FOUND@ AND NOT jedicmake_FOUND )
-    find_dependency(jedicmake REQUIRED)
-endif()
-
 if(NOT Boost_FOUND)
     find_dependency(Boost REQUIRED)
 endif()
