@@ -1,13 +1,15 @@
 # (C) Copyright 2023 Meteorologisk Institutt
 
 list( APPEND oops_modified_src_files
-base/DataSetBase.h
 base/ModelSpaceCovarianceParametersBase.h
 interface/ModelData.h
+mpi/mpi.cc
+mpi/mpi.h
 runs/ConvertState.h
 )
 
 list( APPEND oops_jedi_src_files
+base/DataSetBase.h
 base/FieldSet3D.cc
 base/FieldSet3D.h
 base/FieldSet4D.cc
