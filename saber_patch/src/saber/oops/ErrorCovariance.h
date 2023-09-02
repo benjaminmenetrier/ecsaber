@@ -31,7 +31,6 @@
 #include "saber/blocks/SaberOuterBlockChain.h"
 #include "saber/blocks/SaberParametricBlockChain.h"
 #include "saber/oops/ErrorCovarianceParameters.h"
-#include "saber/oops/GenericCtlVec.h"
 #include "saber/oops/Utilities.h"
 
 #include "util/abor1_cpp.h"
@@ -165,14 +164,14 @@ ErrorCovariance<MODEL>::ErrorCovariance(const Geometry_ & geom,
       dualResGeom = new oops::Geometry<MODEL>(*dualResGeomConf);
     }
     // Background and first guess at dual resolution geometry
-    oops::State<MODEL> xbdualRes(*dualResGeom, xb[0]);
-    oops::State<MODEL> fgdualRes(*dualResGeom, fg[0]);
+    oops::State<MODEL> xbDualRes(*dualResGeom, xb[0]);
+    oops::State<MODEL> fgDualRes(*dualResGeom, fg[0]);
     // Read dual resolution ensemble
     eckit::LocalConfiguration dualResEnsembleConf
       = readEnsemble(*dualResGeom,
                      outerVars,
-                     xbdualRes,
-                     fgdualRes,
+                     xbDualRes,
+                     fgDualRes,
                      dualResParams->toConfiguration(),
                      iterativeEnsembleLoading,
                      fsetDualResEns);

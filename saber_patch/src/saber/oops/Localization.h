@@ -25,7 +25,6 @@
 #include "oops/util/Logger.h"
 
 #include "saber/blocks/SaberParametricBlockChain.h"
-#include "saber/oops/GenericCtlVec.h"
 #include "saber/oops/Utilities.h"
 
 namespace saber {

@@ -4,13 +4,7 @@
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
 
 # Links from SABER
-set( dir src/saber )
-set( targets blocks bump generic gsi spectralb util vader )
-foreach( target IN LISTS targets )
-    execute_process( COMMAND ${CMAKE_COMMAND} -E create_symlink
-                     ${CMAKE_SOURCE_DIR}/ecsaber/saber/${dir}/${target}
-                     ${CMAKE_SOURCE_DIR}/ecsaber/saber_patch/${dir}/${target} )
-endforeach()
+links_from_source_repo()
 
 # Build list of subdirs with files to add
 set( _subdirs blocks bump generic gsi interpolation oops spectralb util vader )

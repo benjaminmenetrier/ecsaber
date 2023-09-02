@@ -5,13 +5,7 @@
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
 
 # Links from SABER
-set( targets fctest testdata testdeps testinput testlist testref )
-set( dir test )
-foreach( target IN LISTS targets )
-    execute_process( COMMAND ${CMAKE_COMMAND} -E create_symlink
-                     ${CMAKE_SOURCE_DIR}/ecsaber/saber/${dir}/${target}
-                     ${CMAKE_SOURCE_DIR}/ecsaber/saber_patch/${dir}/${target} )
-endforeach()
+links_from_source_repo()
 
 # Tests activated
 message( STATUS "SABER tests activated:" )
@@ -252,7 +246,8 @@ foreach( mpi omp IN ZIP_LISTS mpi_list omp_list )
 
                     # Special check to avoid 4D tests
                     string( FIND ${test} "_4d" fourd_result )
-                    if( fourd_result EQUAL -1 )
+                    string( FIND ${test} "_seq4d" seqfourd_result )
+                    if( fourd_result EQUAL -1 AND seqfourd_result EQUAL -1 )
                         set( no4dCheck true CACHE BOOL "" FORCE )
                     else()
                         set( no4dCheck false CACHE BOOL "" FORCE )

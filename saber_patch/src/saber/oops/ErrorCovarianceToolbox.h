@@ -268,11 +268,8 @@ class ErrorCovarianceToolbox : public oops::Application {
       print_value_at_positions(testConf.getSubConfiguration("dirac"), geom, dxo);
 
       // Print covariances
-      const eckit::LocalConfiguration covarDiagConf(testConf, "diagnostic points");
-      if (!covarDiagConf.empty()) {
-        oops::Log::test() << "- Covariances at diagnostic points:" << std::endl;
-        print_value_at_positions(covarDiagConf, geom, dxo);
-      }
+      oops::Log::test() << "- Covariances at diagnostic points:" << std::endl;
+      print_value_at_positions(testConf.getSubConfiguration("diagnostic points"), geom, dxo);
     }
 
     // Copy configuration
@@ -314,16 +311,13 @@ class ErrorCovarianceToolbox : public oops::Application {
       std::string idL(id);
       idL.append("_localization");
 
+      // Print localization
       oops::Log::test() << "Localization(" << idL << ") diagnostics:" << std::endl;
       oops::Log::test() << "- Localization at zero separation:" << std::endl;
       print_value_at_positions(testConf.getSubConfiguration("dirac"), geom, dxo);
       if (testConf.has("diagnostic points")) {
-        const eckit::LocalConfiguration covarDiagConf(testConf, "diagnostic points");
-        if (!covarDiagConf.empty()) {
-          // Print localization
-          oops::Log::test() << "- Localization at diagnostic points:" << std::endl;
-          print_value_at_positions(covarDiagConf, geom, dxo);
-        }
+        oops::Log::test() << "- Localization at diagnostic points:" << std::endl;
+        print_value_at_positions(testConf.getSubConfiguration("diagnostic points"), geom, dxo);
       }
 
       // Copy configuration

@@ -5,20 +5,15 @@
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
 
 ################################################################################
-# VADER
+# VADER_PATCH
 ################################################################################
-
-# Links from SABER
-set( targets cmake src tools CPPLINT.cfg )
-foreach( target IN LISTS targets )
-    execute_process( COMMAND ${CMAKE_COMMAND} -E create_symlink
-                     ${CMAKE_SOURCE_DIR}/ecsaber/vader/${target}
-                     ${CMAKE_SOURCE_DIR}/ecsaber/vader_patch/${target} )
-endforeach()
 
 cmake_minimum_required( VERSION 3.12 )
 
 project( vader VERSION 1.4.0 LANGUAGES CXX Fortran )
+
+# Links from VADER
+links_from_source_repo()
 
 ## Ecbuild integration
 find_package( ecbuild QUIET )

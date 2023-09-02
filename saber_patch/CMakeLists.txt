@@ -4,20 +4,15 @@
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
 
 ################################################################################
-# SABER
+# SABER_PATCH
 ################################################################################
-
-# Links from SABER
-set( targets cmake docs src/CPPLINT.cfg tools CPPLINT.cfg )
-foreach( target IN LISTS targets )
-    execute_process( COMMAND ${CMAKE_COMMAND} -E create_symlink
-                     ${CMAKE_SOURCE_DIR}/ecsaber/saber/${target}
-                     ${CMAKE_SOURCE_DIR}/ecsaber/saber_patch/${target} )
-endforeach()
 
 cmake_minimum_required( VERSION 3.12 )
 
 project( saber VERSION 1.7.0 LANGUAGES CXX Fortran )
+
+# Links from SABER
+links_from_source_repo()
 
 option(OPENMP "Build saber with OpenMP support" ON)
 

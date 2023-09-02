@@ -4,13 +4,7 @@
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
 
 # Links from SABER
-set( targets AtlasInterpWrapper.cc AtlasInterpWrapper.h VertProj.cc VertProj.h GaussToCS.cc GaussToCS.h )
-set( dir src/saber/interpolation )
-foreach( target IN LISTS targets )
-    execute_process( COMMAND ${CMAKE_COMMAND} -E create_symlink
-                     ${CMAKE_SOURCE_DIR}/ecsaber/saber/${dir}/${target}
-                     ${CMAKE_SOURCE_DIR}/ecsaber/saber_patch/${dir}/${target} )
-endforeach()
+links_from_source_repo()
 
 list(APPEND interpolation_src_files_list
 # ATLAS interpolation wrapper

@@ -1,11 +1,5 @@
-# Links from SABER
-set( targets mo OceanConversions vader )
-set( dir src )
-foreach( target IN LISTS targets )
-    execute_process( COMMAND ${CMAKE_COMMAND} -E create_symlink
-                     ${CMAKE_SOURCE_DIR}/ecsaber/vader/${dir}/${target}
-                     ${CMAKE_SOURCE_DIR}/ecsaber/vader_patch/${dir}/${target} )
-endforeach()
+# Links from VADER
+links_from_source_repo()
 
 ecbuild_generate_config_headers( DESTINATION ${INSTALL_INCLUDE_DIR}/vader )
 
