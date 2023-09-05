@@ -2,10 +2,6 @@
 
 include(CMakeFindDependencyMacro)
 
-#Export enabled toymodels component availability (boolean)
-set(oops_qg_FOUND @ENABLE_QG_MODEL@) #COMPONENT qg
-set(oops_lorenz95_FOUND @ENABLE_LORENZ95_MODEL@) #COMPONENT lorenz95
-
 if((@LAPACK_FOUND@ AND NOT LAPACK_FOUND) OR (@MKL_FOUND@ AND NOT MKL_FOUND))
     if( @MKL_FOUND@ )
         find_dependency( MKL REQUIRED )

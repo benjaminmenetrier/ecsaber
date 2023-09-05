@@ -79,7 +79,7 @@ file( MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/util/parameters )
 
 foreach( src_file ${oops_jedi_src_files} )
     execute_process( COMMAND ${CMAKE_COMMAND} -E create_symlink
-                     ${CMAKE_CURRENT_SOURCE_DIR}/../../../oops/src/oops/${src_file}
+                     ${CMAKE_CURRENT_SOURCE_DIR}/../../../oops-jedi/src/oops/${src_file}
                      ${CMAKE_CURRENT_SOURCE_DIR}/${src_file} )
 endforeach()
 
@@ -109,40 +109,40 @@ foreach( src_file ${oops_ecmwf_src_files} )
                      ${CMAKE_CURRENT_SOURCE_DIR}/${src_file} )
 endforeach()
 
-list( APPEND oops_patch_src_files
+list( APPEND oops-patch_src_files
 ${oops_modified_src_files}
 ${oops_jedi_src_files}
 ${oops_ecmwf_src_files}
 )
 
 include(GNUInstallDirs)
-ecbuild_add_library( TARGET oops_patch
-                     SOURCES ${oops_patch_src_files}
+ecbuild_add_library( TARGET oops-patch
+                     SOURCES ${oops-patch_src_files}
                      INSTALL_HEADERS LISTED
-                     HEADER_DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/oops_patch
+                     HEADER_DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/oops-patch
                      LINKER_LANGUAGE CXX )
 
-target_compile_features( oops_patch PUBLIC cxx_std_14 )
+target_compile_features( oops-patch PUBLIC cxx_std_14 )
 if(OpenMP_FOUND)
-    target_link_libraries( oops_patch PUBLIC OpenMP::OpenMP_Fortran OpenMP::OpenMP_CXX )
+    target_link_libraries( oops-patch PUBLIC OpenMP::OpenMP_Fortran OpenMP::OpenMP_CXX )
 endif()
 
-target_link_libraries( oops_patch PUBLIC NetCDF::NetCDF_Fortran NetCDF::NetCDF_C )
-target_link_libraries( oops_patch PUBLIC Eigen3::Eigen )
-target_link_libraries( oops_patch PUBLIC eckit )
-target_link_libraries( oops_patch PUBLIC fckit )
-target_link_libraries( oops_patch PUBLIC atlas_f )
-target_link_libraries( oops_patch PUBLIC Boost::boost )
-target_link_libraries( oops_patch PUBLIC oops )
-target_link_libraries( oops_patch PUBLIC util_patch )
+target_link_libraries( oops-patch PUBLIC NetCDF::NetCDF_Fortran NetCDF::NetCDF_C )
+target_link_libraries( oops-patch PUBLIC Eigen3::Eigen )
+target_link_libraries( oops-patch PUBLIC eckit )
+target_link_libraries( oops-patch PUBLIC fckit )
+target_link_libraries( oops-patch PUBLIC atlas_f )
+target_link_libraries( oops-patch PUBLIC Boost::boost )
+target_link_libraries( oops-patch PUBLIC oops )
+target_link_libraries( oops-patch PUBLIC util-patch )
 
 # Enable including of local header Fortran file templates
-target_include_directories( oops_patch PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..> )
+target_include_directories( oops-patch PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..> )
 
 # Fortran module output directory for build and install interfaces
-set( MODULE_DIR module/oops_patch/${CMAKE_Fortran_COMPILER_ID}/${CMAKE_Fortran_COMPILER_VERSION} )
-set_target_properties( oops_patch PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/${MODULE_DIR} )
+set( MODULE_DIR module/oops-patch/${CMAKE_Fortran_COMPILER_ID}/${CMAKE_Fortran_COMPILER_VERSION} )
+set_target_properties( oops-patch PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/${MODULE_DIR} )
 install( DIRECTORY ${CMAKE_BINARY_DIR}/${MODULE_DIR}/ DESTINATION ${MODULE_DIR} )
-target_include_directories( oops_patch INTERFACE
+target_include_directories( oops-patch INTERFACE
                             $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/${MODULE_DIR}>
                             $<INSTALL_INTERFACE:${MODULE_DIR}> )

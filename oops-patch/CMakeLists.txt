@@ -2,11 +2,11 @@
 #
 
 ################################################################################
-# OOPS_PATCH
+# OOPS-PATCH
 ################################################################################
 
 cmake_minimum_required( VERSION 3.12 )
-project( oops_patch VERSION 0.0.1 LANGUAGES CXX Fortran )
+project( oops-patch VERSION 0.0.1 LANGUAGES CXX Fortran )
 
 option(OPENMP "Build oops with OpenMP support" ON)
 
@@ -57,7 +57,6 @@ add_subdirectory( src/oops )
 add_subdirectory( src/util )
 
 ## Package Config
-
 ecbuild_install_project( NAME ${PROJECT_NAME} )
 
 #Export Targets

@@ -1,9 +1,9 @@
-[submodule "saber"]
-	path = saber
-	url = https://github.com/jcsda-internal/saber
-[submodule "oops"]
-	path = oops
-	url = https://github.com/jcsda-internal/oops
-[submodule "vader"]
-	path = vader
+[submodule "vader-jedi"]
+	path = vader-jedi
 	url = https://github.com/jcsda/vader
+[submodule "saber-jedi"]
+	path = saber-jedi
+	url = https://github.com/jcsda-internal/saber
+[submodule "oops-jedi"]
+	path = oops-jedi
+	url = https://github.com/jcsda-internal/oops

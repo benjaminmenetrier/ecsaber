@@ -44,7 +44,7 @@ if(@_is_build_dir_export@)
 else()
     set_and_check(@PROJECT_NAME@_BINDIR "@PACKAGE_BINDIR_INSTALL_EXPORT@")
 endif()
-set(@PROJECT_NAME@_LIBRARIES oops_patch) #TODO: Change to oops::oops with namespace upgrade
+set(@PROJECT_NAME@_LIBRARIES oops-patch) #TODO: Change to oops::oops with namespace upgrade
 ########### ADDED TO DEFAULT ECBUILD ############
 
 ### include the <project>-import.cmake file if there is one

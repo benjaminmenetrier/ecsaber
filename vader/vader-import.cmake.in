@@ -22,8 +22,8 @@ if(NOT oops_FOUND)
     find_dependency(oops REQUIRED)
 endif()
 
-if(NOT oops_patch_FOUND)
-    find_dependency(oops_patch REQUIRED)
+if(NOT oops-patch_FOUND)
+    find_dependency(oops-patch REQUIRED)
 endif()
 
 # Optional dependencies

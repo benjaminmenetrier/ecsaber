@@ -35,7 +35,7 @@ find_package( Boost 1.64.0 REQUIRED )
 # Required
 find_package( MPI REQUIRED COMPONENTS C Fortran )
 find_package( oops REQUIRED )
-find_package( oops_patch REQUIRED )
+find_package( oops-patch REQUIRED )
 find_package( NetCDF REQUIRED COMPONENTS C Fortran )
 
 find_package( gsw QUIET )

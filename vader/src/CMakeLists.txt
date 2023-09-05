@@ -137,7 +137,7 @@ ecbuild_add_library( TARGET ${PROJECT_NAME}
                      HEADER_DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}
                      LINKER_LANGUAGE CXX )
 
-target_link_libraries( ${PROJECT_NAME} PUBLIC ${oops_LIBRARIES} oops_patch ) #TODO: Change to "oops::oops" once oops adds namespace support
+target_link_libraries( ${PROJECT_NAME} PUBLIC ${oops_LIBRARIES} oops-patch )
 
 if( gsw_FOUND )
   target_link_libraries( ${PROJECT_NAME} PUBLIC gsw ) 

@@ -52,7 +52,7 @@ endif()
 
 # OOPS
 find_package( oops REQUIRED )
-find_package( oops_patch REQUIRED )
+find_package( oops-patch REQUIRED )
 
 # Optionals
 find_package( gsibec 1.1.2 QUIET )

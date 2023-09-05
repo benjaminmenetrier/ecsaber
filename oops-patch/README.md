@@ -1,2 +1,2 @@
-# oops_patch
+# oops-patch
 Patch to use OOPS-ECMWF instead of OOPS-JEDI
