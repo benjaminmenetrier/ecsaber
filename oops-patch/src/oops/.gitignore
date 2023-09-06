@@ -3,7 +3,9 @@ base/FieldSet3D.cc
 base/FieldSet3D.h
 base/FieldSet4D.cc
 base/FieldSet4D.h
+base/Increment4D.h
 base/ParameterTraitsVariables.cc
 base/ParameterTraitsVariables.h
+base/State4D.h
 base/WriteParametersBase.h
 util

@@ -109,10 +109,23 @@ foreach( src_file ${oops_ecmwf_src_files} )
                      ${CMAKE_CURRENT_SOURCE_DIR}/${src_file} )
 endforeach()
 
+list( APPEND oops_ecmwf_assimilation2base_src_files
+Increment4D.h
+State4D.h
+)
+
+foreach( src_file ${oops_ecmwf_assimilation2base_src_files} )
+    execute_process( COMMAND ${CMAKE_COMMAND} -E create_symlink
+                     ${CMAKE_SOURCE_DIR}/oops/src/oops/assimilation/${src_file}
+                     ${CMAKE_CURRENT_SOURCE_DIR}/base/${src_file} )
+endforeach()
+list( TRANSFORM oops_ecmwf_assimilation2base_src_files PREPEND base/ )
+
 list( APPEND oops-patch_src_files
 ${oops_modified_src_files}
 ${oops_jedi_src_files}
 ${oops_ecmwf_src_files}
+${oops_ecmwf_assimilation2base_src_files}
 )
 
 include(GNUInstallDirs)
