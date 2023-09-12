@@ -69,6 +69,7 @@ util/PartialDateTime.cc
 util/PartialDateTime.h
 util/Random.h
 util/ScalarOrMap.h
+util/Serializable.h
 util/stringFunctions.cc
 util/stringFunctions.h
 util/TypeTraits.h
@@ -120,6 +121,17 @@ foreach( src_file ${oops_ecmwf_assimilation2base_src_files} )
                      ${CMAKE_CURRENT_SOURCE_DIR}/base/${src_file} )
 endforeach()
 list( TRANSFORM oops_ecmwf_assimilation2base_src_files PREPEND base/ )
+
+list( APPEND oops_ecmwf_interface2base_src_files
+Geometry.h
+)
+
+foreach( src_file ${oops_ecmwf_interface2base_src_files} )
+    execute_process( COMMAND ${CMAKE_COMMAND} -E create_symlink
+                     ${CMAKE_SOURCE_DIR}/oops/src/oops/interface/${src_file}
+                     ${CMAKE_CURRENT_SOURCE_DIR}/base/${src_file} )
+endforeach()
+list( TRANSFORM oops_ecmwf_interface2base_src_files PREPEND base/ )
 
 list( APPEND oops-patch_src_files
 ${oops_modified_src_files}
