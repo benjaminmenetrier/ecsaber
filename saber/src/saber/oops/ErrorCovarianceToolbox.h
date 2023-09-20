@@ -225,7 +225,7 @@ class ErrorCovarianceToolbox : public oops::Application {
 
     // Get diagnostic values
     for (size_t jj = 0; jj < data.size(); ++jj) {
-      util::printDiagValues(geom.timeComm(),
+      util::printDiagValues(diagPoints.commTime(),
                             geom.getComm(),
                             geom.functionSpace(),
                             data[jj].fieldSet(),

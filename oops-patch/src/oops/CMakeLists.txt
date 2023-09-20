@@ -68,6 +68,7 @@ util/parameters/RequiredPolymorphicParameter.h
 util/PartialDateTime.cc
 util/PartialDateTime.h
 util/Random.h
+util/RandomField.h
 util/ScalarOrMap.h
 util/Serializable.h
 util/stringFunctions.cc

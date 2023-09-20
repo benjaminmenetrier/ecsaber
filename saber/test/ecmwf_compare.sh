@@ -22,10 +22,14 @@ ftest=$5.test.out
 if test -f "$5"; then
   # Run job, create log and test outputs
   mpirun -n $2 $4 | tee ${flog} && \
-  grep 'Test     : ' ${flog} > ${ftest}
+  grep -s 'Test     : ' ${flog} > ${ftest}
 
-  # Compare reference and log output
-  $1 ${flog} $5 1.0e-12 0
+  test_size=`cat ${ftest} | wc -l`
+  ref_size=`cat $5 | wc -l`
+  if [ "${test_size}" != "0" ] || [ "${ref_size}" != "0" ]; then
+    # Compare reference and log output
+    $1 ${flog} $5 1.0e-12 0
+  fi
 else
   # Run job
   mpirun -n $2 $4 | tee ${flog}

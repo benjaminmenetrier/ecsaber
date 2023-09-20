@@ -154,13 +154,9 @@ void allGather(const eckit::mpi::Comm & comm,
 void allGatherv(const eckit::mpi::Comm & comm, std::vector<util::DateTime> &x) {
     size_t globalSize = x.size();
     comm.allReduceInPlace(globalSize, eckit::mpi::sum());
-    std::vector<std::string> globalX(globalSize);
-    for (const auto it : x)
-      globalX.push_back(it.toString());
-    allGatherv(comm, globalX);
-    x.clear();
-    for (const auto it : globalX)
-      x.push_back(util::DateTime(it));
+    std::vector<util::DateTime> globalX(globalSize);
+    oops::mpi::allGathervUsingSerialize(comm, x.begin(), x.end(), globalX.begin());
+    x = std::move(globalX);
 }
 
 // ------------------------------------------------------------------------------------------------

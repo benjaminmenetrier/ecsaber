@@ -45,6 +45,8 @@ vader/recipes/SurfaceAirPressure.h
 vader/recipes/SurfaceAirPressure_A.cc
 vader/recipes/TestRecipes.cc
 vader/recipes/TestRecipes.h
+vader/recipes/TotalMixingRatio.h
+vader/recipes/TotalMixingRatio_A.cc
 vader/recipes/TotalWater.h
 vader/recipes/TotalWater_A.cc
 vader/recipes/uwind_at_10m_A.cc
@@ -106,6 +108,8 @@ mo/eval_surface_temperature.h
 mo/eval_surface_temperature.cc
 mo/eval_surface_wind.h
 mo/eval_surface_wind.cc
+mo/eval_total_mixing_ratio.h
+mo/eval_total_mixing_ratio.cc
 mo/eval_total_relative_humidity.h
 mo/eval_total_relative_humidity.cc
 mo/eval_virtual_potential_temperature.h
@@ -137,7 +141,7 @@ ecbuild_add_library( TARGET ${PROJECT_NAME}
                      HEADER_DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}
                      LINKER_LANGUAGE CXX )
 
-target_link_libraries( ${PROJECT_NAME} PUBLIC ${oops_LIBRARIES} oops-patch )
+target_link_libraries( ${PROJECT_NAME} PUBLIC ${oops_LIBRARIES} oops-patch ) #TODO: Change to "oops::oops" once oops adds namespace support
 
 if( gsw_FOUND )
   target_link_libraries( ${PROJECT_NAME} PUBLIC gsw ) 

@@ -138,6 +138,7 @@ ErrorCovariance<MODEL>::ErrorCovariance(const Geometry_ & geom,
   covarConf.set("square-root test", params.sqrtTest.value());
   covarConf.set("square-root tolerance", params.sqrtTolerance.value());
   covarConf.set("iterative ensemble loading", params.iterativeEnsembleLoading.value());
+  covarConf.set("time covariance", params.timeCovariance.value());
 
   // Iterative ensemble loading flag
   const bool iterativeEnsembleLoading = params.iterativeEnsembleLoading.value();
@@ -260,6 +261,7 @@ ErrorCovariance<MODEL>::ErrorCovariance(const Geometry_ & geom,
       cmpCovarConf.set("square-root test", params.sqrtTest.value());
       cmpCovarConf.set("square-root tolerance", params.sqrtTolerance.value());
       cmpCovarConf.set("iterative ensemble loading", params.iterativeEnsembleLoading.value());
+      cmpCovarConf.set("time covariance", params.timeCovariance.value());
 
       SaberCentralBlockParametersWrapper cmpCentralBlockParamsWrapper;
       cmpCentralBlockParamsWrapper.deserialize(cmpConf.getSubConfiguration("saber central block"));
