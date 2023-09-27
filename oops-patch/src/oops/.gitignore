@@ -4,6 +4,7 @@ base/FieldSet3D.h
 base/FieldSet4D.cc
 base/FieldSet4D.h
 base/Geometry.h
+base/Increment.h
 base/Increment4D.h
 base/ParameterTraitsVariables.cc
 base/ParameterTraitsVariables.h

@@ -40,6 +40,7 @@ Geometry::Geometry(const eckit::Configuration & conf)
   halo_ = conf.getInt("halo", 0);
 
   // Set flag
+  regionalGrid_ = false;
   unstructuredGrid_ = false;
 
   // Setup grid
@@ -47,6 +48,9 @@ Geometry::Geometry(const eckit::Configuration & conf)
   oops::Log::info() << "Info     : Grid config: " << gridParams << std::endl;
   if (gridParams.has("type")) {
     gridType_ = gridParams.getString("type");
+    if (gridType_ == "regional") {
+      regionalGrid_ = true;
+    }
     if (gridType_ == "unstructured") {
       // Split unstructured grid among processors
       std::vector<double> xyFull = gridParams.getDoubleVector("xy");
@@ -117,10 +121,6 @@ Geometry::Geometry(const eckit::Configuration & conf)
     ABORT(conf.getString("function space") + " function space not supported yet");
   }
 
-  // Ghost points
-  atlas::Field ghost = functionSpace_.ghost();
-  auto ghostView = atlas::array::make_view<int, 1>(ghost);
-
   // Groups
   size_t groupIndex = 0;
   for (const auto & groupParams : conf.getSubConfigurations("groups")) {
@@ -141,6 +141,50 @@ Geometry::Geometry(const eckit::Configuration & conf)
 
     // Corresponding level for 2D variables (first or last)
     group.lev2d_ = groupParams.getString("lev2d", "first");
+
+    if (regionalGrid_) {
+      // 2D indices
+      atlas::functionspace::StructuredColumns fs(functionSpace_);
+      group.fields_->add(fs.index_i());
+      group.fields_->add(fs.index_j());
+
+      // Local scale
+      atlas::Field local_scale = functionSpace_.createField<double>(
+      atlas::option::name("local_scale") | atlas::option::levels(1));
+      auto local_scaleView = atlas::array::make_view<double, 2>(local_scale);
+      atlas::StructuredGrid grid = fs.grid();
+      auto view_i = atlas::array::make_view<int, 1>(fs.index_i());
+      auto view_j = atlas::array::make_view<int, 1>(fs.index_j());
+      for (atlas::idx_t jnode = 0; jnode < local_scale.shape(0); ++jnode) {
+        // Initialization
+        int i = view_i(jnode);
+        int j = view_j(jnode);
+        double dist_i = 0.0;
+        double dist_j = 0.0;
+
+        // i-direction component
+        if (i == 1) {
+          dist_i = atlas::util::Earth().distance(grid.lonlat(i-1, j-1), grid.lonlat(i, j-1));
+        } else if (i == grid.nx(j-1)) {
+          dist_i = atlas::util::Earth().distance(grid.lonlat(i-2, j-1), grid.lonlat(i-1, j-1));
+        } else { 
+          dist_i = 0.5*atlas::util::Earth().distance(grid.lonlat(i-2, j-1), grid.lonlat(i, j-1));
+        }
+
+        // j-direction component
+        if (j == 1) {
+          dist_j = atlas::util::Earth().distance(grid.lonlat(i-1, j-1), grid.lonlat(i-1, j));
+        } else if (j == grid.ny()) {
+          dist_j = atlas::util::Earth().distance(grid.lonlat(i-1, j-2), grid.lonlat(i-1, j-1));
+        } else { 
+          dist_j = 0.5*atlas::util::Earth().distance(grid.lonlat(i-1, j-2), grid.lonlat(i-1, j));
+        }
+
+        // Local scale
+        local_scaleView(jnode, 0) = std::sqrt(0.5*(dist_i*dist_i+dist_j*dist_j));
+      }
+      group.fields_->add(local_scale);
+    }
 
     // Vertical coordinate
     if (groupParams.has("vert_coord")) {
@@ -184,7 +228,7 @@ Geometry::Geometry(const eckit::Configuration & conf)
     auto vert_coordView = atlas::array::make_view<double, 2>(vert_coord);
     for (atlas::idx_t jnode = 0; jnode < vert_coord.shape(0); ++jnode) {
       for (size_t jlevel = 0; jlevel < group.levels_; ++jlevel) {
-         vert_coordView(jnode, jlevel) = group.vert_coord_[jlevel];
+        vert_coordView(jnode, jlevel) = group.vert_coord_[jlevel];
       }
     }
     group.fields_->add(vert_coord);
@@ -258,6 +302,7 @@ Geometry::Geometry(const eckit::Configuration & conf)
     // Mask size
     group.gmaskSize_ = 0.0;
     size_t domainSize = 0.0;
+    auto ghostView = atlas::array::make_view<int, 1>(functionSpace_.ghost());
     for (atlas::idx_t jnode = 0; jnode < gmask.shape(0); ++jnode) {
       for (atlas::idx_t jlevel = 0; jlevel < gmask.shape(1); ++jlevel) {
         if (ghostView(jnode) == 0) {
@@ -286,8 +331,9 @@ Geometry::Geometry(const eckit::Configuration & conf)
 }
 // -----------------------------------------------------------------------------
 Geometry::Geometry(const Geometry & other) : comm_(other.comm_), halo_(other.halo_),
-  grid_(other.grid_), gridType_(other.gridType_), unstructuredGrid_(other.unstructuredGrid_),
-  partitioner_(other.partitioner_), mesh_(other.mesh_), groupIndex_(other.groupIndex_)  {
+  grid_(other.grid_), gridType_(other.gridType_), regionalGrid_(other.regionalGrid_),
+  unstructuredGrid_(other.unstructuredGrid_), partitioner_(other.partitioner_), 
+  mesh_(other.mesh_), groupIndex_(other.groupIndex_)  {
   // Copy function space
   if (other.functionSpace_.type() == "StructuredColumns") {
     // StructuredColumns
@@ -361,7 +407,7 @@ std::vector<size_t> Geometry::variableSizes(const oops::Variables & vars) const 
 // -----------------------------------------------------------------------------
 void Geometry::latlon(std::vector<double> & lats, std::vector<double> & lons,
                       const bool includeHaloForRealLife) const {
-  const auto lonlat = atlas::array::make_view<double, 2>(functionSpace_.lonlat());
+  auto lonlat = atlas::array::make_view<double, 2>(functionSpace_.lonlat());
   const auto ghost = atlas::array::make_view<int, 1>(functionSpace_.ghost());
 
   // TODO(Algo): Remove/fix the hack below when GeometryData local KD tree needs
@@ -392,6 +438,22 @@ void Geometry::latlon(std::vector<double> & lats, std::vector<double> & lons,
   lats.resize(nptsReturned);
   lons.resize(nptsReturned);
 
+  // Bugfix for regional grids
+  if (regionalGrid_) {
+    double lonlatPoint[] = {0, 0};
+    atlas::functionspace::StructuredColumns fs(functionSpace_);
+    atlas::StructuredGrid grid = fs.grid();
+    auto view_i = atlas::array::make_view<int, 1>(fs.index_i());
+    auto view_j = atlas::array::make_view<int, 1>(fs.index_j());
+    for (size_t jj = 0; jj < npts; ++jj) {
+      if (ghost(jj) == 0 || (includeHalo && comm_.size() > 1)) {
+        grid.lonlat(view_i(jj)-1, view_j(jj)-1, lonlatPoint);
+        lonlat(jj, 1) = lonlatPoint[1];
+        lonlat(jj, 0) = lonlatPoint[0];
+      }
+    }
+  }
+
   size_t count = 0;
   for (size_t jj = 0; jj < npts; ++jj) {
     // copy owned points, i.e. points with ghost==?
@@ -413,6 +475,9 @@ void Geometry::print(std::ostream & os) const {
   os << prefix <<  "Quench geometry grid:" << std::endl;
   os << prefix << "- name: " << grid_.name() << std::endl;
   os << prefix << "- size: " << grid_.size() << std::endl;
+  if (regionalGrid_) {
+    os << prefix << "Regional grid detected" << std::endl;
+  }
   if (!unstructuredGrid_) {
     os << prefix << "Partitioner:" << std::endl;
     os << prefix << "- type: " << partitioner_.type() << std::endl;

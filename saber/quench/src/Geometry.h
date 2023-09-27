@@ -69,6 +69,7 @@ class Geometry : public util::Printable,
   size_t halo_;
   atlas::Grid grid_;
   std::string gridType_;
+  bool regionalGrid_;
   bool unstructuredGrid_;
   atlas::grid::Partitioner partitioner_;
   atlas::grid::Distribution distribution_;

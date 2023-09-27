@@ -125,6 +125,7 @@ list( TRANSFORM oops_ecmwf_assimilation2base_src_files PREPEND base/ )
 
 list( APPEND oops_ecmwf_interface2base_src_files
 Geometry.h
+Increment.h
 )
 
 foreach( src_file ${oops_ecmwf_interface2base_src_files} )
