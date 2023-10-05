@@ -48,14 +48,17 @@ template <typename MODEL> class ErrorCovarianceToolboxParameters :
   /// Geometry parameters.
   oops::RequiredParameter<eckit::LocalConfiguration> geometry{"resolution", this};
 
-  /// Variables parameters.
-  oops::RequiredParameter<std::vector<std::string>> variables{"variables", this};
-
   /// Background parameters.
   oops::RequiredParameter<eckit::LocalConfiguration> background{"Background", this};
 
   /// Background error covariance model.
   oops::RequiredParameter<eckit::LocalConfiguration> backgroundError{"Covariance", this};
+
+  /// Geometry parameters.
+  oops::Parameter<bool> parallel{"parallel subwindows", true, this};
+
+  /// Outer variables parameters
+  oops::OptionalParameter<oops::Variables> incrementVars{"increment variables", this};
 
   /// Dirac location/variables parameters.
   oops::OptionalParameter<eckit::LocalConfiguration> dirac{"dirac", this};
@@ -150,7 +153,11 @@ class ErrorCovarianceToolbox : public oops::Application {
     const State4D_ xx(params.background, geom, model);
 
     // Setup variables
-    oops::Variables vars(params.variables.value());
+    ASSERT(params.incrementVars.value() != boost::none);
+    oops::Variables vars(*params.incrementVars.value());
+
+    // Setup time
+    util::DateTime time = xx[0].validTime();
 
     // Background error covariance parameters
     const eckit::LocalConfiguration & covarParams

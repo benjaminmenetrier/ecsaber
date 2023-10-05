@@ -25,6 +25,8 @@ util/CompositePath.cc
 util/CompositePath.h
 util/ConfigFunctions.cc
 util/ConfigFunctions.h
+util/ConfigHelpers.cc
+util/ConfigHelpers.h
 util/FieldSetHelpers.cc
 util/FieldSetHelpers.h
 util/FieldSetOperations.cc

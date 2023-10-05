@@ -201,7 +201,8 @@ if "background" in config:
     variables = config["Background"]["state"][0]["variables"]
 
     # Variables
-    config["variables"] = variables
+    if not "increment variables" in config:
+      config["increment variables"] = variables
 
 # Background error
 if "background error" in config:

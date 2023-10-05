@@ -160,7 +160,7 @@ void Localization<MODEL>::multiplySqrtTrans(const Increment_ & dx,
 
   // SABER block chain square-root adjoint
   oops::FieldSet4D fset4d({dx.fieldSet(), dx.validTime(), dx.geometry().getComm()});
-  loc_->multiplySqrtTrans(fset4d, dv.data(), 0);
+  loc_->multiplySqrtAD(fset4d, dv.data(), 0);
 
   oops::Log::trace() << "Localization:multiplySqrtTrans done" << std::endl;
 }

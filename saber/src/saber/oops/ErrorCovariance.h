@@ -116,8 +116,11 @@ ErrorCovariance<MODEL>::ErrorCovariance(const Geometry_ & geom,
   params.validateAndDeserialize(config);
 
   // Local copy of background and first guess that can undergo interpolation
-  oops::FieldSet4D fset4dXb(xb);
-  oops::FieldSet4D fset4dFg(fg);
+  const oops::FieldSet4D fset4dXbTmp(xb);
+  const oops::FieldSet4D fset4dFgTmp(fg);
+
+  oops::FieldSet4D fset4dXb = oops::copyFieldSet4D(fset4dXbTmp);
+  oops::FieldSet4D fset4dFg = oops::copyFieldSet4D(fset4dFgTmp);
 
   // Extend background and first guess with geometry fields
   // TODO(Benjamin, Marek, Mayeul, ?)
@@ -385,9 +388,7 @@ void ErrorCovariance<MODEL>::randomize(Increment_ & dx3d) const {
 
     if (jj == 0) {
       // Initialize sum
-      for (size_t jtime = 0; jtime < fset4dSum.size(); ++jtime) {
-        fset4dSum[jtime].fieldSet() = util::copyFieldSet(fset4dCmp[jtime].fieldSet());
-      }
+      oops::copyFieldSet4DFields(fset4dCmp, fset4dSum);
     } else {
       // Add component
       fset4dSum += fset4dCmp;
@@ -579,7 +580,7 @@ void ErrorCovariance<MODEL>::multiplySqrtTrans(const Increment_ &dx3d,
     }
 
     // Apply covariance square-root adjoint
-    hybridBlockChain_[jj]->multiplySqrtTrans(fset4dCmp, dv.modCtlVec().genCtlVec().data(), offset);
+    hybridBlockChain_[jj]->multiplySqrtAD(fset4dCmp, dv.modCtlVec().genCtlVec().data(), offset);
     offset += hybridBlockChain_[jj]->ctlVecSize();
   }
 
