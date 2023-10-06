@@ -388,7 +388,7 @@ void ErrorCovariance<MODEL>::randomize(Increment_ & dx3d) const {
 
     if (jj == 0) {
       // Initialize sum
-      oops::copyFieldSet4DFields(fset4dCmp, fset4dSum);
+      fset4dSum.copyFields(fset4dCmp);
     } else {
       // Add component
       fset4dSum += fset4dCmp;
