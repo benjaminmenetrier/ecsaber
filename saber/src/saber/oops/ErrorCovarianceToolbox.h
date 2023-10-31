@@ -206,7 +206,18 @@ class ErrorCovarianceToolbox : public oops::Application {
                                             covarParams, geom, vars, xx[0]));
 
       // Linearize
-      Bmat->linearize(xx[0], geom);
+      eckit::LocalConfiguration linConf;
+      const std::string covarianceModel(covarParams.getString("covariance"));
+      if (covarianceModel == "hybrid") {
+        eckit::LocalConfiguration jbConf;
+        jbConf.set("Covariance", covarParams);
+        linConf.set("Jb", jbConf);
+      } else if (covarianceModel == "ensemble") {
+        linConf.set("ensemble_covariance", covarParams);
+      } else {
+        linConf = covarParams;
+      }
+      Bmat->linearize(xx[0], geom, linConf);
 
       // Randomization
       randomization(params, geom, vars, xx, Bmat, ntasks);
@@ -250,6 +261,7 @@ class ErrorCovarianceToolbox : public oops::Application {
              const oops::Variables & vars,
              const State4D_ & xx,
              const Increment4D_ & dxi) const {
+
     // Define output increment
     Increment4D_ dxo(dxi, false);
 
@@ -258,7 +270,18 @@ class ErrorCovarianceToolbox : public oops::Application {
                                           covarConf, geom, vars, xx[0]));
 
     // Linearize
-    Bmat->linearize(xx[0], geom);
+    eckit::LocalConfiguration linConf;
+    const std::string covarianceModel(covarConf.getString("covariance"));
+    if (covarianceModel == "hybrid") {
+      eckit::LocalConfiguration jbConf;
+      jbConf.set("Covariance", covarConf);
+      linConf.set("Jb", jbConf);
+    } else if (covarianceModel == "ensemble") {
+      linConf.set("ensemble_covariance", covarConf);
+    } else {
+      linConf = covarConf;
+    }
+    Bmat->linearize(xx[0], geom, linConf);
 
     // Multiply
     Bmat->multiply(dxi[0], dxo[0]);
@@ -289,13 +312,13 @@ class ErrorCovarianceToolbox : public oops::Application {
     dxo[0].write(outputBConf);
     oops::Log::test() << "Covariance(" << id << ") * Increment:" << dxo << std::endl;
 
+std::cout << "toto 1 " << id << std::endl;
     // Look for hybrid or ensemble covariance models
-    const std::string covarianceModel(covarConf.getString("covariance"));
     if (covarianceModel == "hybrid") {
-      eckit::LocalConfiguration staticConfig(covarConf, "static");
+      eckit::LocalConfiguration staticConfig(covarConf, "static_covariance");
       std::string staticID = "hybrid1";
       dirac(staticConfig, testConf, staticID, geom, vars, xx, dxi);
-      eckit::LocalConfiguration ensembleConfig(covarConf, "ensemble");
+      eckit::LocalConfiguration ensembleConfig(covarConf, "ensemble_covariance");
       std::string ensembleID = "hybrid2";
       dirac(ensembleConfig, testConf, ensembleID, geom, vars, xx, dxi);
     }
@@ -337,6 +360,7 @@ class ErrorCovarianceToolbox : public oops::Application {
       dxo[0].write(outputLConf);
       oops::Log::test() << "Localization(" << id << ") * Increment:" << dxo << std::endl;
     }
+std::cout << "toto 2 " << id << std::endl;
   }
 // -----------------------------------------------------------------------------
   void randomization(const ErrorCovarianceToolboxParameters_ & params,

@@ -39,9 +39,8 @@ Geometry::Geometry(const eckit::Configuration & conf)
   // Halo
   halo_ = conf.getInt("halo", 0);
 
-  // Set flag
+  // Set regional grid flag
   regionalGrid_ = false;
-  unstructuredGrid_ = false;
 
   // Setup grid
   eckit::LocalConfiguration gridParams = conf.getSubConfiguration("grid");
@@ -51,50 +50,25 @@ Geometry::Geometry(const eckit::Configuration & conf)
     if (gridType_ == "regional") {
       regionalGrid_ = true;
     }
-    if (gridType_ == "unstructured") {
-      // Split unstructured grid among processors
-      std::vector<double> xyFull = gridParams.getDoubleVector("xy");
-      size_t gridSize = xyFull.size()/2;
-      size_t rank = 0;
-      std::vector<double> xy;
-      for (size_t jnode = 0; jnode < gridSize; ++jnode) {
-        // Copy coordinates on a given task
-        if (comm_.rank() == rank) {
-          xy.push_back(xyFull[2*jnode]);
-          xy.push_back(xyFull[2*jnode+1]);
-        }
-
-        // Update task index
-        ++rank;
-        if (conf.getBool("no point on last task", false) && (comm_.size() > 1)) {
-          if (rank == comm_.size()-1) rank = 0;
-        } else {
-          if (rank == comm_.size()) rank = 0;
-        }
-      }
-
-      // Reset coordinates
-      gridParams.set("xy", xy);
-
-      // Set flag
-      unstructuredGrid_ = true;
-    }
   }
   grid_ = atlas::Grid(gridParams);
 
-  if (!unstructuredGrid_) {
-    // Setup partitioner
+  // Setup partitioner
+  const bool noPointOnLastTask = conf.getBool("no point on last task", false);
+  if (noPointOnLastTask && (comm_.size() > 1)) {
+    partitioner_ = atlas::grid::Partitioner(conf.getString("partitioner", "equal_regions"),
+      comm_.size()-1);
+  } else {
     partitioner_ = atlas::grid::Partitioner(conf.getString("partitioner", "equal_regions"));
-
-    // Setup distribution
-    distribution_ = atlas::grid::Distribution(grid_, partitioner_);
   }
 
   if (conf.getString("function space") == "StructuredColumns") {
     // StructuredColumns
+    ASSERT(gridType_ != "unstructured");
+    ASSERT(partitioner_);
 
     // Setup function space
-    functionSpace_ = atlas::functionspace::StructuredColumns(grid_, distribution_,
+    functionSpace_ = atlas::functionspace::StructuredColumns(grid_, partitioner_,
                      atlas::option::halo(halo_));
 
     // Bugfix for regional grids
@@ -107,7 +81,7 @@ Geometry::Geometry(const eckit::Configuration & conf)
       auto view_j = atlas::array::make_view<int, 1>(fs.index_j());
       for (int jj = 0; jj < fs.size(); ++jj) {
         grid.lonlat(view_i(jj)-1, view_j(jj)-1, lonlatPoint);
-        lonlat(jj, 1) = lonlatPoint[1];
+       lonlat(jj, 1) = lonlatPoint[1];
         lonlat(jj, 0) = lonlatPoint[0];
       }
     }
@@ -118,20 +92,40 @@ Geometry::Geometry(const eckit::Configuration & conf)
     // NodeColumns
     if (grid_.name().compare(0, 2, std::string{"CS"}) == 0) {
       // CubedSphere
-      mesh_ = atlas::MeshGenerator("cubedsphere_dual").generate(grid_);
+      ASSERT(partitioner_);
+      mesh_ = atlas::MeshGenerator("cubedsphere_dual").generate(grid_, partitioner_);
       functionSpace_ = atlas::functionspace::CubedSphereNodeColumns(mesh_);
     } else {
-      if (comm_.size() == 1) {
-        // NodeColumns
-        mesh_ = atlas::MeshGenerator("delaunay").generate(grid_);
-        functionSpace_ = atlas::functionspace::NodeColumns(mesh_);
-      } else {
-        ABORT("NodeColumns function space on multiple PEs not supported yet");
-      }
+      // Regular or Structured grids could be supported with extra code
+      // Delaunay grids on atlas 0.34- require compilation with CGAL and still only work in serial
+      // TODO(ALGO): When requiring atlas 0.35+, can clean this up
+      ABORT(conf.getString("function space") + " function space with "
+            + grid_.name() + " is not supported yet");
     }
   } else if (conf.getString("function space") == "PointCloud") {
     // Setup function space
-    functionSpace_ = atlas::functionspace::PointCloud(grid_);
+    // In atlas 0.35+ we should call PointCloud(grid, partitioner), but in atlas 0.34- this
+    // interface does not exist. We instead rely on the PointCloud(vector<Point>) interface.
+    // TODO(ALGO): When requiring atlas 0.35+, can clean this up
+    std::vector<atlas::PointXY> points;
+    // Select points from grid according to partitioner
+    ASSERT(partitioner_);
+    const auto dist = partitioner_.partition(grid_);
+    int nb_points = 0;
+    if (static_cast<int>(comm_.rank()) < partitioner_.nb_partitions()) {
+      nb_points = dist.nb_pts()[comm_.rank()];
+    }
+    points.resize(nb_points);
+    int grid_counter = 0;
+    int part_counter = 0;
+    for (const atlas::PointXY & p : grid_.xy()) {
+      if (dist.partition(grid_counter) == static_cast<int>(comm_.rank())) {
+        points[part_counter] = p;
+        ++part_counter;
+      }
+      ++grid_counter;
+    }
+    functionSpace_ = atlas::functionspace::PointCloud(points);
   } else {
     ABORT(conf.getString("function space") + " function space not supported yet");
   }
@@ -199,14 +193,14 @@ Geometry::Geometry(const eckit::Configuration & conf)
       group.fields_->add(fs.index_i());
       group.fields_->add(fs.index_j());
 
-      // Local scale
-      atlas::Field local_scale = functionSpace_.createField<double>(
-      atlas::option::name("local_scale") | atlas::option::levels(1));
-      auto local_scaleView = atlas::array::make_view<double, 2>(local_scale);
+      // Area
+      atlas::Field area = functionSpace_.createField<double>(
+      atlas::option::name("area") | atlas::option::levels(1));
+      auto areaView = atlas::array::make_view<double, 2>(area);
       atlas::StructuredGrid grid = fs.grid();
       auto view_i = atlas::array::make_view<int, 1>(fs.index_i());
       auto view_j = atlas::array::make_view<int, 1>(fs.index_j());
-      for (atlas::idx_t jnode = 0; jnode < local_scale.shape(0); ++jnode) {
+      for (atlas::idx_t jnode = 0; jnode < area.shape(0); ++jnode) {
         // Initialization
         int i = view_i(jnode);
         int j = view_j(jnode);
@@ -232,9 +226,9 @@ Geometry::Geometry(const eckit::Configuration & conf)
         }
 
         // Local scale
-        local_scaleView(jnode, 0) = std::sqrt(0.5*(dist_i*dist_i+dist_j*dist_j));
+        areaView(jnode, 0) = dist_i*dist_j;
       }
-      group.fields_->add(local_scale);
+      group.fields_->add(area);
     }
 
     // Vertical coordinate
@@ -251,7 +245,7 @@ Geometry::Geometry(const eckit::Configuration & conf)
     // Geographical mask
     group.fields_->add(gmask);
 
-    // Halo mask
+    // Owned points mask
     if (functionSpace_.type() == "StructuredColumns") {
       // Structured columns
       atlas::functionspace::StructuredColumns fs(functionSpace_);
@@ -281,7 +275,7 @@ Geometry::Geometry(const eckit::Configuration & conf)
         }
       }
 
-      // Add halo mask
+      // Add owned points mask
       group.fields_->add(owned);
     } else if (functionSpace_.type() == "NodeColumns") {
       // NodeColumns
@@ -296,7 +290,7 @@ Geometry::Geometry(const eckit::Configuration & conf)
           ownedView(jnode, 0) = ghostView(jnode) > 0 ? 0 : 1;
         }
 
-        // Add halo mask
+        // Add owned points mask
         group.fields_->add(owned);
       } else {
         // Other NodeColumns
@@ -309,7 +303,7 @@ Geometry::Geometry(const eckit::Configuration & conf)
           ownedView(jnode, 0) = ghostView(jnode) > 0 ? 0 : 1;
         }
 
-        // Add halo mask
+        // Add owned points mask
         group.fields_->add(owned);
       }
     }
@@ -347,7 +341,7 @@ Geometry::Geometry(const eckit::Configuration & conf)
 // -----------------------------------------------------------------------------
 Geometry::Geometry(const Geometry & other) : comm_(other.comm_), halo_(other.halo_),
   grid_(other.grid_), gridType_(other.gridType_), regionalGrid_(other.regionalGrid_),
-  unstructuredGrid_(other.unstructuredGrid_), partitioner_(other.partitioner_), mesh_(other.mesh_),
+  partitioner_(other.partitioner_), mesh_(other.mesh_),
   groupIndex_(other.groupIndex_)  {
   // Copy function space
   if (other.functionSpace_.type() == "StructuredColumns") {
@@ -477,7 +471,7 @@ void Geometry::print(std::ostream & os) const {
   if (regionalGrid_) {
     os << prefix << "Regional grid detected" << std::endl;
   }
-  if (!unstructuredGrid_) {
+  if (partitioner_) {
     os << prefix << "Partitioner:" << std::endl;
     os << prefix << "- type: " << partitioner_.type() << std::endl;
   }

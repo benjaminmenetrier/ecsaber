@@ -240,10 +240,10 @@ if "background error" in config:
             for component in components:
                 component["covariance"] = add_ensemble_variables(component["covariance"])
         else:
-            # Update static
+            # Update static_covariance
             covariance = components[0]["covariance"]
             if covariance["covariance model"] == "SABER":
-                config["Covariance"]["static"] = covariance
+                config["Covariance"]["static_covariance"] = covariance
             covariance = add_ensemble_variables(covariance)
 
             # Update ensemble
@@ -255,14 +255,14 @@ if "background error" in config:
                     covariance["localization"].pop("localization method")
                     covariance["localization"]["variables"] = variables
                 covariance = add_ensemble_variables(covariance)
-                config["Covariance"]["ensemble"] = covariance
+                config["Covariance"]["ensemble_covariance"] = covariance
                 config["Covariance"]["ensemble_weight"] = weight
 
             # Update covariance model
-            config["Covariance"]["static"]["covariance"] = config["Covariance"]["static"]["covariance model"]
-            config["Covariance"]["static"].pop("covariance model")
-            config["Covariance"]["ensemble"]["covariance"] = config["Covariance"]["ensemble"]["covariance model"]
-            config["Covariance"]["ensemble"].pop("covariance model")
+            config["Covariance"]["static_covariance"]["covariance"] = config["Covariance"]["static_covariance"]["covariance model"]
+            config["Covariance"]["static_covariance"].pop("covariance model")
+            config["Covariance"]["ensemble_covariance"]["covariance"] = config["Covariance"]["ensemble_covariance"]["covariance model"]
+            config["Covariance"]["ensemble_covariance"].pop("covariance model")
 
         # Remove components
         config["Covariance"].pop("components")
