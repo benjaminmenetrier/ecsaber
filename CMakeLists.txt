@@ -12,9 +12,6 @@ execute_process( COMMAND ${CMAKE_SOURCE_DIR}/ecsaber/check_status.sh "oops"
                  RESULT_VARIABLE oops_status )
 set_property(GLOBAL PROPERTY oops_status "${oops_status}")
 
-# Check oops-ecmwf additions from oops-jedi
-execute_process( COMMAND ${CMAKE_SOURCE_DIR}/ecsaber/check_oops.sh )
-
 # Check saber-jedi status
 execute_process( COMMAND ${CMAKE_SOURCE_DIR}/ecsaber/check_status.sh "saber"
                  RESULT_VARIABLE saber_status )
@@ -25,16 +22,23 @@ execute_process( COMMAND ${CMAKE_SOURCE_DIR}/ecsaber/check_status.sh "vader"
                  RESULT_VARIABLE vader_status )
 set_property(GLOBAL PROPERTY vader_status "${vader_status}")
 
-function( copy_and_update_recursively input )
-    get_property(status GLOBAL PROPERTY ${PROJECT_NAME}_status)
+function( check_diff projectName srcPath dstPath )
+    get_property(status GLOBAL PROPERTY ${projectName}_status)
     if( ${status} EQUAL 1 )
-      execute_process( COMMAND ${CMAKE_SOURCE_DIR}/ecsaber/copy_and_update_recursively.sh ${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/${input} )
+        execute_process( COMMAND ${CMAKE_SOURCE_DIR}/ecsaber/check_diff.sh ${srcPath} ${dstPath} )
     endif()
 endfunction()
 
-function( copy_and_update input output)
-    get_property(oops_status GLOBAL PROPERTY oops_status)
-    if( ${oops_status} EQUAL 1 )
-      execute_process( COMMAND ${CMAKE_SOURCE_DIR}/ecsaber/copy_and_update.sh ${input} ${output})
+function( check_diff_recursively input )
+    get_property(status GLOBAL PROPERTY ${PROJECT_NAME}_status)
+    if( ${status} EQUAL 1 )
+      execute_process( COMMAND ${CMAKE_SOURCE_DIR}/ecsaber/check_diff_recursively.sh ${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/${input} )
+    endif()
+endfunction()
+
+function( sync_recursively input )
+    get_property(status GLOBAL PROPERTY ${PROJECT_NAME}_status)
+    if( ${status} EQUAL 1 )
+      execute_process( COMMAND ${CMAKE_SOURCE_DIR}/ecsaber/sync_recursively.sh ${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/${input} )
     endif()
 endfunction()

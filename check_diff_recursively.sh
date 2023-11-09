@@ -22,6 +22,6 @@ for itemJedi in `find ${inputJedi}`; do
     dir=${dirJedi/${projectName}-jedi/${projectName}}
 
     # Update file
-#    ${scriptDir}/copy_and_update.sh ${itemJedi} ${dir}/${file}
+    ${scriptDir}/check_diff.sh ${itemJedi} ${dir}/${file}
   fi
 done

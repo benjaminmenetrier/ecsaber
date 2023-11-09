@@ -1,30 +1,27 @@
 # (C) Copyright 2023 Meteorologisk Institutt
 
-list( APPEND oops_modified_src_files
-base/FieldSet4D.h
-base/ModelSpaceCovarianceParametersBase.h
-base/Variables.cc
-base/Variables.h
-interface/ModelData.h
-mpi/mpi.cc
-mpi/mpi.h
-runs/ConvertState.h
-)
-
 list( APPEND oops_jedi_src_files
 base/DataSetBase.h
 base/FieldSet3D.cc
 base/FieldSet3D.h
 base/FieldSet4D.cc
+base/FieldSet4D.h
 base/GeometryData.cc
 base/GeometryData.h
+base/ModelSpaceCovarianceParametersBase.h
 base/ParameterTraitsVariables.cc
 base/ParameterTraitsVariables.h
+base/Variables.cc
+base/Variables.h
 base/WriteParametersBase.h
+interface/ModelData.h
 external/stripack/stripack.cc
 external/stripack/stripack.h
 external/stripack/stripack.f90
 external/stripack/stripack_interface.f90
+mpi/mpi.cc
+mpi/mpi.h
+runs/ConvertState.h
 util/AnyOf.h
 util/AssociativeContainers.h
 util/AtlasArrayUtil.cc
@@ -89,7 +86,9 @@ util/TypeTraits.h
 )
 
 foreach( src_file ${oops_jedi_src_files} )
-    copy_and_update( ${CMAKE_CURRENT_SOURCE_DIR}/../../../oops-jedi/src/oops/${src_file} ${CMAKE_CURRENT_SOURCE_DIR}/${src_file} )
+    check_diff( "oops"
+                ${CMAKE_CURRENT_SOURCE_DIR}/../../../oops-jedi/src/oops/${src_file}
+                ${CMAKE_CURRENT_SOURCE_DIR}/${src_file} )
 endforeach()
 
 list( APPEND oops_ecmwf_src_files
@@ -117,7 +116,6 @@ foreach( src_file ${oops_ecmwf_src_files} )
 endforeach()
 
 list( APPEND oops-patch_src_files
-${oops_modified_src_files}
 ${oops_jedi_src_files}
 ${oops_ecmwf_src_files}
 )

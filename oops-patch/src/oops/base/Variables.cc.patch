@@ -1,0 +1,210 @@
+--- /home/benjaminm/code/oops-bundle/ecsaber/oops-patch/src/oops/base/Variables.cc.tmp	2023-11-09 17:31:28.029939509 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/oops-patch/src/oops/base/Variables.cc	2023-11-07 15:34:43.597507332 +0100
+@@ -27,16 +27,17 @@
+ 
+ // -----------------------------------------------------------------------------
+ namespace oops {
++namespace patch {
+ // -----------------------------------------------------------------------------
+ 
+-patch::Variables::Variables()
++Variables::Variables()
+   : convention_(""), vars_(0), varMetaData_() {
+   Log::trace() << "Variables::Variables" << std::endl;
+ }
+ 
+ // -----------------------------------------------------------------------------
+ 
+-patch::Variables::Variables(const eckit::Configuration & conf, const std::string & name)
++Variables::Variables(const eckit::Configuration & conf, const std::string & name)
+   : convention_(""), vars_(0), channels_(0), varMetaData_() {
+   Log::trace() << "Variables::Variables start " << conf << std::endl;
+   std::vector<std::string> vars;
+@@ -62,7 +63,7 @@
+ }
+ 
+ // -----------------------------------------------------------------------------
+-patch::Variables::Variables(const std::vector<std::string> & vars, const std::string & conv)
++Variables::Variables(const std::vector<std::string> & vars, const std::string & conv)
+   : convention_(conv), vars_(vars), varMetaData_() {
+   Log::trace() << "Variables::Variables start " << vars << std::endl;
+   Log::trace() << "Variables::Variables done" << std::endl;
+@@ -70,7 +71,7 @@
+ 
+ // -----------------------------------------------------------------------------
+ 
+-patch::Variables::Variables(const std::vector<std::string> & vars, const std::vector<int> & channels)
++Variables::Variables(const std::vector<std::string> & vars, const std::vector<int> & channels)
+   : convention_(""), vars_(0), channels_(channels), varMetaData_() {
+   Log::trace() << "Variables::Variables start " << vars << " @ " << channels << std::endl;
+   if (channels.empty()) {
+@@ -87,7 +88,7 @@
+ 
+ // -----------------------------------------------------------------------------
+ 
+-patch::Variables::Variables(const eckit::Configuration & conf, const std::vector<std::string> & vars)
++Variables::Variables(const eckit::Configuration & conf, const std::vector<std::string> & vars)
+   : convention_(""), vars_(vars), varMetaData_(conf)
+ {
+   Log::trace() << "Variables::Variables start " << vars << " @ " << conf << std::endl;
+@@ -96,14 +97,14 @@
+ 
+ // -----------------------------------------------------------------------------
+ 
+-patch::Variables::Variables(const patch::Variables & other)
++Variables::Variables(const Variables & other)
+   : convention_(other.convention_), vars_(other.vars_), channels_(other.channels_),
+     varMetaData_(other.varMetaData_)
+ {}
+ 
+ // -----------------------------------------------------------------------------
+ 
+-patch::Variables & patch::Variables::operator+=(const patch::Variables & rhs) {
++Variables & Variables::operator+=(const Variables & rhs) {
+   ASSERT(convention_ == rhs.convention_);
+   vars_.insert(vars_.end(), rhs.vars_.begin(), rhs.vars_.end());
+   // revisit late, should we add channels this way ?
+@@ -132,7 +133,7 @@
+ 
+ // -----------------------------------------------------------------------------
+ 
+-patch::Variables & patch::Variables::operator-=(const patch::Variables & rhs) {
++Variables & Variables::operator-=(const Variables & rhs) {
+   ASSERT(convention_ == rhs.convention_);
+   if (!rhs.channels().empty()) {
+     throw eckit::NotImplemented(
+@@ -146,14 +147,14 @@
+ 
+ // -----------------------------------------------------------------------------
+ 
+-patch::Variables & patch::Variables::operator-=(const std::string & var) {
++Variables & Variables::operator-=(const std::string & var) {
+   vars_.erase(std::remove(vars_.begin(), vars_.end(), var), vars_.end());
+   return *this;
+ }
+ 
+ // -----------------------------------------------------------------------------
+ 
+-bool patch::Variables::operator==(const patch::Variables & rhs) const {
++bool Variables::operator==(const Variables & rhs) const {
+   if ((convention_  != rhs.convention_) ||
+       (channels_    != rhs.channels_)   ||
+       (vars_.size() != rhs.vars_.size())) {
+@@ -186,13 +187,13 @@
+ 
+ // -----------------------------------------------------------------------------
+ 
+-bool patch::Variables::operator!=(const patch::Variables & rhs) const {
++bool Variables::operator!=(const Variables & rhs) const {
+   return (!(*this == rhs));
+ }
+ 
+ // -----------------------------------------------------------------------------
+ 
+-bool patch::Variables::operator<=(const patch::Variables & rhs) const {
++bool Variables::operator<=(const Variables & rhs) const {
+   ASSERT(convention_ == rhs.convention_);
+   ASSERT(channels_.empty());
+   bool is_in_rhs = true;
+@@ -203,7 +204,7 @@
+ }
+ 
+ // -----------------------------------------------------------------------------
+-void patch::Variables::addMetaData(const std::string & varname,
++void Variables::addMetaData(const std::string & varname,
+                             const std::string & keyname,
+                             const int & keyvalue) {
+   setVariableSubKeyValue(varname, keyname, keyvalue, varMetaData_);
+@@ -211,7 +212,7 @@
+ 
+ // -----------------------------------------------------------------------------
+ 
+-void patch::Variables::intersection(const patch::Variables & rhs) {
++void Variables::intersection(const Variables & rhs) {
+   ASSERT(convention_ == rhs.convention_);
+   if (this->size() * rhs.size() > 0) ASSERT(channels_.empty() == rhs.channels_.empty());
+ 
+@@ -239,7 +240,7 @@
+ 
+ // -----------------------------------------------------------------------------
+ 
+-bool patch::Variables::has(const std::string & var) const {
++bool Variables::has(const std::string & var) const {
+   bool found = false;
+   for (size_t jj = 0; jj < vars_.size(); ++jj) {
+     found = found || vars_[jj] == var;
+@@ -249,7 +250,7 @@
+ 
+ // -----------------------------------------------------------------------------
+ 
+-size_t patch::Variables::find(const std::string & var) const {
++size_t Variables::find(const std::string & var) const {
+   size_t ii = vars_.size();
+   for (size_t jj = 0; jj < vars_.size(); ++jj) {
+     if (vars_[jj] == var) ii = jj;
+@@ -263,20 +264,20 @@
+ 
+ // -----------------------------------------------------------------------------
+ 
+-void patch::Variables::push_back(const std::string & vname) {
++void Variables::push_back(const std::string & vname) {
+   vars_.push_back(vname);
+ }
+ 
+ // -----------------------------------------------------------------------------
+ 
+-void patch::Variables::sort() {
++void Variables::sort() {
+   std::sort(vars_.begin(), vars_.end());
+   std::sort(channels_.begin(), channels_.end());
+ }
+ 
+ // -----------------------------------------------------------------------------
+ 
+-std::vector<std::string> patch::Variables::asCanonical() const {
++std::vector<std::string> Variables::asCanonical() const {
+   std::vector<std::string> vars(vars_);
+   std::sort(vars.begin(), vars.end());
+   return vars;
+@@ -284,7 +285,7 @@
+ 
+ // -----------------------------------------------------------------------------
+ 
+-void patch::Variables::print(std::ostream & os) const {
++void Variables::print(std::ostream & os) const {
+   os << vars_.size() << " variables: ";
+   for (size_t jj = 0; jj < vars_.size(); ++jj) {
+     if (jj > 0) os << ", ";
+@@ -297,7 +298,7 @@
+ 
+ // -----------------------------------------------------------------------------
+ 
+-int patch::Variables::getLevels(const std::string & fieldname) const {
++int Variables::getLevels(const std::string & fieldname) const {
+   int levels(-1);
+   getVariableSubKeyValue(fieldname, "levels",
+                          varMetaData_, levels);
+@@ -306,7 +307,7 @@
+ 
+ // -----------------------------------------------------------------------------
+ 
+-void patch::Variables::getVariableSubKeyValue(const std::string & varname,
++void Variables::getVariableSubKeyValue(const std::string & varname,
+                                        const std::string & keyname,
+                                        const eckit::Configuration & variablesconf,
+                                        int & intvalue) const {
+@@ -318,7 +319,7 @@
+ 
+ // -----------------------------------------------------------------------------
+ 
+-void patch::Variables::setVariableSubKeyValue(const std::string & varname,
++void Variables::setVariableSubKeyValue(const std::string & varname,
+                                        const std::string & keyname,
+                                        const int & keyvalue,
+                                        eckit::LocalConfiguration & variableslconf) {
+@@ -328,4 +329,5 @@
+   variablelconf.set(keyname, keyvalue);
+   variableslconf.set(varname, variablelconf);
+ }
++}  // namespace patch
+ }  // namespace oops

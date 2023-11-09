@@ -13,9 +13,11 @@ cmake_minimum_required( VERSION 3.12 )
 project( vader VERSION 1.4.0 LANGUAGES CXX Fortran )
 
 # Copy and update source from VADER
-copy_and_update_recursively( cmake )
-copy_and_update_recursively( tools )
-copy_and_update_recursively( CPPLINT.cfg )
+check_diff_recursively( cmake )
+check_diff_recursively( src )
+check_diff_recursively( tools )
+check_diff_recursively( CPPLINT )
+check_diff_recursively( vader-import.cmake.in )
 
 ## Ecbuild integration
 find_package( ecbuild QUIET )

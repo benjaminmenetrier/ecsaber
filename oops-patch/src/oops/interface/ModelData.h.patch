@@ -1,0 +1,71 @@
+--- /home/benjaminm/code/oops-bundle/ecsaber/oops-patch/src/oops/interface/ModelData.h.tmp	2023-11-09 17:31:28.069939467 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/oops-patch/src/oops/interface/ModelData.h	2023-11-08 14:13:25.217626046 +0100
+@@ -11,8 +11,7 @@
+ #include <memory>
+ #include <string>
+ 
+-#include "oops/base/Geometry.h"
+-
++#include "oops/interface/Geometry.h"
+ #include "oops/util/Logger.h"
+ #include "oops/util/ObjectCounter.h"
+ #include "oops/util/Printable.h"
+@@ -26,8 +25,7 @@
+ template <typename MODEL>
+ class ModelData : public  util::Printable,
+                   private util::ObjectCounter<ModelData<MODEL> >  {
+-  typedef typename MODEL::ModelData ModelData_;
+-  typedef Geometry<MODEL>           Geometry_;
++  typedef Geometry<MODEL> Geometry_;
+ 
+  public:
+   static const std::string classname() {return "oops::ModelData";}
+@@ -44,7 +42,7 @@
+  private:
+   void print(std::ostream &) const override;
+ 
+-  std::unique_ptr<ModelData_> modeldata_;  // pointer to the ModelData implementation
++//  std::unique_ptr<ModelData_> modeldata_;  // pointer to the ModelData implementation
+ };
+ 
+ // -----------------------------------------------------------------------------
+@@ -54,7 +52,7 @@
+ {
+   Log::trace() << "ModelData<MODEL>::ModelData starting" << std::endl;
+   util::Timer timer(classname(), "ModelData");
+-  modeldata_.reset(new ModelData_(geometry.geometry()));
++//  modeldata_.reset(new ModelData_(geometry.geometry()));
+   Log::trace() << "ModelData<MODEL>::ModelData done" << std::endl;
+ }
+ 
+@@ -64,7 +62,7 @@
+ ModelData<MODEL>::~ModelData() {
+   Log::trace() << "ModelData<MODEL>::~ModelData starting" << std::endl;
+   util::Timer timer(classname(), "~ModelData");
+-  modeldata_.reset();
++//  modeldata_.reset();
+   Log::trace() << "ModelData<MODEL>::~ModelData done" << std::endl;
+ }
+ 
+@@ -74,8 +72,11 @@
+ const eckit::LocalConfiguration ModelData<MODEL>::modelData() const {
+   Log::trace() << "ModelData<MODEL>::modelData starting" << std::endl;
+   util::Timer timer(classname(), "modelData");
++  eckit::LocalConfiguration conf;
++  // QUENCH
++  conf.set("epsilon", 0.621957535);
+   Log::trace() << "ModelData<MODEL>::modelData done" << std::endl;
+-  return modeldata_->modelData();
++  return conf;
+ }
+ 
+ // -----------------------------------------------------------------------------
+@@ -84,7 +85,7 @@
+ void ModelData<MODEL>::print(std::ostream & os) const {
+   Log::trace() << "ModelData<MODEL>::print starting" << std::endl;
+   util::Timer timer(classname(), "print");
+-  os << *modeldata_;
++//  os << *modeldata_;
+   Log::trace() << "ModelData<MODEL>::print done" << std::endl;
+ }
+ 

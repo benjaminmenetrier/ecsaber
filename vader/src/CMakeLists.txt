@@ -1,8 +1,3 @@
-# Copy and update source from VADER
-copy_and_update_recursively( mo )
-copy_and_update_recursively( OceanConversions )
-copy_and_update_recursively( vader )
-
 ecbuild_generate_config_headers( DESTINATION ${INSTALL_INCLUDE_DIR}/vader )
 
 list( APPEND vader_src_files
