@@ -20,10 +20,6 @@ namespace eckit {
   class Configuration;
 }
 
-namespace oops {
-  class Variables;
-}
-
 namespace quench {
   class Gom;
   class Geometry;
@@ -31,6 +27,7 @@ namespace quench {
   class Locations;
   class Model;
   class Tlm;
+  class Variables;
 
 ///  model state
 /*!
@@ -63,7 +60,7 @@ class State : public util::Printable,
   void interpolate(const Locations &, Gom &) const
     {ABORT("not implemented yet");}
 /// Interpolate full fields
-  void forceWith(const State &, const oops::Variables &)
+  void forceWith(const State &, const Variables &)
     {ABORT("not implemented yet");}
 
 /// Interactions with Increment
@@ -93,8 +90,9 @@ class State : public util::Printable,
   void accumul(const double &, const State &);
 
 /// ATLAS FieldSet accessor
-  void toFieldSet(atlas::FieldSet &) const;
-  void fromFieldSet(const atlas::FieldSet &);
+  const atlas::FieldSet & fieldSet() const {return fields_->fieldSet();}
+  atlas::FieldSet & fieldSet() {return fields_->fieldSet();}
+  void synchronizeFields() {fields_->synchronizeFields();}
 
  private:
   std::unique_ptr<Fields> fields_;

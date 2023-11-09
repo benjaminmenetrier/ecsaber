@@ -1,18 +1,15 @@
-# (C) Copyright 2017-2020 UCAR.
+#sdlk (C) Copyright 2017-2020 UCAR.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
 
 ################################################################################
-# SABER_PATCH
+# SABER
 ################################################################################
 
 cmake_minimum_required( VERSION 3.12 )
 
-project( saber VERSION 1.7.0 LANGUAGES CXX Fortran )
-
-# Links from SABER
-links_from_source_repo()
+project( saber VERSION 1.8.0 LANGUAGES CXX Fortran )
 
 option(OPENMP "Build saber with OpenMP support" ON)
 

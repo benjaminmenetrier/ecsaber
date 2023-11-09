@@ -166,7 +166,7 @@ if "_4d" in args.inputYaml:
     exit()
 
 # Read yaml file
-print("Updating yaml: " + args.inputYaml)
+print("--  - Update yaml: " + args.inputYaml)
 with open(args.inputYaml, "r") as stream:
     try:
         config = yaml.safe_load(stream)

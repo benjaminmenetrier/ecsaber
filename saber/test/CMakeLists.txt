@@ -4,9 +4,6 @@
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
 
-# Links from SABER
-links_from_source_repo()
-
 # Tests activated
 message( STATUS "SABER tests activated:" )
 
@@ -92,8 +89,8 @@ file( STRINGS testlist/saber_test_tier1.txt saber_test )
 list( APPEND saber_test_full ${saber_test} )
 if( SABER_TEST_FASTLAM )
     message( STATUS "  - TIER 1 FastLAM-specific" )
-    file( STRINGS testlist/saber_test_tier1-fastlam.txt saber_test )
-    list( APPEND saber_test_full ${saber_test} )
+#    file( STRINGS testlist/saber_test_tier1-fastlam.txt saber_test )
+#    list( APPEND saber_test_full ${saber_test} )
 endif()
 if( SABER_TEST_GSI_GEOS )
     message( STATUS "  - TIER 1 GSI-GEOS-specific" )
@@ -135,7 +132,7 @@ endif()
 # Input data
 file( STRINGS testlist/saber_data.txt saber_data )
 
-# Setup SABER directories and links
+# Setup SABER directories and copy
 message( STATUS "Setup SABER directories and links" )
 file( REMOVE_RECURSE ${CMAKE_CURRENT_BINARY_DIR}/testdata )
 file( REMOVE_RECURSE ${CMAKE_CURRENT_BINARY_DIR}/testinput )

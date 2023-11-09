@@ -20,6 +20,7 @@
 #include "oops/interface/Geometry.h"
 #include "oops/interface/Increment.h"
 #include "oops/interface/State.h"
+#include "oops/interface/Variables.h"
 #include "oops/util/Duration.h"
 #include "oops/util/FieldSetHelpers.h"
 #include "oops/util/Logger.h"
@@ -38,10 +39,11 @@ class Localization : public oops::LocalizationBase<MODEL> {
   using Increment_ = oops::Increment<MODEL>;
   using Model_ = oops::Model<MODEL>;
   using State_ = oops::State<MODEL>;
+  using Variables_ = oops::Variables<MODEL>;
 
  public:
   Localization(const Geometry_ &,
-               const oops::Variables &,
+               const Variables_ &,
                const eckit::Configuration &);
   ~Localization();
 
@@ -61,7 +63,7 @@ class Localization : public oops::LocalizationBase<MODEL> {
 
 template<typename MODEL>
 Localization<MODEL>::Localization(const Geometry_ & geom,
-                                  const oops::Variables & incVarsNoMeta,
+                                  const Variables_ & incVarsNoMeta,
                                   const eckit::Configuration & conf)
   : loc_()
 {
@@ -71,16 +73,16 @@ Localization<MODEL>::Localization(const Geometry_ & geom,
   util::DateTime dummyTime(1977, 5, 25, 0, 0, 0);
 
   // Initialize
-  const std::vector<std::size_t> vlevs = geom.variableSizes(incVarsNoMeta);
-  oops::Variables incVars(incVarsNoMeta);
+  const std::vector<std::size_t> vlevs = geom.geometry().variableSizes(incVarsNoMeta.variables());
+  oops::patch::Variables incVars(incVarsNoMeta.variables().config(), incVarsNoMeta.variables().varlist());
   for (std::size_t i = 0; i < vlevs.size() ; ++i) {
-    incVars.addMetaData(incVarsNoMeta.variables()[i], "levels", vlevs[i]);
+    incVars.addMetaData(incVars[i], "levels", vlevs[i]);
   }
 
   // Create dummy xb and fg
-  atlas::FieldSet fset = util::createRandomFieldSet(geom.generic().comm(),
-                                                    geom.functionSpace(),
-                                                    incVars);
+  atlas::FieldSet fset = util::createFieldSet(geom.geometry().functionSpace(),
+                                              incVars,
+                                              0.0);
   oops::FieldSet3D fset3d(fset, dummyTime, eckit::mpi::comm());
   oops::FieldSet4D fset4dXb(fset3d);
   oops::FieldSet4D fset4dFg(fset3d);
@@ -124,11 +126,11 @@ void Localization<MODEL>::multiply(Increment_ & dx) const {
   oops::Log::trace() << "Localization:multiply starting" << std::endl;
 
   // SABER block chain multiplication
-  oops::FieldSet4D fset4d({dx.fieldSet(), dx.validTime(), dx.geometry().getComm()});
+  oops::FieldSet4D fset4d({dx.increment().fieldSet(), dx.validTime(), eckit::mpi::comm()});
   loc_->multiply(fset4d);
 
   // ATLAS fieldset to Increment_
-  dx.synchronizeFields();
+  dx.increment().synchronizeFields();
 
   oops::Log::trace() << "Localization:multiply done" << std::endl;
 }
@@ -141,12 +143,12 @@ void Localization<MODEL>::multiplySqrt(const GenericCtlVec_ & dv,
   oops::Log::trace() << "Localization:multiplySqrt starting" << std::endl;
 
   // SABER block chain square-root
-  oops::FieldSet3D fset3d(dx.validTime(), dx.geometry().getComm());
+  oops::FieldSet3D fset3d(dx.validTime(), eckit::mpi::comm());
   oops::FieldSet4D fset4d(fset3d);
   loc_->multiplySqrt(dv.data(), fset4d, 0);
 
   // ATLAS fieldset to Increment_
-  dx.fromFieldSet(fset4d[0].fieldSet());
+  dx.increment().synchronizeFields();
 
   oops::Log::trace() << "Localization:multiplySqrt done" << std::endl;
 }
@@ -159,7 +161,7 @@ void Localization<MODEL>::multiplySqrtTrans(const Increment_ & dx,
   oops::Log::trace() << "Localization:multiplySqrtTrans starting" << std::endl;
 
   // SABER block chain square-root adjoint
-  oops::FieldSet4D fset4d({dx.fieldSet(), dx.validTime(), dx.geometry().getComm()});
+  oops::FieldSet4D fset4d({dx.increment().fieldSet(), dx.validTime(), eckit::mpi::comm()});
   loc_->multiplySqrtAD(fset4d, dv.data(), 0);
 
   oops::Log::trace() << "Localization:multiplySqrtTrans done" << std::endl;

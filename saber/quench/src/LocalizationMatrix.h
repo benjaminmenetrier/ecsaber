@@ -22,17 +22,18 @@ namespace quench {
   class Geometry;
   class Increment;
   class IncrEnsCtlVec;
+  class Variables;
 
 /// Localization matrix for quench model.
 
 // -----------------------------------------------------------------------------
 class LocalizationMatrix: public util::Printable,
-                            private eckit::NonCopyable,
-                            private util::ObjectCounter<LocalizationMatrix> {
+                          private eckit::NonCopyable,
+                          private util::ObjectCounter<LocalizationMatrix> {
  public:
   static const std::string classname() {return "quench::LocalizationMatrix";}
 
-  LocalizationMatrix(const Geometry &, const eckit::Configuration &)
+  LocalizationMatrix(const Geometry &, const Variables &, const eckit::Configuration &)
     {ABORT("not implemented yet");}
   ~LocalizationMatrix() {}
   void multiply(Increment &) const

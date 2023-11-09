@@ -22,7 +22,7 @@ namespace eckit {
 
 namespace quench {
   class Geometry;  // TODO(Benjamin): for cy46 only, should be removed later
-  class ErrorCovariance;
+  class Covariance;
 
   /// IncrModCtlVec Class
   /*!
@@ -39,14 +39,14 @@ class IncrModCtlVec : public util::Printable,
 
 /// Constructor, destructor
   IncrModCtlVec();
-  explicit IncrModCtlVec(const ErrorCovariance &);
-  IncrModCtlVec(const ErrorCovariance &, const IncrModCtlVec &);
+  explicit IncrModCtlVec(const Covariance &);
+  IncrModCtlVec(const Covariance &, const IncrModCtlVec &);
   IncrModCtlVec(const IncrModCtlVec &, const bool = true);
   virtual ~IncrModCtlVec();
 
   // TODO(Benjamin): for cy46 only, should be removed later
-  IncrModCtlVec(const Geometry &, const ErrorCovariance &);
-  IncrModCtlVec(const Geometry &, const ErrorCovariance &, const IncrModCtlVec &);
+  IncrModCtlVec(const Geometry &, const Covariance &);
+  IncrModCtlVec(const Geometry &, const Covariance &, const IncrModCtlVec &);
 
 /// Basic operators
   void zero() {}

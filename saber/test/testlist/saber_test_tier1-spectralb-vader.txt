@@ -1,0 +1,3 @@
+dirac_spectralb_gauss_vader_1
+dirac_spectralb_gauss_vader_2
+compare_diagnostics_gauss_vader

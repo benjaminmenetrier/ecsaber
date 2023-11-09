@@ -4,8 +4,8 @@
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
 
-# Links from SABER
-links_from_source_repo()
+# Copy and update source from SABER
+copy_and_update_recursively( data )
 
 # Add subdirectories
 add_subdirectory( src )

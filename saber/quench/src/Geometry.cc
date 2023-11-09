@@ -21,7 +21,7 @@
 
 #include "eckit/mpi/Comm.h"
 
-#include "oops/base/Variables.h"
+#include "src/Variables.h"
 
 #include "util/abor1_cpp.h"
 #include "util/Logger.h"
@@ -406,9 +406,9 @@ size_t Geometry::groupIndex(const std::string & var) const {
   return groupIndex_.at(var);
 }
 // -----------------------------------------------------------------------------
-std::vector<size_t> Geometry::variableSizes(const oops::Variables & vars) const {
+std::vector<size_t> Geometry::variableSizes(const Variables & vars) const {
   std::vector<size_t> sizes;
-  for (const auto & var : vars.variables()) {
+  for (const auto & var : vars.varlist()) {
     sizes.push_back(levels(var));
   }
   return sizes;

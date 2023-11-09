@@ -1,7 +1,10 @@
 # (C) Copyright 2023 Meteorologisk Institutt
 
 list( APPEND oops_modified_src_files
+base/FieldSet4D.h
 base/ModelSpaceCovarianceParametersBase.h
+base/Variables.cc
+base/Variables.h
 interface/ModelData.h
 mpi/mpi.cc
 mpi/mpi.h
@@ -13,10 +16,15 @@ base/DataSetBase.h
 base/FieldSet3D.cc
 base/FieldSet3D.h
 base/FieldSet4D.cc
-base/FieldSet4D.h
+base/GeometryData.cc
+base/GeometryData.h
 base/ParameterTraitsVariables.cc
 base/ParameterTraitsVariables.h
 base/WriteParametersBase.h
+external/stripack/stripack.cc
+external/stripack/stripack.h
+external/stripack/stripack.f90
+external/stripack/stripack_interface.f90
 util/AnyOf.h
 util/AssociativeContainers.h
 util/AtlasArrayUtil.cc
@@ -33,6 +41,8 @@ util/FieldSetOperations.cc
 util/FieldSetOperations.h
 util/FloatCompare.h
 util/gatherPrint.h
+util/IntSetParser.cc
+util/IntSetParser.h
 util/NamedEnumerator.h
 util/parameters/ConfigurationParameter.cc
 util/parameters/ConfigurationParameter.h
@@ -78,13 +88,8 @@ util/stringFunctions.h
 util/TypeTraits.h
 )
 
-file( MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/util )
-file( MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/util/parameters )
-
 foreach( src_file ${oops_jedi_src_files} )
-    execute_process( COMMAND ${CMAKE_COMMAND} -E create_symlink
-                     ${CMAKE_CURRENT_SOURCE_DIR}/../../../oops-jedi/src/oops/${src_file}
-                     ${CMAKE_CURRENT_SOURCE_DIR}/${src_file} )
+    copy_and_update( ${CMAKE_CURRENT_SOURCE_DIR}/../../../oops-jedi/src/oops/${src_file} ${CMAKE_CURRENT_SOURCE_DIR}/${src_file} )
 endforeach()
 
 list( APPEND oops_ecmwf_src_files
@@ -96,8 +101,6 @@ util/DateTime.h
 util/Duration.cc
 util/Duration.h
 util/formats.h
-util/IntSetParser.cc
-util/IntSetParser.h
 util/kinds.F90
 util/Logger.h
 util/missingValues.cc
@@ -113,35 +116,10 @@ foreach( src_file ${oops_ecmwf_src_files} )
                      ${CMAKE_CURRENT_SOURCE_DIR}/${src_file} )
 endforeach()
 
-list( APPEND oops_ecmwf_assimilation2base_src_files
-Increment4D.h
-State4D.h
-)
-
-foreach( src_file ${oops_ecmwf_assimilation2base_src_files} )
-    execute_process( COMMAND ${CMAKE_COMMAND} -E create_symlink
-                     ${CMAKE_SOURCE_DIR}/oops/src/oops/assimilation/${src_file}
-                     ${CMAKE_CURRENT_SOURCE_DIR}/base/${src_file} )
-endforeach()
-list( TRANSFORM oops_ecmwf_assimilation2base_src_files PREPEND base/ )
-
-list( APPEND oops_ecmwf_interface2base_src_files
-Geometry.h
-Increment.h
-)
-
-foreach( src_file ${oops_ecmwf_interface2base_src_files} )
-    execute_process( COMMAND ${CMAKE_COMMAND} -E create_symlink
-                     ${CMAKE_SOURCE_DIR}/oops/src/oops/interface/${src_file}
-                     ${CMAKE_CURRENT_SOURCE_DIR}/base/${src_file} )
-endforeach()
-list( TRANSFORM oops_ecmwf_interface2base_src_files PREPEND base/ )
-
 list( APPEND oops-patch_src_files
 ${oops_modified_src_files}
 ${oops_jedi_src_files}
 ${oops_ecmwf_src_files}
-${oops_ecmwf_assimilation2base_src_files}
 )
 
 include(GNUInstallDirs)

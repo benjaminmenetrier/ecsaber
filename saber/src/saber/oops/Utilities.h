@@ -18,11 +18,13 @@
 
 #include "eckit/config/Configuration.h"
 
+#include "oops/assimilation/Increment4D.h"
 #include "oops/base/Ensemble.h"
 #include "oops/base/Variables.h"
 #include "oops/interface/Geometry.h"
 #include "oops/interface/Increment.h"
 #include "oops/interface/ModelData.h"
+#include "oops/interface/Variables.h"
 #include "oops/util/ConfigFunctions.h"
 #include "oops/util/DateTime.h"
 #include "oops/util/FieldSetHelpers.h"
@@ -33,16 +35,21 @@
 #include "saber/blocks/SaberCentralBlockBase.h"
 #include "saber/blocks/SaberOuterBlockBase.h"
 #include "saber/oops/ErrorCovarianceParameters.h"
+#include "saber/oops/ECUtilities.h"
 
 namespace saber {
 
 // -----------------------------------------------------------------------------
 
-oops::Variables getActiveVars(const SaberBlockParametersBase &,
-                              const oops::Variables &);
+oops::patch::Variables getActiveVars(const SaberBlockParametersBase &,
+                              const oops::patch::Variables &);
+
+// -----------------------------------------------------------------------------
 
 void setMember(eckit::LocalConfiguration & conf,
                const int & member);
+
+// -----------------------------------------------------------------------------
 
 void setMPI(eckit::LocalConfiguration & conf,
             const int & mpi);
@@ -51,7 +58,7 @@ void setMPI(eckit::LocalConfiguration & conf,
 
 template<typename MODEL>
 eckit::LocalConfiguration readEnsemble(const oops::Geometry<MODEL> & geom,
-                                       const oops::Variables & vars,
+                                       const oops::patch::Variables & vars,
                                        const oops::State<MODEL> & xb,
                                        const oops::State<MODEL> & fg,
                                        const eckit::LocalConfiguration & inputConf,
@@ -121,7 +128,7 @@ eckit::LocalConfiguration readEnsemble(const oops::Geometry<MODEL> & geom,
 
     // Transform Increment into FieldSet
     for (size_t ie = 0; ie < nens; ++ie) {
-      atlas::FieldSet fset = util::copyFieldSet((*ensemble)[ie].fieldSet());
+      atlas::FieldSet fset = util::copyFieldSet((*ensemble)[ie].increment().fieldSet());
       fset.name() = "ensemble member";
       fsetEns.push_back(fset);
     }
@@ -135,7 +142,7 @@ eckit::LocalConfiguration readEnsemble(const oops::Geometry<MODEL> & geom,
 
 template<typename MODEL>
 void readHybridWeight(const oops::Geometry<MODEL> & geom,
-                      const oops::Variables & vars,
+                      const oops::patch::Variables & vars,
                       const util::DateTime & date,
                       const eckit::LocalConfiguration & conf,
                       atlas::FieldSet & fset) {
@@ -147,13 +154,13 @@ void readHybridWeight(const oops::Geometry<MODEL> & geom,
   eckit::LocalConfiguration localConf(conf);
 
   // Create Increment
-  oops::Increment<MODEL> dx(geom, vars, date);
+  oops::Increment<MODEL> dx(geom, templatedVars<MODEL>(vars), date);
 
   // Read file
   dx.read(localConf);
 
   // Get FieldSet
-  fset = util::shareFields(dx.fieldSet());
+  fset = util::shareFields(dx.increment().fieldSet());
 
   oops::Log::trace() << "readHybridWeight done" << std::endl;
 }
@@ -162,7 +169,7 @@ void readHybridWeight(const oops::Geometry<MODEL> & geom,
 
 template<typename MODEL>
 void readEnsembleMember(const oops::Geometry<MODEL> & geom,
-                        const oops::Variables & vars,
+                        const oops::patch::Variables & vars,
                         const util::DateTime & date,
                         const eckit::LocalConfiguration & conf,
                         const size_t & ie,
@@ -179,11 +186,11 @@ void readEnsembleMember(const oops::Geometry<MODEL> & geom,
     std::vector<eckit::LocalConfiguration> membersConf = conf.getSubConfigurations("ensemble");
 
     // Read state as increment
-    oops::Increment<MODEL> dx(geom, vars, date);
+    oops::Increment<MODEL> dx(geom, templatedVars<MODEL>(vars), date);
     dx.read(membersConf[ie]);
 
     // Copy FieldSet
-    fset = util::copyFieldSet(dx.fieldSet());
+    fset = util::copyFieldSet(dx.increment().fieldSet());
 
     ++ensembleFound;
   }
@@ -193,11 +200,11 @@ void readEnsembleMember(const oops::Geometry<MODEL> & geom,
     std::vector<eckit::LocalConfiguration> membersConf = conf.getSubConfigurations("ensemble");
 
     // Read Increment
-    oops::Increment<MODEL> dx(geom, vars, date);
+    oops::Increment<MODEL> dx(geom, templatedVars<MODEL>(vars), date);
     dx.read(membersConf[ie]);
 
     // Get FieldSet
-    fset = util::copyFieldSet(dx.fieldSet());
+    fset = util::copyFieldSet(dx.increment().fieldSet());
 
     ++ensembleFound;
   }

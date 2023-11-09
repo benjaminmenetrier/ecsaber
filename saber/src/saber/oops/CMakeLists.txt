@@ -3,10 +3,10 @@
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
 
-# Links from SABER
-links_from_source_repo()
-
 list( APPEND oops_src_files_list
+# EC utilities
+ECUtilities.h
+
 # Parameters
 ErrorCovarianceParameters.h
 

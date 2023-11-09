@@ -1,0 +1,54 @@
+geometry:
+  function space: StructuredColumns
+  grid:
+    type: regular_gaussian
+    N: 15
+  groups:
+  - variables:
+    - streamfunction
+    levels: 70
+  partitioner: ectrans
+background:
+  date: '2010-01-01T12:00:00Z'
+  state variables:
+  - streamfunction
+background error:
+  covariance model: SABER
+  adjoint test: true
+  saber central block:
+    saber block name: mo spectral covariance
+    active variables:
+    - streamfunction
+    read:
+      covariance_file: testdata/CovStats.nc
+      gauss_grid_uid: F15
+      umatrix_netcdf_names:
+      - PSI_inc_Uv_matrix
+      variance_opt: false
+  saber outer blocks:
+  - saber block name: spectral to gauss
+    active variables:
+    - streamfunction
+dirac:
+  lon:
+  - 0.0
+  lat:
+  - -0.001
+  level:
+  - 1
+  variable:
+  - streamfunction
+diagnostic points:
+  lon:
+  - 20.0
+  lat:
+  - 20.0
+  level:
+  - 2
+  variable:
+  - streamfunction
+output dirac:
+  mpi pattern: '%MPI%'
+  filepath: testdata/dirac_spectralb_from_L15/%MPI%_dirac_%id%
+test:
+  reference filename: testref/dirac_spectralb_from_L15.ref

@@ -1,0 +1,40 @@
+geometry:
+  function space: StructuredColumns
+  grid:
+    type: regular_gaussian
+    N: 10
+  groups:
+  - variables:
+    - stream_function
+    levels: 2
+  halo: 1
+background:
+  date: '2010-01-01T12:00:00Z'
+  state variables:
+  - stream_function
+background error:
+  covariance model: SABER
+  saber central block:
+    saber block name: BUMP_NICAS
+    calibration:
+      general:
+        color log: true
+        testing: true
+      io:
+        data directory: testdata
+        files prefix: error_covariance_training_bump_1/_MPI_-_OMP_
+      output model files:
+      - parameter: lon
+        file:
+          filepath: testdata/error_covariance_training_bump_1/_MPI_-_OMP__lon
+      - parameter: lat
+        file:
+          filepath: testdata/error_covariance_training_bump_1/_MPI_-_OMP__lat
+      - parameter: area
+        file:
+          filepath: testdata/error_covariance_training_bump_1/_MPI_-_OMP__area
+      - parameter: vert_coord
+        file:
+          filepath: testdata/error_covariance_training_bump_1/_MPI_-_OMP__vert_coord
+test:
+  reference filename: testref/error_covariance_training_bump_1.ref

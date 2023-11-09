@@ -1,0 +1,67 @@
+/*
+ * (C) Copyright 2022 UCAR
+ *
+ * This software is licensed under the terms of the Apache Licence Version 2.0
+ * which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+ */
+
+#pragma once
+
+#include <string>
+#include <vector>
+
+#include "atlas/field.h"
+#include "atlas/functionspace.h"
+
+#include "oops/base/GeometryData.h"
+#include "oops/base/Variables.h"
+
+#include "saber/blocks/SaberBlockParametersBase.h"
+#include "saber/blocks/SaberOuterBlockBase.h"
+
+#include "vader/vader.h"
+
+namespace saber {
+
+// -----------------------------------------------------------------------------
+
+class VaderBlockParameters : public SaberBlockParametersBase {
+  OOPS_CONCRETE_PARAMETERS(VaderBlockParameters, SaberBlockParametersBase)
+
+ public:
+  oops::Parameter<vader::VaderParameters> vader{"vader", {}, this};
+  oops::RequiredParameter<oops::patch::Variables> innerVars{"inner variables", this};
+  oops::patch::Variables mandatoryActiveVars() const override {return oops::patch::Variables();}
+};
+
+// -----------------------------------------------------------------------------
+
+class VaderBlock : public SaberOuterBlockBase {
+ public:
+  static const std::string classname() {return "saber::VaderBlock";}
+
+  typedef VaderBlockParameters Parameters_;
+
+  VaderBlock(const oops::GeometryData &,
+             const oops::patch::Variables &,
+             const eckit::Configuration &,
+             const Parameters_ &,
+             const oops::FieldSet3D &,
+             const oops::FieldSet3D &);
+
+  const oops::GeometryData & innerGeometryData() const override {return innerGeometryData_;}
+  const oops::patch::Variables & innerVars() const override {return innerVars_;}
+
+  void multiply(atlas::FieldSet &) const override;
+  void multiplyAD(atlas::FieldSet &) const override;
+
+ private:
+  void print(std::ostream &) const override;
+
+  const oops::patch::Variables outerVars_;
+  const oops::GeometryData & innerGeometryData_;
+  const oops::patch::Variables innerVars_;
+  vader::Vader vader_;
+};
+
+}  // namespace saber

@@ -1,0 +1,92 @@
+geometry:
+  function space: StructuredColumns
+  grid:
+    type: regular_gaussian
+    N: 15
+  groups:
+  - variables:
+    - eastward_wind
+    - northward_wind
+    - streamfunction
+    - velocity_potential
+    - unbalanced_pressure
+    - moisture_control_variable
+    levels: 70
+  partitioner: ectrans
+background:
+  date: '2010-01-01T12:00:00Z'
+  state variables:
+  - eastward_wind
+  - northward_wind
+  - unbalanced_pressure
+  - moisture_control_variable
+background error:
+  covariance model: SABER
+  adjoint test: true
+  inverse test: true
+  saber central block:
+    saber block name: spectral covariance
+    active variables:
+    - streamfunction
+    - velocity_potential
+    - unbalanced_pressure
+    - moisture_control_variable
+    read:
+      covariance_file: testdata/spectralcov.nc
+      umatrix_netcdf_names:
+      - PSI_inc_Uv_matrix
+      - CHI_inc_Uv_matrix
+      - aP_inc_Uv_matrix
+      - MU_inc_Uv_matrix
+  saber outer blocks:
+  - saber block name: spectral to gauss
+    active variables:
+    - unbalanced_pressure
+    - moisture_control_variable
+    - streamfunction
+    - velocity_potential
+    - eastward_wind
+    - northward_wind
+    outer inverse tolerance: 1e-8
+dirac:
+  lon:
+  - 0.0
+  - 0.0
+  - 0.0
+  lat:  # slightly less than 0 to remove ambiguity on chosen grid point.
+  - -0.001
+  - -0.001
+  - -0.001
+  level:
+  - 1
+  - 1
+  - 1
+  variable:
+  - eastward_wind
+  - unbalanced_pressure
+  - moisture_control_variable
+diagnostic points:
+  lon:
+  - 20.0
+  - 20.0
+  - 20.0
+  lat:
+  - 20.0
+  - 20.0
+  - 20.0
+  level:
+  - 2
+  - 2
+  - 2
+  variable:
+  - eastward_wind
+  - unbalanced_pressure
+  - moisture_control_variable
+output dirac:
+  mpi pattern: '%MPI%'
+  filepath: testdata/dirac_spectralb_and_touv/%MPI%_dirac_%id%
+output variance:
+  mpi pattern: '%MPI%'
+  filepath: testdata/dirac_spectralb_and_touv/%MPI%_variance
+test:
+  reference filename: testref/dirac_spectralb_and_touv.ref

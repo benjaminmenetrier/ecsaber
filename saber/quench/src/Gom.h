@@ -13,14 +13,11 @@
 #include "util/ObjectCounter.h"
 #include "util/Printable.h"
 
-namespace oops {
-  class Variables;
-}
-
 namespace quench {
   class Increment;
   class ObsSpace;
   class State;
+  class Variables;
 
 /// Gom class to handle local model values for quench model.
 
@@ -29,10 +26,10 @@ class Gom : public util::Printable,
  public:
   static const std::string classname() {return "quench::Gom";}
 
-  Gom(const ObsSpace &, const oops::Variables &, const Increment &,
+  Gom(const ObsSpace &, const Variables &, const Increment &,
         const util::DateTime &, const util::DateTime &)
     {ABORT("not implemented yet");}
-  Gom(const ObsSpace &, const oops::Variables &, const State &,
+  Gom(const ObsSpace &, const Variables &, const State &,
         const util::DateTime &, const util::DateTime &)
     {ABORT("not implemented yet");}
 
