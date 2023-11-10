@@ -26,6 +26,7 @@
 #include "oops/util/Logger.h"
 
 #include "saber/blocks/SaberParametricBlockChain.h"
+#include "saber/oops/ECUtilities.h"
 #include "saber/oops/Utilities.h"
 
 namespace saber {
@@ -74,7 +75,7 @@ Localization<MODEL>::Localization(const Geometry_ & geom,
 
   // Initialize
   const std::vector<std::size_t> vlevs = geom.geometry().variableSizes(incVarsNoMeta.variables());
-  oops::patch::Variables incVars(incVarsNoMeta.variables().config(), incVarsNoMeta.variables().varlist());
+  oops::patch::Variables incVars = unTemplatedVars(incVarsNoMeta);
   for (std::size_t i = 0; i < vlevs.size() ; ++i) {
     incVars.addMetaData(incVars[i], "levels", vlevs[i]);
   }

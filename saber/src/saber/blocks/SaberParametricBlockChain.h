@@ -74,13 +74,15 @@ class SaberParametricBlockChain : public SaberBlockChainBase {
   size_t size4D_;
   oops::patch::Variables centralVars_;
   atlas::FunctionSpace centralFunctionSpace_;
+  const oops::GeometryData geomData_;
+  const oops::GeometryData dualResGeomData_;
 };
 
 // -----------------------------------------------------------------------------
 
 template<typename MODEL>
 SaberParametricBlockChain::SaberParametricBlockChain(const oops::Geometry<MODEL> & geom,
-                       const oops::Geometry<MODEL> & dualResolutionGeom,
+                       const oops::Geometry<MODEL> & dualResGeom,
                        const oops::patch::Variables & outerVars,
                        const oops::FieldSet4D & fset4dXb,
                        const oops::FieldSet4D & fset4dFg,
@@ -92,7 +94,11 @@ SaberParametricBlockChain::SaberParametricBlockChain(const oops::Geometry<MODEL>
                        const eckit::Configuration & conf)
   : outerFunctionSpace_(geom.geometry().functionSpace()), outerVariables_(outerVars),
   crossTimeCov_(covarConf.getString("time covariance") == "multivariate duplicated"),
-  timeComm_(oops::mpi::myself()), size4D_(fset4dXb.size()) {
+  timeComm_(oops::mpi::myself()), size4D_(fset4dXb.size()),
+  geomData_(geom.geometry().functionSpace(), geom.geometry().fields(),
+  geom.geometry().levelsAreTopDown(), eckit::mpi::comm()),
+  dualResGeomData_(dualResGeom.geometry().functionSpace(), dualResGeom.geometry().fields(),
+  dualResGeom.geometry().levelsAreTopDown(), eckit::mpi::comm()) {
   oops::Log::trace() << "SaberParametricBlockChain ctor starting" << std::endl;
 
   // If needed create outer block chain
@@ -111,10 +117,8 @@ SaberParametricBlockChain::SaberParametricBlockChain(const oops::Geometry<MODEL>
   // Set outer variables and geometry data for central block
   const oops::patch::Variables currentOuterVars = outerBlockChain_ ?
                                outerBlockChain_->innerVars() : outerVariables_;
-  const oops::GeometryData geomData(geom.geometry().functionSpace(), geom.geometry().fields(),
-    geom.geometry().levelsAreTopDown(), eckit::mpi::comm());
   const oops::GeometryData & currentOuterGeom = outerBlockChain_ ?
-                             outerBlockChain_->innerGeometryData() : geomData;
+                             outerBlockChain_->innerGeometryData() : geomData_;
 
   SaberCentralBlockParametersWrapper saberCentralBlockParamsWrapper;
   saberCentralBlockParamsWrapper.deserialize(conf.getSubConfiguration("saber central block"));
@@ -205,12 +209,10 @@ SaberParametricBlockChain::SaberParametricBlockChain(const oops::Geometry<MODEL>
     oops::Log::info() << "Info     : Dual resolution setup" << std::endl;
 
     // Dual resolution setup
-    const oops::GeometryData dualResolutionGeomData(geom.geometry().functionSpace(), geom.geometry().fields(),
-      geom.geometry().levelsAreTopDown(), eckit::mpi::comm());
-    centralBlock_->dualResolutionSetup(dualResolutionGeomData);
+    centralBlock_->dualResolutionSetup(dualResGeomData_);
 
     // Ensemble configuration
-    eckit::LocalConfiguration dualResolutionEnsembleConf
+    eckit::LocalConfiguration dualResEnsembleConf
       = covarConf.getSubConfiguration("dual resolution ensemble configuration");
 
     if (iterativeEnsembleLoading) {
@@ -221,15 +223,15 @@ SaberParametricBlockChain::SaberParametricBlockChain(const oops::Geometry<MODEL>
       centralBlock_->iterativeCalibrationInit();
 
      // Get dual resolution ensemble size
-      size_t dualResolutionNens = dualResolutionEnsembleConf.getInt("ensemble size");
+      size_t dualResNens = dualResEnsembleConf.getInt("ensemble size");
 
-      for (size_t ie = 0; ie < dualResolutionNens; ++ie) {
+      for (size_t ie = 0; ie < dualResNens; ++ie) {
         // Read ensemble member
         atlas::FieldSet fset;
-        readEnsembleMember(dualResolutionGeom,
+        readEnsembleMember(dualResGeom,
                            outerVars,
                            fset4dXb[0].validTime(),
-                           dualResolutionEnsembleConf,
+                           dualResEnsembleConf,
                            ie,
                            fset);
 

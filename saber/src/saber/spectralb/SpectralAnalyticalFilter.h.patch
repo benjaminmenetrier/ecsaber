@@ -1,0 +1,19 @@
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/spectralb/SpectralAnalyticalFilter.h.tmp	2023-11-10 09:38:10.260231020 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/spectralb/SpectralAnalyticalFilter.h	2023-11-08 13:53:36.557552835 +0100
+@@ -63,14 +63,12 @@
+ 
+   atlas::FieldSet generateInnerFieldSet(const oops::GeometryData & innerGeometryData,
+                                         const oops::patch::Variables & innerVars) const override
+-    {return util::createSmoothFieldSet(innerGeometryData.comm(),
+-                                       innerGeometryData.functionSpace(),
++    {return util::createSmoothFieldSet(innerGeometryData.functionSpace(),
+                                        innerVars);}
+ 
+   atlas::FieldSet generateOuterFieldSet(const oops::GeometryData & outerGeometryData,
+                                         const oops::patch::Variables & outerVars) const override
+-    {return util::createSmoothFieldSet(outerGeometryData.comm(),
+-                                       outerGeometryData.functionSpace(),
++    {return util::createSmoothFieldSet(outerGeometryData.functionSpace(),
+                                        outerVars);}
+ 
+ 

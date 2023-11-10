@@ -10,7 +10,7 @@ scriptDir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 refHash=`cat ${scriptDir}/${projectName}_hash`
 
 # Go to ${projectName}-jedi
-cd ${scriptDir}/${projectName}-jedi
+cd ${scriptDir}/../${projectName}-jedi
 
 # Initialize ${projectName}-jedi status
 correct=true

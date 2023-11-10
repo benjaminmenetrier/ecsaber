@@ -1,0 +1,23 @@
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberOuterBlockChain.h.tmp	2023-11-10 09:38:09.968230852 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberOuterBlockChain.h	2023-11-09 10:56:44.548392712 +0100
+@@ -15,7 +15,7 @@
+ #include "eckit/exception/Exceptions.h"
+ 
+ #include "oops/base/FieldSet4D.h"
+-#include "oops/base/Geometry.h"
++#include "oops/interface/Geometry.h"
+ #include "oops/interface/ModelData.h"
+ 
+ #include "saber/blocks/SaberBlockParametersBase.h"
+@@ -150,8 +150,10 @@
+     // Initialize current outer variables and outer geometry data
+     oops::patch::Variables currentOuterVars = outerBlocks_.size() == 0 ?
+                                        outerVars : outerBlocks_.back()->innerVars();
++    const oops::GeometryData geomData(geom.geometry().functionSpace(), geom.geometry().fields(),
++      geom.geometry().levelsAreTopDown(), eckit::mpi::comm());
+     const oops::GeometryData & currentOuterGeometryData = outerBlocks_.size() == 0 ?
+-                                       geom.generic() : outerBlocks_.back()->innerGeometryData();
++                                       geomData : outerBlocks_.back()->innerGeometryData();
+ 
+     // Get outer block parameters
+     const SaberBlockParametersBase & saberOuterBlockParams =

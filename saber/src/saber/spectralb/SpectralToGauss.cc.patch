@@ -1,0 +1,11 @@
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/spectralb/SpectralToGauss.cc.tmp	2023-11-10 09:38:10.220230998 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/spectralb/SpectralToGauss.cc	2023-11-08 13:53:36.497552760 +0100
+@@ -295,7 +295,7 @@
+                                  const oops::FieldSet3D & xb,
+                                  const oops::FieldSet3D & fg)
+   : SaberOuterBlockBase(params),
+-    activeVars_(getActiveVars(params, outerVars)),
++    activeVars_(params.activeVariables.value().get_value_or(outerVars)),
+     outerVars_(outerVars),
+     useWindTransform_(outerVars_.has("eastward_wind") && outerVars_.has("northward_wind")),
+     innerVars_(createInnerVars(outerVars, activeVars_, useWindTransform_)),

@@ -24,7 +24,7 @@
 
 namespace quench {
   class Geometry;
-  
+
 // -----------------------------------------------------------------------------
 /// Class to represent a Fields for the  model
 class Fields : public util::Printable,

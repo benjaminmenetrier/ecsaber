@@ -16,7 +16,7 @@ project( vader VERSION 1.4.0 LANGUAGES CXX Fortran )
 check_diff_recursively( cmake )
 check_diff_recursively( src )
 check_diff_recursively( tools )
-check_diff_recursively( CPPLINT )
+check_diff_recursively( CPPLINT.cfg )
 check_diff_recursively( vader-import.cmake.in )
 
 ## Ecbuild integration

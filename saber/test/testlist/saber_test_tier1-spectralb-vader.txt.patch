@@ -1,0 +1,7 @@
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/test/testlist/saber_test_tier1-spectralb-vader.txt.tmp	2023-11-10 09:38:12.160232115 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/test/testlist/saber_test_tier1-spectralb-vader.txt	2023-11-07 15:34:43.669506960 +0100
+@@ -1,4 +1,3 @@
+ dirac_spectralb_gauss_vader_1
+ dirac_spectralb_gauss_vader_2
+-dirac_spectralb_gauss_vader_3
+ compare_diagnostics_gauss_vader

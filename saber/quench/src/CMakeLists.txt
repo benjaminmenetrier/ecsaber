@@ -2,7 +2,7 @@
 
 list( APPEND quench_src_files
 
-ErrorCovariance.h
+Covariance.h
 Fields.cc
 Fields.h
 Geometry.cc

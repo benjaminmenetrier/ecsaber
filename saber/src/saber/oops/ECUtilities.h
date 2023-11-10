@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "eckit/config/Configuration.h"
+#include "eckit/config/LocalConfiguration.h"
 
 #include "oops/assimilation/Increment4D.h"
 #include "oops/base/Variables.h"
@@ -39,8 +40,18 @@ void dirac4D(const eckit::Configuration & conf,
 // -----------------------------------------------------------------------------
 
 template<typename MODEL>
+oops::patch::Variables unTemplatedVars(const oops::Variables<MODEL> & vars) {
+  return oops::patch::Variables(vars.variables().variablesList());
+}
+
+// -----------------------------------------------------------------------------
+
+template<typename MODEL>
 oops::Variables<MODEL> templatedVars(const oops::patch::Variables & vars) {
-  return oops::Variables<MODEL>(vars.variablesMetaData());
+  eckit::LocalConfiguration varConf;
+  varConf.set("variables list", vars.variables());
+  varConf.set("variables metadata", eckit::LocalConfiguration(vars.variablesMetaData()));
+  return oops::Variables<MODEL>(varConf);
 }
 
 // -----------------------------------------------------------------------------

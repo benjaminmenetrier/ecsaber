@@ -1,0 +1,20 @@
+--- /home/benjaminm/code/oops-bundle/ecsaber/vader/src/CMakeLists.txt.tmp	2023-11-10 09:18:15.103775610 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/vader/src/CMakeLists.txt	2023-11-09 18:03:11.747004216 +0100
+@@ -138,14 +138,11 @@
+                      HEADER_DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}
+                      LINKER_LANGUAGE CXX )
+ 
+-# Mark Boost as a system library to silence compiler warnings from Boost headers
+-target_include_directories( ${PROJECT_NAME} SYSTEM PUBLIC ${Boost_INCLUDE_DIRS} )
+-
+-target_link_libraries( ${PROJECT_NAME} PUBLIC ${oops_LIBRARIES} ) #TODO: Change to "oops::oops" once oops adds namespace support
++target_link_libraries( ${PROJECT_NAME} PUBLIC ${oops_LIBRARIES} oops-patch ) #TODO: Change to "oops::oops" once oops adds namespace support
+ 
+ if( gsw_FOUND )
+-  target_link_libraries( ${PROJECT_NAME} PUBLIC gsw )
+-  target_compile_definitions( ${PROJECT_NAME} PUBLIC GSW_FOUND )
++  target_link_libraries( ${PROJECT_NAME} PUBLIC gsw ) 
++  target_compile_definitions( ${PROJECT_NAME} PUBLIC GSW_FOUND ) 
+ endif( gsw_FOUND )
+ 
+ #Configure include directory layout for build-tree to match install-tree

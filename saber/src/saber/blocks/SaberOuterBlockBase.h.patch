@@ -1,0 +1,52 @@
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberOuterBlockBase.h.tmp	2023-11-10 09:38:10.084230919 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberOuterBlockBase.h	2023-11-09 10:55:53.896396350 +0100
+@@ -19,9 +19,9 @@
+ 
+ #include "eckit/exception/Exceptions.h"
+ 
+-#include "oops/base/Geometry.h"
++#include "oops/interface/Geometry.h"
+ #include "oops/base/GeometryData.h"
+-#include "oops/base/Increment.h"
++#include "oops/interface/Increment.h"
+ #include "oops/base/Variables.h"
+ #include "oops/util/AssociativeContainers.h"
+ #include "oops/util/FieldSetHelpers.h"
+@@ -34,6 +34,7 @@
+ #include "oops/util/Printable.h"
+ 
+ #include "saber/blocks/SaberBlockParametersBase.h"
++#include "saber/oops/ECUtilities.h"
+ 
+ namespace oops {
+   class FieldSet3D;
+@@ -268,11 +269,11 @@
+   // Read fieldsets as increments
+   for (auto & input : inputs) {
+     // Create increment
+-    oops::Increment<MODEL> dx(geom, vars, date);
++    oops::Increment<MODEL> dx(geom, templatedVars<MODEL>(vars), date);
+     dx.read(input.first);
+     oops::Log::test() << "Norm of input parameter " << input.second.name()
+                       << ": " << dx.norm() << std::endl;
+-    util::copyFieldSet(dx.fieldSet(), input.second);
++    util::copyFieldSet(dx.increment().fieldSet(), input.second);
+   }
+ 
+   oops::Log::trace() << "SaberOuterBlockBase::read done" << std::endl;
+@@ -291,12 +292,12 @@
+     = this->fieldsToWrite();
+ 
+   // Create increment
+-  oops::Increment<MODEL> dx(geom, vars, date);
++  oops::Increment<MODEL> dx(geom, templatedVars<MODEL>(vars), date);
+ 
+   // Loop and write
+   for (const auto & output : outputs) {
+-    dx.fieldSet() = util::copyFieldSet(output.second);
+-    dx.synchronizeFields();
++    dx.increment().fieldSet() = util::copyFieldSet(output.second);
++    dx.increment().synchronizeFields();
+     oops::Log::test() << "Norm of output parameter " << output.second.name()
+                       << ": " << dx.norm() << std::endl;
+     dx.write(output.first);

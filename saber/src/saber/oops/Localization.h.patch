@@ -1,0 +1,170 @@
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/Localization.h.tmp	2023-11-10 09:38:10.428231117 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/Localization.h	2023-11-09 11:38:48.544118447 +0100
+@@ -1,8 +1,6 @@
+ /*
+- * (C) Copyright 2021 UCAR
++ * (C) Copyright 2023 Meteorologisk Institutt
+  *
+- * This software is licensed under the terms of the Apache Licence Version 2.0
+- * which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+  */
+ 
+ #pragma once
+@@ -16,10 +14,15 @@
+ 
+ #include "eckit/config/Configuration.h"
+ 
+-#include "oops/base/State4D.h"
+ #include "oops/base/Variables.h"
++#include "oops/generic/GenericCtlVec.h"
+ #include "oops/generic/LocalizationBase.h"
++#include "oops/interface/Geometry.h"
++#include "oops/interface/Increment.h"
++#include "oops/interface/State.h"
++#include "oops/interface/Variables.h"
+ #include "oops/util/Duration.h"
++#include "oops/util/FieldSetHelpers.h"
+ #include "oops/util/Logger.h"
+ 
+ #include "saber/blocks/SaberParametricBlockChain.h"
+@@ -31,19 +34,26 @@
+ 
+ template<typename MODEL>
+ class Localization : public oops::LocalizationBase<MODEL> {
+-  typedef oops::Geometry<MODEL>               Geometry_;
+-  typedef oops::Increment<MODEL>              Increment_;
+-  typedef oops::State<MODEL>                  State_;
++  using GenericCtlVec_ = oops::GenericCtlVec;
++  using Geometry_ = oops::Geometry<MODEL>;
++  using Increment_ = oops::Increment<MODEL>;
++  using Model_ = oops::Model<MODEL>;
++  using State_ = oops::State<MODEL>;
++  using Variables_ = oops::Variables<MODEL>;
+ 
+  public:
+   Localization(const Geometry_ &,
+-               const oops::patch::Variables &,
++               const Variables_ &,
+                const eckit::Configuration &);
+   ~Localization();
+ 
+-  void randomize(Increment_ &) const override;
+   void multiply(Increment_ &) const override;
+ 
++  // Square-root formulation
++  size_t ctlVecSize() const {return loc_->ctlVecSize();}
++  void multiplySqrt(const GenericCtlVec_ & dv, Increment_ & dx) const;
++  void multiplySqrtTrans(const Increment_ & dx, GenericCtlVec_ & dv) const;
++
+  private:
+   void print(std::ostream &) const override;
+   std::unique_ptr<SaberParametricBlockChain> loc_;
+@@ -53,7 +63,7 @@
+ 
+ template<typename MODEL>
+ Localization<MODEL>::Localization(const Geometry_ & geom,
+-                                  const oops::patch::Variables & incVarsNoMeta,
++                                  const Variables_ & incVarsNoMeta,
+                                   const eckit::Configuration & conf)
+   : loc_()
+ {
+@@ -63,17 +73,19 @@
+   util::DateTime dummyTime(1977, 5, 25, 0, 0, 0);
+ 
+   // Initialize
+-  const std::vector<std::size_t> vlevs = geom.variableSizes(incVarsNoMeta);
+-  oops::patch::Variables incVars(incVarsNoMeta);
++  const std::vector<std::size_t> vlevs = geom.geometry().variableSizes(incVarsNoMeta.variables());
++  oops::patch::Variables incVars(incVarsNoMeta.variables().config(), incVarsNoMeta.variables().varlist());
+   for (std::size_t i = 0; i < vlevs.size() ; ++i) {
+     incVars.addMetaData(incVars[i], "levels", vlevs[i]);
+   }
+ 
+   // Create dummy xb and fg
+-  const State_ xb_state(geom, incVars, dummyTime);
+-  const oops::FieldSet3D xb(xb_state.fieldSet(), xb_state.validTime(), geom.getComm());
+-  const State_ fg_state(geom, incVars, dummyTime);
+-  const oops::FieldSet3D fg(fg_state.fieldSet(), fg_state.validTime(), geom.getComm());
++  atlas::FieldSet fset = util::createFieldSet(geom.geometry().functionSpace(),
++                                              incVars,
++                                              0.0);
++  oops::FieldSet3D fset3d(fset, dummyTime, eckit::mpi::comm());
++  oops::FieldSet4D fset4dXb(fset3d);
++  oops::FieldSet4D fset4dFg(fset3d);
+ 
+   std::vector<atlas::FieldSet> fsetEns;
+   // TODO(AS): revisit what configuration needs to be passed to SaberParametricBlockChain.
+@@ -94,7 +106,7 @@
+   covarConf.set("time covariance", "univariate");
+   // Initialize localization blockchain
+   loc_ = std::make_unique<SaberParametricBlockChain>(geom, geom,
+-              incVars, oops::FieldSet4D(xb), oops::FieldSet4D(fg),
++              incVars, fset4dXb, fset4dFg,
+               fsetEns, fsetEns, covarConf, conf);
+ 
+   oops::Log::trace() << "Localization:Localization done" << std::endl;
+@@ -110,34 +122,49 @@
+ // -----------------------------------------------------------------------------
+ 
+ template<typename MODEL>
+-void Localization<MODEL>::randomize(Increment_ & dx) const {
+-  oops::Log::trace() << "Localization:randomize starting" << std::endl;
++void Localization<MODEL>::multiply(Increment_ & dx) const {
++  oops::Log::trace() << "Localization:multiply starting" << std::endl;
+ 
+-  // SABER block chain randomization
+-  oops::FieldSet3D fset3d(dx.validTime(), dx.geometry().getComm());
+-  oops::FieldSet4D fset4d(fset3d);
+-  loc_->randomize(fset4d);
++  // SABER block chain multiplication
++  oops::FieldSet4D fset4d({dx.increment().fieldSet(), dx.validTime(), eckit::mpi::comm()});
++  loc_->multiply(fset4d);
+ 
+   // ATLAS fieldset to Increment_
+-  dx.synchronizeFields();
++  dx.increment().synchronizeFields();
+ 
+-  oops::Log::trace() << "Localization:randomize done" << std::endl;
++  oops::Log::trace() << "Localization:multiply done" << std::endl;
+ }
+ 
+ // -----------------------------------------------------------------------------
+ 
+ template<typename MODEL>
+-void Localization<MODEL>::multiply(Increment_ & dx) const {
+-  oops::Log::trace() << "Localization:multiply starting" << std::endl;
++void Localization<MODEL>::multiplySqrt(const GenericCtlVec_ & dv,
++                                       Increment_ & dx) const {
++  oops::Log::trace() << "Localization:multiplySqrt starting" << std::endl;
+ 
+-  // SABER block chain multiplication
+-  oops::FieldSet4D fset4d({dx.fieldSet(), dx.validTime(), dx.geometry().getComm()});
+-  loc_->multiply(fset4d);
++  // SABER block chain square-root
++  oops::FieldSet3D fset3d(dx.validTime(), eckit::mpi::comm());
++  oops::FieldSet4D fset4d(fset3d);
++  loc_->multiplySqrt(dv.data(), fset4d, 0);
+ 
+   // ATLAS fieldset to Increment_
+-  dx.synchronizeFields();
++  dx.increment().synchronizeFields();
+ 
+-  oops::Log::trace() << "Localization:multiply done" << std::endl;
++  oops::Log::trace() << "Localization:multiplySqrt done" << std::endl;
++}
++
++// -----------------------------------------------------------------------------
++
++template<typename MODEL>
++void Localization<MODEL>::multiplySqrtTrans(const Increment_ & dx,
++                                            GenericCtlVec_ & dv) const {
++  oops::Log::trace() << "Localization:multiplySqrtTrans starting" << std::endl;
++
++  // SABER block chain square-root adjoint
++  oops::FieldSet4D fset4d({dx.increment().fieldSet(), dx.validTime(), eckit::mpi::comm()});
++  loc_->multiplySqrtAD(fset4d, dv.data(), 0);
++
++  oops::Log::trace() << "Localization:multiplySqrtTrans done" << std::endl;
+ }
+ 
+ // -----------------------------------------------------------------------------

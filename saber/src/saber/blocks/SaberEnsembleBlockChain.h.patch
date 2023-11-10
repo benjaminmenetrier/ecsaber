@@ -1,0 +1,67 @@
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberEnsembleBlockChain.h.tmp	2023-11-10 09:38:10.100230928 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberEnsembleBlockChain.h	2023-11-09 11:24:51.402472847 +0100
+@@ -16,8 +16,8 @@
+ #include "eckit/exception/Exceptions.h"
+ 
+ #include "oops/base/FieldSet4D.h"
+-#include "oops/base/Geometry.h"
+-#include "oops/base/Increment.h"
++#include "oops/interface/Geometry.h"
++#include "oops/interface/Increment.h"
+ #include "oops/interface/ModelData.h"
+ #include "oops/util/Logger.h"
+ #include "oops/util/Random.h"
+@@ -26,6 +26,7 @@
+ #include "saber/blocks/SaberBlockParametersBase.h"
+ #include "saber/blocks/SaberOuterBlockChain.h"
+ #include "saber/blocks/SaberParametricBlockChain.h"
++#include "saber/oops/ECUtilities.h"
+ #include "saber/oops/Utilities.h"
+ 
+ namespace saber {
+@@ -74,7 +75,7 @@
+   std::vector<atlas::FieldSet> ensemble_;
+   /// @brief Control vector size.
+   size_t ctlVecSize_;
+-  /// @brief patch::Variables used in the ensemble covariance.
++  /// @brief Variables used in the ensemble covariance.
+   /// TODO(AS): check whether this is needed or can be inferred from ensemble.
+   oops::patch::Variables vars_;
+   /// @brief Geometry communicator.
+@@ -99,8 +100,8 @@
+                        std::vector<atlas::FieldSet> & fsetDualResEns,
+                        const eckit::LocalConfiguration & covarConf,
+                        const eckit::Configuration & conf)
+-  : outerFunctionSpace_(geom.functionSpace()), outerVariables_(outerVars),
+-    ctlVecSize_(0), comm_(geom.getComm()) {
++  : outerFunctionSpace_(geom.geometry().functionSpace()), outerVariables_(outerVars),
++    ctlVecSize_(0), comm_(eckit::mpi::comm()) {
+   oops::Log::trace() << "SaberEnsembleBlockChain ctor starting" << std::endl;
+ 
+   // Check that there is an ensemble of at least 2 members.
+@@ -125,8 +126,10 @@
+   // Outer variables and geometry for the ensemble covariance
+   const oops::patch::Variables currentOuterVars = outerBlockChain_ ?
+                                            outerBlockChain_->innerVars() : outerVars;
++  const oops::GeometryData geomData(geom.geometry().functionSpace(), geom.geometry().fields(),
++    geom.geometry().levelsAreTopDown(), eckit::mpi::comm());
+   const oops::GeometryData & currentOuterGeom = outerBlockChain_ ?
+-                                     outerBlockChain_->innerGeometryData() : geom.generic();
++                                     outerBlockChain_->innerGeometryData() : geomData;
+ 
+   // Get parameters:
+   SaberCentralBlockParametersWrapper saberCentralBlockParamsWrapper;
+@@ -182,11 +185,11 @@
+     // Copy file
+     // Read fieldsets as increments
+     // Create increment
+-    oops::Increment<MODEL> dx(geom, activeVars, fset4dXb[0].validTime());
++    oops::Increment<MODEL> dx(geom, templatedVars<MODEL>(activeVars), fset4dXb[0].validTime());
+     dx.read(inflationConf);
+     oops::Log::test() << "Norm of input parameter inflation"
+                       << ": " << dx.norm() << std::endl;
+-    util::copyFieldSet(dx.fieldSet(), inflationField);
++    util::copyFieldSet(dx.increment().fieldSet(), inflationField);
+   }
+ 
+   // Apply inflation on ensemble members

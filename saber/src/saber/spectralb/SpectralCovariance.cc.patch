@@ -1,0 +1,20 @@
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/spectralb/SpectralCovariance.cc.tmp	2023-11-10 09:38:10.400231101 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/spectralb/SpectralCovariance.cc	2023-11-08 13:53:36.865553223 +0100
+@@ -218,7 +218,7 @@
+ 
+   const std::string filepath{writeParams.filePath};
+   const std::string mpi_pattern = writeParams.mpiPattern;
+-  const std::string mpi_size = std::to_string(eckit::mpi::comm().size());
++  const std::string mpi_size = std::to_string(oops::mpi::world().size());
+   ::util::seekAndReplace(writeConfig, mpi_pattern, mpi_size);
+   const std::string ncfilepath = "./" + writeConfig.getString("file path");
+ 
+@@ -255,7 +255,7 @@
+   std::vector<int> netcdf_var_ids;
+   std::vector<std::vector<int>> netcdf_dim_var_ids;
+ 
+-  if (eckit::mpi::comm().rank() == root) {
++  if (oops::mpi::world().rank() == root) {
+     ::util::atlasArrayWriteHeader(ncfilepath,
+                                   dim_names,
+                                   dim_sizes,

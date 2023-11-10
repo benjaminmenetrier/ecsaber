@@ -118,6 +118,7 @@ class SaberOuterBlockChain {
   /// TODO(AS): Need to expand this to create different outer blocks for different
   /// times for the 4D with multiple times on one MPI task.
   std::vector<std::unique_ptr<SaberOuterBlockBase>> outerBlocks_;
+  const oops::GeometryData geomData_;
 };
 
 // -----------------------------------------------------------------------------
@@ -129,7 +130,9 @@ SaberOuterBlockChain::SaberOuterBlockChain(const oops::Geometry<MODEL> & geom,
                        const oops::FieldSet4D & fset4dFg,
                        std::vector<atlas::FieldSet> & fsetEns,
                        const eckit::LocalConfiguration & covarConf,
-                       const std::vector<saber::SaberOuterBlockParametersWrapper> & params) {
+                       const std::vector<saber::SaberOuterBlockParametersWrapper> & params) :
+  geomData_(geom.geometry().functionSpace(), geom.geometry().fields(),
+  geom.geometry().levelsAreTopDown(), eckit::mpi::comm()) {
   oops::Log::trace() << "SaberOuterBlockChain ctor starting" << std::endl;
   oops::Log::info() << "Info     : Creating outer blocks" << std::endl;
 
@@ -150,10 +153,8 @@ SaberOuterBlockChain::SaberOuterBlockChain(const oops::Geometry<MODEL> & geom,
     // Initialize current outer variables and outer geometry data
     oops::patch::Variables currentOuterVars = outerBlocks_.size() == 0 ?
                                        outerVars : outerBlocks_.back()->innerVars();
-    const oops::GeometryData geomData(geom.geometry().functionSpace(), geom.geometry().fields(),
-      geom.geometry().levelsAreTopDown(), eckit::mpi::comm());
     const oops::GeometryData & currentOuterGeometryData = outerBlocks_.size() == 0 ?
-                                       geomData : outerBlocks_.back()->innerGeometryData();
+                                       geomData_ : outerBlocks_.back()->innerGeometryData();
 
     // Get outer block parameters
     const SaberBlockParametersBase & saberOuterBlockParams =

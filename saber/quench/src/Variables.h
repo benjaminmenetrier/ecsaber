@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "eckit/config/LocalConfiguration.h"
+#include "eckit/exception/Exceptions.h"
 
 #include "oops/base/Variables.h"
 #include "oops/util/ConfigFunctions.h"
@@ -31,21 +32,22 @@ class Variables : public util::Printable,
 
   explicit Variables(const eckit::Configuration & config) {
     if (util::isVector(config)) {
-      config_.set("variables", eckit::LocalConfiguration(config));
+      vars_ = oops::patch::Variables(config.getStringVector("."));
+    } else if (config.has("variables")) {
+      vars_ = oops::patch::Variables(config, "variables");
+    } else if (config.has("variables list")) {
+      vars_ = oops::patch::Variables(config, "variables list");
     } else {
-      config_ = eckit::LocalConfiguration(config);
+      throw eckit::Exception("wrong variables configuration", Here());
     }
-    vars_ = oops::patch::Variables(config_, "variables");
   }
-  Variables(const Variables & other) : config_(other.config_), vars_(other.vars_) {}
-  ~Variables() {};
+  Variables(const Variables & other) : vars_(other.vars_) {}
+  ~Variables() {}
 
-  const eckit::LocalConfiguration & config() const {return config_;}
-  std::vector<std::string> varlist() const {return vars_.variables();}
+  std::vector<std::string> variablesList() const {return vars_.variables();}
 
  private:
   void print(std::ostream & os) const {os << vars_ << std::endl;}
-  eckit::LocalConfiguration config_;
   oops::patch::Variables vars_;
 };
 

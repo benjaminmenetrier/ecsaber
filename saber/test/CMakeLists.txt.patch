@@ -1,0 +1,166 @@
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/test/CMakeLists.txt.tmp	2023-11-10 09:38:12.196232137 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/test/CMakeLists.txt	2023-11-09 12:02:19.210915268 +0100
+@@ -7,9 +7,6 @@
+ # Tests activated
+ message( STATUS "SABER tests activated:" )
+ 
+-# Use find_branch function in jedi-cmake
+-include( git_functions )
+-
+ # Default SABER_TEST_TIER
+ set( SABER_TEST_TIER 1 )
+ 
+@@ -30,6 +27,7 @@
+ 
+ # Default test selection variables (TIER-independent)
+ set( SABER_TEST_VALGRIND 0 )
++set( SABER_TEST_FASTLAM 1 )
+ set( SABER_TEST_GSI_GEOS 0 )
+ if( gsibec_FOUND )
+     if( gsibec_VERSION VERSION_GREATER_EQUAL "1.0.7" )
+@@ -61,6 +59,9 @@
+ if( DEFINED ENV{SABER_TEST_VALGRIND} )
+     set( SABER_TEST_VALGRIND $ENV{SABER_TEST_VALGRIND} )
+ endif()
++if( DEFINED ENV{SABER_TEST_FASTLAM} )
++    set( SABER_TEST_FASTLAM $ENV{SABER_TEST_FASTLAM} )
++endif()
+ if( gsibec_FOUND )
+     if( DEFINED ENV{SABER_TEST_GSI_GEOS} )
+         set( SABER_TEST_GSI_GEOS $ENV{SABER_TEST_GSI_GEOS} )
+@@ -86,6 +87,11 @@
+ message( STATUS "  - TIER 1 base" )
+ file( STRINGS testlist/saber_test_tier1.txt saber_test )
+ list( APPEND saber_test_full ${saber_test} )
++if( SABER_TEST_FASTLAM )
++    message( STATUS "  - TIER 1 FastLAM-specific" )
++#    file( STRINGS testlist/saber_test_tier1-fastlam.txt saber_test )
++#    list( APPEND saber_test_full ${saber_test} )
++endif()
+ if( SABER_TEST_GSI_GEOS )
+     message( STATUS "  - TIER 1 GSI-GEOS-specific" )
+     file( STRINGS testlist/saber_test_tier1-gsi-geos.txt saber_test )
+@@ -126,7 +132,7 @@
+ # Input data
+ file( STRINGS testlist/saber_data.txt saber_data )
+ 
+-# Setup SABER directories and links
++# Setup SABER directories and copy
+ message( STATUS "Setup SABER directories and links" )
+ file( REMOVE_RECURSE ${CMAKE_CURRENT_BINARY_DIR}/testdata )
+ file( REMOVE_RECURSE ${CMAKE_CURRENT_BINARY_DIR}/testinput )
+@@ -138,13 +144,18 @@
+     # Make test-specific data directory
+     file( MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/testdata/${test} )
+ 
+-    # Link to yaml file
+-    execute_process( COMMAND ${CMAKE_COMMAND} -E create_symlink
+-                     ${CMAKE_CURRENT_SOURCE_DIR}/testinput/${test}.yaml
+-                     ${CMAKE_CURRENT_BINARY_DIR}/testinput/${test}.yaml )
++    # Create specific yaml file
++    execute_process(COMMAND ${Python3_EXECUTABLE}
++                    ${CMAKE_CURRENT_SOURCE_DIR}/ecmwf_yaml_update.py
++                    ${CMAKE_CURRENT_SOURCE_DIR}/testinput/${test}.yaml
++                    ${CMAKE_CURRENT_BINARY_DIR}/testinput/${test}.yaml )
+ 
+     # Link to reference file
+-    if( EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/testref/${test}.ref )
++    if( EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/testref_ecmwf/${test}.ref )
++        execute_process( COMMAND ${CMAKE_COMMAND} -E create_symlink
++                         ${CMAKE_CURRENT_SOURCE_DIR}/testref_ecmwf/${test}.ref
++                         ${CMAKE_CURRENT_BINARY_DIR}/testref/${test}.ref )
++    elseif( EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/testref/${test}.ref )
+         execute_process( COMMAND ${CMAKE_COMMAND} -E create_symlink
+                          ${CMAKE_CURRENT_SOURCE_DIR}/testref/${test}.ref
+                          ${CMAKE_CURRENT_BINARY_DIR}/testref/${test}.ref )
+@@ -170,7 +181,7 @@
+ endif()
+ 
+ # Executables list
+-list( APPEND exe_list convertstate randomization error_covariance_training process_perts dirac )
++list( APPEND exe_list convertstate randomization error_covariance_training dirac )
+ 
+ # Loop over MPI/OpenMP configurations
+ foreach( mpi omp IN ZIP_LISTS mpi_list omp_list )
+@@ -180,8 +191,6 @@
+     foreach( exe ${exe_list} )
+         if( "${exe}" STREQUAL "convertstate" )
+             set( exename "convertstate" )
+-        elseif ("${exe}" STREQUAL "process_perts" )
+-            set( exename "process_perts" )
+         else()
+             set( exename "error_covariance_toolbox" )
+         endif()
+@@ -213,19 +222,7 @@
+                     set( 4dCheck false CACHE BOOL "" FORCE )
+                 endif()
+ 
+-                # Special check for processPert, only run with 1 MPI for the interpolation from csdual
+-                # (TODO: should be removed with atlas 0.34.0)
+-                string( FIND ${test} "_perts_from_csdual_" interp_csdual_result )
+-                if( interp_csdual_result EQUAL -1 OR
+-                  ( interp_csdual_result GREATER_EQUAL 0 AND ${mpi} GREATER 1 AND
+-                      ${atlas_VERSION} GREATER_EQUAL 0.34.0) OR
+-                  ( interp_csdual_result GREATER_EQUAL 0 AND ${mpi} EQUAL 1) )
+-                    set( interp_csdual_result true CACHE BOOL "" FORCE )
+-                else()
+-                    set( interp_csdual_result false CACHE BOOL "" FORCE )
+-                endif()
+-
+-                if( docTutorialCheck AND gsiGfsCheck AND 4dCheck AND interp_csdual_result )
++                if( docTutorialCheck AND gsiGfsCheck AND 4dCheck )
+                     # Get dependencies
+                     file( STRINGS testdeps/${test}.txt deps )
+                     set( deps_list "" )
+@@ -236,14 +233,44 @@
+                         list( TRANSFORM deps_list APPEND _${mpi}-${omp} )
+                     endif()
+ 
++                    # Special check for interpolation
++                    string( FIND ${test} "interpolation_2" interpolation_2_result )
++                    string( FIND ${test} "interpolation_3" interpolation_3_result )
++                    if( interpolation_2_result EQUAL -1 AND interpolation_3_result EQUAL -1 )
++                        set( interpCheck true CACHE BOOL "" FORCE )
++                    else()
++                        set( interpCheck false CACHE BOOL "" FORCE )
++                    endif()
++
++                    # Special check for VADER
++                    string( FIND ${test} "gauss_vader" gauss_vader_result )
++                    if( gauss_vader_result EQUAL -1 )
++                        set( vaderCheck true CACHE BOOL "" FORCE )
++                    else()
++                        set( vaderCheck false CACHE BOOL "" FORCE )
++                    endif()
++
++                    # Special check to avoid 4D tests
++                    string( FIND ${test} "_4d" fourd_result )
++                    string( FIND ${test} "_seq4d" seqfourd_result )
++                    if( fourd_result EQUAL -1 AND seqfourd_result EQUAL -1 )
++                        set( no4dCheck true CACHE BOOL "" FORCE )
++                    else()
++                        set( no4dCheck false CACHE BOOL "" FORCE )
++                    endif()
++
+                     # Add test
+-                    ecbuild_add_test( TARGET saber_test_${test}_${mpi}-${omp}
+-                                      MPI ${mpi}
+-                                      OMP ${omp}
+-                                      COMMAND ${CMAKE_BINARY_DIR}/bin/saber_quench_${exename}.x
+-                                      ARGS testinput/${test}.yaml
+-                                      DEPENDS saber_quench_${exename}.x
+-                                      TEST_DEPENDS ${deps_list} )
++                    if( interpCheck AND vaderCheck AND no4dCheck )
++                        ecbuild_add_test( TARGET saber_test_${test}_${mpi}-${omp}
++                                          COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/ecmwf_compare.sh
++                                          ARGS ${CMAKE_CURRENT_SOURCE_DIR}/ecmwf_compare.py
++                                               ${mpi}
++                                               ${omp}
++                                               "${CMAKE_BINARY_DIR}/bin/saber_quench_${exename}.x testinput/${test}.yaml"
++                                               "${CMAKE_CURRENT_BINARY_DIR}/testref/${test}.ref"
++                                          DEPENDS saber_quench_${exename}.x
++                                          TEST_DEPENDS ${deps_list} )
++                    endif()
+                 endif()
+             endif()
+         endforeach()

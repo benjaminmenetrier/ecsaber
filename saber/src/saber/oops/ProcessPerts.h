@@ -178,7 +178,7 @@ class ProcessPerts : public oops::Application {
 
     // Increment variables
     Variables_ incVarsT(params.inputVariables.value());
-    oops::patch::Variables incVars(incVarsT.variables().config(), incVarsT.variables().varlist());
+    oops::patch::Variables incVars = unTemplatedVars(incVarsT);
     const std::vector<std::size_t> vlevs = geom.geometry().variableSizes(incVarsT.variables());
     for (std::size_t i = 0; i < vlevs.size() ; ++i) {
       incVars.addMetaData(incVars[i], "levels", vlevs[i]);

@@ -1,0 +1,23 @@
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/vader/VertLoc.cc.tmp	2023-11-10 09:38:09.868230795 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/vader/VertLoc.cc	2023-11-08 13:53:37.709554283 +0100
+@@ -369,10 +369,8 @@
+     outView.assign(0.0);
+ 
+     // Apply U^t
+-    fset[var].adjointHaloExchange();
+     auto inView = atlas::array::make_view<double, 2>(fset[var]);  // nlevs_ levels
+-
+-    for (atlas::idx_t jn = 0; jn < outField.shape(0); ++jn) {
++    atlas_omp_parallel_for(atlas::idx_t jn = 0; jn < outField.shape(0); ++jn) {
+       for (atlas::idx_t jl = 0; jl < nmods_; ++jl) {
+         for (atlas::idx_t jm = 0; jm < nlevs_; ++jm) {
+           outView(jn, jl) += Umatrix_(jm, jl) * inView(jn, jm);
+@@ -380,7 +378,7 @@
+       }
+     }
+ 
+-
++    outField.haloExchange();
+     fsetOut.add(outField);
+   }
+ 

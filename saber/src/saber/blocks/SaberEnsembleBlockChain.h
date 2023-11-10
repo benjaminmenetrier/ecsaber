@@ -82,6 +82,7 @@ class SaberEnsembleBlockChain : public SaberBlockChainBase {
   /// TODO(AS): this can be removed once FieldSet4D/FieldSet3D are used.
   const eckit::mpi::Comm & comm_;
   int seed_ = 7;  // For reproducibility
+  const oops::GeometryData geomData_;
 };
 
 // -----------------------------------------------------------------------------
@@ -101,7 +102,9 @@ SaberEnsembleBlockChain::SaberEnsembleBlockChain(const oops::Geometry<MODEL> & g
                        const eckit::LocalConfiguration & covarConf,
                        const eckit::Configuration & conf)
   : outerFunctionSpace_(geom.geometry().functionSpace()), outerVariables_(outerVars),
-    ctlVecSize_(0), comm_(eckit::mpi::comm()) {
+    ctlVecSize_(0), comm_(eckit::mpi::comm()),
+    geomData_(geom.geometry().functionSpace(), geom.geometry().fields(),
+    geom.geometry().levelsAreTopDown(), eckit::mpi::comm()) {
   oops::Log::trace() << "SaberEnsembleBlockChain ctor starting" << std::endl;
 
   // Check that there is an ensemble of at least 2 members.
@@ -126,10 +129,8 @@ SaberEnsembleBlockChain::SaberEnsembleBlockChain(const oops::Geometry<MODEL> & g
   // Outer variables and geometry for the ensemble covariance
   const oops::patch::Variables currentOuterVars = outerBlockChain_ ?
                                            outerBlockChain_->innerVars() : outerVars;
-  const oops::GeometryData geomData(geom.geometry().functionSpace(), geom.geometry().fields(),
-    geom.geometry().levelsAreTopDown(), eckit::mpi::comm());
   const oops::GeometryData & currentOuterGeom = outerBlockChain_ ?
-                                     outerBlockChain_->innerGeometryData() : geomData;
+                                     outerBlockChain_->innerGeometryData() : geomData_;
 
   // Get parameters:
   SaberCentralBlockParametersWrapper saberCentralBlockParamsWrapper;

@@ -6,7 +6,7 @@
  #include "oops/base/FieldSet3D.h"
 -#include "oops/base/Increment4D.h"
 -#include "oops/base/State4D.h"
-+#include "oops/assimilation/Incremdfsent4D.h"
++#include "oops/assimilation/Increment4D.h"
 +#include "oops/assimilation/State4D.h"
  
  namespace oops {

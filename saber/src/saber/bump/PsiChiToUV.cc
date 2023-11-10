@@ -64,7 +64,9 @@ PsiChiToUV::PsiChiToUV(const oops::GeometryData & outerGeometryData,
   }
 
   oops::patch::Variables activeVars;
+  std::cout << "innervars_: " << innerVars_ << std::endl;
   activeVars += innerVars_;
+  std::cout << "outerVars_: " << outerVars_ << std::endl;
   activeVars += outerVars_;
   const std::vector<std::string> activeStrings{"stream_function", "velocity_potential",
                                                "eastward_wind", "northward_wind"};

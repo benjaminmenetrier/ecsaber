@@ -128,7 +128,7 @@ ErrorCovariance<MODEL>::ErrorCovariance(const Geometry_ & geom,
 
   // Initialize outer variables
   const std::vector<std::size_t> vlevs = geom.geometry().variableSizes(incVars.variables());
-  oops::patch::Variables outerVars(incVars.variables().config(), incVars.variables().varlist());
+  oops::patch::Variables outerVars = unTemplatedVars(incVars);
   for (std::size_t i = 0; i < vlevs.size() ; ++i) {
     outerVars.addMetaData(outerVars[i], "levels", vlevs[i]);
   }

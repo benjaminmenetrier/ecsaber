@@ -1,0 +1,24 @@
+--- /home/benjaminm/code/oops-bundle/ecsaber/vader/vader-import.cmake.in.tmp	2023-11-10 09:18:15.139775609 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/vader/vader-import.cmake.in	2023-11-07 15:34:43.781506381 +0100
+@@ -2,10 +2,6 @@
+ 
+ include(CMakeFindDependencyMacro)
+ 
+-if( @jedicmake_FOUND@ AND NOT jedicmake_FOUND )
+-    find_dependency(jedicmake REQUIRED)
+-endif()
+-
+ if(NOT Boost_FOUND)
+     find_dependency(Boost REQUIRED)
+ endif()
+@@ -26,6 +22,10 @@
+     find_dependency(oops REQUIRED)
+ endif()
+ 
++if(NOT oops-patch_FOUND)
++    find_dependency(oops-patch REQUIRED)
++endif()
++
+ # Optional dependencies
+ 
+ if(@gsw_FOUND@ AND NOT gsw_FOUND)
