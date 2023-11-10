@@ -1,4 +1,4 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/vader/VertLoc.cc.tmp	2023-11-10 09:38:09.868230795 +0100
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/vader/VertLoc.cc.tmp	2023-11-10 16:12:28.768286516 +0100
 +++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/vader/VertLoc.cc	2023-11-08 13:53:37.709554283 +0100
 @@ -369,10 +369,8 @@
      outView.assign(0.0);

@@ -1,5 +1,5 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ProcessPerts.h.tmp	2023-11-10 09:38:10.440231124 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ProcessPerts.h	2023-11-09 14:12:28.319093380 +0100
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ProcessPerts.h.tmp	2023-11-10 16:12:30.380284383 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ProcessPerts.h	2023-11-10 10:34:00.819664430 +0100
 @@ -18,16 +18,14 @@
  #include "eckit/config/LocalConfiguration.h"
  #include "eckit/exception/Exceptions.h"
@@ -25,7 +25,7 @@
  #include "oops/mpi/mpi.h"
  #include "oops/runs/Application.h"
  #include "oops/util/ConfigFunctions.h"
-@@ -44,111 +42,144 @@
+@@ -44,117 +42,150 @@
  #include "saber/blocks/SaberOuterBlockChain.h"
  #include "saber/blocks/SaberParametricBlockChain.h"
  
@@ -220,16 +220,25 @@
 -    const std::vector<std::size_t> vlevs = geom.variableSizes(incVars);
 +    // Increment variables
 +    Variables_ incVarsT(params.inputVariables.value());
-+    oops::patch::Variables incVars(incVarsT.variables().config(), incVarsT.variables().varlist());
++    oops::patch::Variables incVars = unTemplatedVars(incVarsT);
 +    const std::vector<std::size_t> vlevs = geom.geometry().variableSizes(incVarsT.variables());
      for (std::size_t i = 0; i < vlevs.size() ; ++i) {
        incVars.addMetaData(incVars[i], "levels", vlevs[i]);
      }
-@@ -166,95 +197,89 @@
+ 
+     std::vector<atlas::FieldSet> fsetEns;
+-    std::vector<atlas::FieldSet> dualResFsetEns;
++    std::vector<atlas::FieldSet> dualResolutionFsetEns;
+     eckit::LocalConfiguration covarConf;
+     covarConf.set("iterative ensemble loading", false);
+     covarConf.set("inverse test", false);
+@@ -165,96 +196,90 @@
+ 
      // Initialize filter blockchain
      saberFilterBlocks = std::make_unique<SaberParametricBlockChain>(geom, geom,
-       incVars, fsetXb, fsetFg, fsetEns, dualResolutionFsetEns,
+-      incVars, fsetXb, fsetFg, fsetEns, dualResFsetEns,
 -      covarConf, filterCovarianceBlockConf);
++      incVars, fsetXb, fsetFg, fsetEns, dualResolutionFsetEns,
 +      covarConf, params.filterCovarianceBlockConf.value());
 +
 +    int nincrements(0);

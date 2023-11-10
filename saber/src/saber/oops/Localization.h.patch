@@ -1,5 +1,5 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/Localization.h.tmp	2023-11-10 09:38:10.428231117 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/Localization.h	2023-11-09 11:38:48.544118447 +0100
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/Localization.h.tmp	2023-11-10 16:12:30.340284436 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/Localization.h	2023-11-10 11:18:05.982394717 +0100
 @@ -1,8 +1,6 @@
  /*
 - * (C) Copyright 2021 UCAR
@@ -10,7 +10,7 @@
   */
  
  #pragma once
-@@ -16,10 +14,15 @@
+@@ -16,13 +14,19 @@
  
  #include "eckit/config/Configuration.h"
  
@@ -27,7 +27,11 @@
  #include "oops/util/Logger.h"
  
  #include "saber/blocks/SaberParametricBlockChain.h"
-@@ -31,19 +34,26 @@
++#include "saber/oops/ECUtilities.h"
+ #include "saber/oops/Utilities.h"
+ 
+ namespace saber {
+@@ -31,19 +35,26 @@
  
  template<typename MODEL>
  class Localization : public oops::LocalizationBase<MODEL> {
@@ -59,7 +63,7 @@
   private:
    void print(std::ostream &) const override;
    std::unique_ptr<SaberParametricBlockChain> loc_;
-@@ -53,7 +63,7 @@
+@@ -53,7 +64,7 @@
  
  template<typename MODEL>
  Localization<MODEL>::Localization(const Geometry_ & geom,
@@ -68,14 +72,14 @@
                                    const eckit::Configuration & conf)
    : loc_()
  {
-@@ -63,17 +73,19 @@
+@@ -63,17 +74,19 @@
    util::DateTime dummyTime(1977, 5, 25, 0, 0, 0);
  
    // Initialize
 -  const std::vector<std::size_t> vlevs = geom.variableSizes(incVarsNoMeta);
 -  oops::patch::Variables incVars(incVarsNoMeta);
 +  const std::vector<std::size_t> vlevs = geom.geometry().variableSizes(incVarsNoMeta.variables());
-+  oops::patch::Variables incVars(incVarsNoMeta.variables().config(), incVarsNoMeta.variables().varlist());
++  oops::patch::Variables incVars = unTemplatedVars(incVarsNoMeta);
    for (std::size_t i = 0; i < vlevs.size() ; ++i) {
      incVars.addMetaData(incVars[i], "levels", vlevs[i]);
    }
@@ -94,7 +98,7 @@
  
    std::vector<atlas::FieldSet> fsetEns;
    // TODO(AS): revisit what configuration needs to be passed to SaberParametricBlockChain.
-@@ -94,7 +106,7 @@
+@@ -94,7 +107,7 @@
    covarConf.set("time covariance", "univariate");
    // Initialize localization blockchain
    loc_ = std::make_unique<SaberParametricBlockChain>(geom, geom,
@@ -103,7 +107,7 @@
                fsetEns, fsetEns, covarConf, conf);
  
    oops::Log::trace() << "Localization:Localization done" << std::endl;
-@@ -110,34 +122,49 @@
+@@ -110,34 +123,49 @@
  // -----------------------------------------------------------------------------
  
  template<typename MODEL>

@@ -1,4 +1,4 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/spectralb/CovarianceStatisticsUtils.cc.tmp	2023-11-10 09:38:10.352231074 +0100
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/spectralb/CovarianceStatisticsUtils.cc.tmp	2023-11-10 16:12:30.128284717 +0100
 +++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/spectralb/CovarianceStatisticsUtils.cc	2023-11-08 13:53:36.697553011 +0100
 @@ -362,7 +362,7 @@
  

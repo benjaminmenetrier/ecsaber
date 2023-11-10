@@ -118,7 +118,6 @@ void SaberParametricBlockChain::randomize(oops::FieldSet4D & fset4d) const {
   } else {
     // No cross-time covariances
     for (size_t jtime = 0; jtime < fset4d.size(); ++jtime) {
-      std::cout << "TOTO" << std::endl;
       centralBlock_->randomize(fset4d[jtime].fieldSet());
     }
   }

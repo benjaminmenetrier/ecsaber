@@ -1,4 +1,4 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/interpolation/GaussToCS.h.tmp	2023-11-10 09:38:09.468230564 +0100
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/interpolation/GaussToCS.h.tmp	2023-11-10 16:12:27.632288018 +0100
 +++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/interpolation/GaussToCS.h	2023-11-08 13:53:36.101552261 +0100
 @@ -80,14 +80,12 @@
  

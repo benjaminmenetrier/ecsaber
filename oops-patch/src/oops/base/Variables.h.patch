@@ -1,5 +1,5 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/oops-patch/src/oops/base/Variables.h.tmp	2023-11-09 17:31:28.045939493 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/oops-patch/src/oops/base/Variables.h	2023-11-07 15:34:43.597507332 +0100
+--- /home/benjaminm/code/oops-bundle/ecsaber/oops-patch/src/oops/base/Variables.h.tmp	2023-11-10 16:12:20.304297712 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/oops-patch/src/oops/base/Variables.h	2023-11-10 14:48:05.187220748 +0100
 @@ -21,6 +21,7 @@
  }
  
@@ -8,7 +8,7 @@
  
  // -----------------------------------------------------------------------------
  /// \brief Class to set an container of variable names and manipulate it.
-@@ -35,32 +36,32 @@
+@@ -35,32 +36,33 @@
  ///
  ///        Most operators / methods do not affect/interact with the meta data.
  ///        The exceptions are:
@@ -42,6 +42,7 @@
 +  explicit Variables(const std::vector<std::string> &, const std::string & conv = "");
 +  Variables(const std::vector<std::string> & vars, const std::vector<int> & channels);
 +  Variables(const eckit::Configuration &, const std::vector<std::string> & vars);
++  Variables(const std::vector<std::string> & vars, const eckit::Configuration &);
 +
 +  Variables(const Variables &);
 +  Variables & operator+=(const Variables &);
@@ -59,7 +60,7 @@
  
    void addMetaData(const std::string & varname,
                     const std::string & keyname,
-@@ -70,8 +71,8 @@
+@@ -70,8 +72,8 @@
  
    size_t find(const std::string &) const;
  
@@ -70,7 +71,7 @@
  
    const std::vector<std::string> & variables() const {return vars_;}
    const std::vector<int> & channels() const {return channels_;}
-@@ -106,6 +107,7 @@
+@@ -106,6 +108,7 @@
  
  // -----------------------------------------------------------------------------
  

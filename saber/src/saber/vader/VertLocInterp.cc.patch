@@ -1,4 +1,4 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/vader/VertLocInterp.cc.tmp	2023-11-10 09:38:09.688230691 +0100
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/vader/VertLocInterp.cc.tmp	2023-11-10 16:12:28.248287204 +0100
 +++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/vader/VertLocInterp.cc	2023-11-08 13:53:37.393553886 +0100
 @@ -38,16 +38,12 @@
  void verticalInterpolationFromFullLevels(const oops::patch::Variables & activeVars,

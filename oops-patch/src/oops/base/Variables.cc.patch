@@ -1,6 +1,12 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/oops-patch/src/oops/base/Variables.cc.tmp	2023-11-09 17:31:28.029939509 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/oops-patch/src/oops/base/Variables.cc	2023-11-07 15:34:43.597507332 +0100
-@@ -27,16 +27,17 @@
+--- /home/benjaminm/code/oops-bundle/ecsaber/oops-patch/src/oops/base/Variables.cc.tmp	2023-11-10 16:12:20.264297765 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/oops-patch/src/oops/base/Variables.cc	2023-11-10 11:17:59.530397356 +0100
+@@ -22,21 +22,23 @@
+ #include "eckit/types/Types.h"
+ #include "eckit/utils/Hash.h"
+ 
++#include "oops/util/ConfigFunctions.h"
+ #include "oops/util/IntSetParser.h"
+ #include "oops/util/Logger.h"
  
  // -----------------------------------------------------------------------------
  namespace oops {
@@ -20,7 +26,7 @@
    : convention_(""), vars_(0), channels_(0), varMetaData_() {
    Log::trace() << "Variables::Variables start " << conf << std::endl;
    std::vector<std::string> vars;
-@@ -62,7 +63,7 @@
+@@ -62,7 +64,7 @@
  }
  
  // -----------------------------------------------------------------------------
@@ -29,7 +35,7 @@
    : convention_(conv), vars_(vars), varMetaData_() {
    Log::trace() << "Variables::Variables start " << vars << std::endl;
    Log::trace() << "Variables::Variables done" << std::endl;
-@@ -70,7 +71,7 @@
+@@ -70,7 +72,7 @@
  
  // -----------------------------------------------------------------------------
  
@@ -38,7 +44,7 @@
    : convention_(""), vars_(0), channels_(channels), varMetaData_() {
    Log::trace() << "Variables::Variables start " << vars << " @ " << channels << std::endl;
    if (channels.empty()) {
-@@ -87,7 +88,7 @@
+@@ -87,7 +89,7 @@
  
  // -----------------------------------------------------------------------------
  
@@ -47,7 +53,7 @@
    : convention_(""), vars_(vars), varMetaData_(conf)
  {
    Log::trace() << "Variables::Variables start " << vars << " @ " << conf << std::endl;
-@@ -96,14 +97,14 @@
+@@ -96,14 +98,14 @@
  
  // -----------------------------------------------------------------------------
  
@@ -64,7 +70,13 @@
    ASSERT(convention_ == rhs.convention_);
    vars_.insert(vars_.end(), rhs.vars_.begin(), rhs.vars_.end());
    // revisit late, should we add channels this way ?
-@@ -132,7 +133,7 @@
+@@ -127,12 +129,13 @@
+       setVariableSubKeyValue(var, key, value, varMetaData_);
+     }
+   }
++
+   return *this;
+ }
  
  // -----------------------------------------------------------------------------
  
@@ -73,7 +85,7 @@
    ASSERT(convention_ == rhs.convention_);
    if (!rhs.channels().empty()) {
      throw eckit::NotImplemented(
-@@ -146,14 +147,14 @@
+@@ -146,14 +149,14 @@
  
  // -----------------------------------------------------------------------------
  
@@ -90,7 +102,7 @@
    if ((convention_  != rhs.convention_) ||
        (channels_    != rhs.channels_)   ||
        (vars_.size() != rhs.vars_.size())) {
-@@ -186,13 +187,13 @@
+@@ -186,13 +189,13 @@
  
  // -----------------------------------------------------------------------------
  
@@ -106,7 +118,7 @@
    ASSERT(convention_ == rhs.convention_);
    ASSERT(channels_.empty());
    bool is_in_rhs = true;
-@@ -203,7 +204,7 @@
+@@ -203,7 +206,7 @@
  }
  
  // -----------------------------------------------------------------------------
@@ -115,7 +127,7 @@
                              const std::string & keyname,
                              const int & keyvalue) {
    setVariableSubKeyValue(varname, keyname, keyvalue, varMetaData_);
-@@ -211,7 +212,7 @@
+@@ -211,7 +214,7 @@
  
  // -----------------------------------------------------------------------------
  
@@ -124,7 +136,7 @@
    ASSERT(convention_ == rhs.convention_);
    if (this->size() * rhs.size() > 0) ASSERT(channels_.empty() == rhs.channels_.empty());
  
-@@ -239,7 +240,7 @@
+@@ -239,7 +242,7 @@
  
  // -----------------------------------------------------------------------------
  
@@ -133,7 +145,7 @@
    bool found = false;
    for (size_t jj = 0; jj < vars_.size(); ++jj) {
      found = found || vars_[jj] == var;
-@@ -249,7 +250,7 @@
+@@ -249,7 +252,7 @@
  
  // -----------------------------------------------------------------------------
  
@@ -142,7 +154,7 @@
    size_t ii = vars_.size();
    for (size_t jj = 0; jj < vars_.size(); ++jj) {
      if (vars_[jj] == var) ii = jj;
-@@ -263,20 +264,20 @@
+@@ -263,20 +266,20 @@
  
  // -----------------------------------------------------------------------------
  
@@ -166,7 +178,7 @@
    std::vector<std::string> vars(vars_);
    std::sort(vars.begin(), vars.end());
    return vars;
-@@ -284,7 +285,7 @@
+@@ -284,7 +287,7 @@
  
  // -----------------------------------------------------------------------------
  
@@ -175,7 +187,7 @@
    os << vars_.size() << " variables: ";
    for (size_t jj = 0; jj < vars_.size(); ++jj) {
      if (jj > 0) os << ", ";
-@@ -297,7 +298,7 @@
+@@ -297,7 +300,7 @@
  
  // -----------------------------------------------------------------------------
  
@@ -184,7 +196,7 @@
    int levels(-1);
    getVariableSubKeyValue(fieldname, "levels",
                           varMetaData_, levels);
-@@ -306,7 +307,7 @@
+@@ -306,7 +309,7 @@
  
  // -----------------------------------------------------------------------------
  
@@ -193,7 +205,7 @@
                                         const std::string & keyname,
                                         const eckit::Configuration & variablesconf,
                                         int & intvalue) const {
-@@ -318,7 +319,7 @@
+@@ -318,7 +321,7 @@
  
  // -----------------------------------------------------------------------------
  
@@ -202,7 +214,7 @@
                                         const std::string & keyname,
                                         const int & keyvalue,
                                         eckit::LocalConfiguration & variableslconf) {
-@@ -328,4 +329,5 @@
+@@ -328,4 +331,5 @@
    variablelconf.set(keyname, keyvalue);
    variableslconf.set(varname, variablelconf);
  }

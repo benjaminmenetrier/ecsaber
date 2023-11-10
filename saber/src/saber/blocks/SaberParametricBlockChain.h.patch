@@ -1,6 +1,15 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberParametricBlockChain.h.tmp	2023-11-10 09:38:09.984230861 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberParametricBlockChain.h	2023-11-09 10:58:08.128387754 +0100
-@@ -90,9 +90,9 @@
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberParametricBlockChain.h.tmp	2023-11-10 16:12:29.088286093 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberParametricBlockChain.h	2023-11-10 09:57:42.023201805 +0100
+@@ -74,6 +74,8 @@
+   size_t size4D_;
+   oops::patch::Variables centralVars_;
+   atlas::FunctionSpace centralFunctionSpace_;
++  const oops::GeometryData geomData_;
++  const oops::GeometryData dualResGeomData_;
+ };
+ 
+ // -----------------------------------------------------------------------------
+@@ -90,9 +92,13 @@
                         std::vector<atlas::FieldSet> & fsetDualResEns,
                         const eckit::LocalConfiguration & covarConf,
                         const eckit::Configuration & conf)
@@ -8,36 +17,36 @@
 +  : outerFunctionSpace_(geom.geometry().functionSpace()), outerVariables_(outerVars),
    crossTimeCov_(covarConf.getString("time covariance") == "multivariate duplicated"),
 -  timeComm_(geom.timeComm()), size4D_(fset4dXb.size()) {
-+  timeComm_(oops::mpi::myself()), size4D_(fset4dXb.size()) {
++  timeComm_(oops::mpi::myself()), size4D_(fset4dXb.size()),
++  geomData_(geom.geometry().functionSpace(), geom.geometry().fields(),
++  geom.geometry().levelsAreTopDown(), eckit::mpi::comm()),
++  dualResGeomData_(dualResGeom.geometry().functionSpace(), dualResGeom.geometry().fields(),
++  dualResGeom.geometry().levelsAreTopDown(), eckit::mpi::comm()) {
    oops::Log::trace() << "SaberParametricBlockChain ctor starting" << std::endl;
  
    // If needed create outer block chain
-@@ -110,9 +110,11 @@
+@@ -110,9 +116,9 @@
  
    // Set outer variables and geometry data for central block
    const oops::patch::Variables currentOuterVars = outerBlockChain_ ?
 -                             outerBlockChain_->innerVars() : outerVariables_;
 +                               outerBlockChain_->innerVars() : outerVariables_;
-+  const oops::GeometryData geomData(geom.geometry().functionSpace(), geom.geometry().fields(),
-+    geom.geometry().levelsAreTopDown(), eckit::mpi::comm());
    const oops::GeometryData & currentOuterGeom = outerBlockChain_ ?
 -                             outerBlockChain_->innerGeometryData() : geom.generic();
-+                             outerBlockChain_->innerGeometryData() : geomData;
++                             outerBlockChain_->innerGeometryData() : geomData_;
  
    SaberCentralBlockParametersWrapper saberCentralBlockParamsWrapper;
    saberCentralBlockParamsWrapper.deserialize(conf.getSubConfiguration("saber central block"));
-@@ -203,7 +205,9 @@
+@@ -203,7 +209,7 @@
      oops::Log::info() << "Info     : Dual resolution setup" << std::endl;
  
      // Dual resolution setup
--    centralBlock_->dualResolutionSetup(dualResolutionGeom.generic());
-+    const oops::GeometryData dualResolutionGeomData(geom.geometry().functionSpace(), geom.geometry().fields(),
-+      geom.geometry().levelsAreTopDown(), eckit::mpi::comm());
-+    centralBlock_->dualResolutionSetup(dualResolutionGeomData);
+-    centralBlock_->dualResolutionSetup(dualResGeom.generic());
++    centralBlock_->dualResolutionSetup(dualResGeomData_);
  
      // Ensemble configuration
-     eckit::LocalConfiguration dualResolutionEnsembleConf
-@@ -257,7 +261,7 @@
+     eckit::LocalConfiguration dualResEnsembleConf
+@@ -257,7 +263,7 @@
      const eckit::LocalConfiguration outputEnsembleConf(covarConf, "output ensemble");
  
      // Check whether geometry grid is similar to the last outer block inner geometry
@@ -46,7 +55,7 @@
        == util::getGridUid(currentOuterGeom.functionSpace()));
  
      // Get ensemble size
-@@ -293,26 +297,26 @@
+@@ -293,26 +299,26 @@
        oops::Log::info() << "Info     : Write member " << ie << std::endl;
  
        // Increment pointer

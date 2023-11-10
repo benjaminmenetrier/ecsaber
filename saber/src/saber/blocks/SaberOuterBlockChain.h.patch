@@ -1,5 +1,5 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberOuterBlockChain.h.tmp	2023-11-10 09:38:09.968230852 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberOuterBlockChain.h	2023-11-09 10:56:44.548392712 +0100
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberOuterBlockChain.h.tmp	2023-11-10 16:12:29.048286146 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberOuterBlockChain.h	2023-11-10 11:09:40.422605344 +0100
 @@ -15,7 +15,7 @@
  #include "eckit/exception/Exceptions.h"
  
@@ -9,15 +9,31 @@
  #include "oops/interface/ModelData.h"
  
  #include "saber/blocks/SaberBlockParametersBase.h"
-@@ -150,8 +150,10 @@
-     // Initialize current outer variables and outer geometry data
+@@ -118,6 +118,7 @@
+   /// TODO(AS): Need to expand this to create different outer blocks for different
+   /// times for the 4D with multiple times on one MPI task.
+   std::vector<std::unique_ptr<SaberOuterBlockBase>> outerBlocks_;
++  const oops::GeometryData geomData_;
+ };
+ 
+ // -----------------------------------------------------------------------------
+@@ -129,7 +130,9 @@
+                        const oops::FieldSet4D & fset4dFg,
+                        std::vector<atlas::FieldSet> & fsetEns,
+                        const eckit::LocalConfiguration & covarConf,
+-                       const std::vector<saber::SaberOuterBlockParametersWrapper> & params) {
++                       const std::vector<saber::SaberOuterBlockParametersWrapper> & params) :
++  geomData_(geom.geometry().functionSpace(), geom.geometry().fields(),
++  geom.geometry().levelsAreTopDown(), eckit::mpi::comm()) {
+   oops::Log::trace() << "SaberOuterBlockChain ctor starting" << std::endl;
+   oops::Log::info() << "Info     : Creating outer blocks" << std::endl;
+ 
+@@ -151,7 +154,7 @@
      oops::patch::Variables currentOuterVars = outerBlocks_.size() == 0 ?
                                         outerVars : outerBlocks_.back()->innerVars();
-+    const oops::GeometryData geomData(geom.geometry().functionSpace(), geom.geometry().fields(),
-+      geom.geometry().levelsAreTopDown(), eckit::mpi::comm());
      const oops::GeometryData & currentOuterGeometryData = outerBlocks_.size() == 0 ?
 -                                       geom.generic() : outerBlocks_.back()->innerGeometryData();
-+                                       geomData : outerBlocks_.back()->innerGeometryData();
++                                       geomData_ : outerBlocks_.back()->innerGeometryData();
  
      // Get outer block parameters
      const SaberBlockParametersBase & saberOuterBlockParams =

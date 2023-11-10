@@ -1,4 +1,4 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/vader/src/CMakeLists.txt.tmp	2023-11-10 09:18:15.103775610 +0100
+--- /home/benjaminm/code/oops-bundle/ecsaber/vader/src/CMakeLists.txt.tmp	2023-11-10 16:12:22.820294384 +0100
 +++ /home/benjaminm/code/oops-bundle/ecsaber/vader/src/CMakeLists.txt	2023-11-09 18:03:11.747004216 +0100
 @@ -138,14 +138,11 @@
                       HEADER_DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}
