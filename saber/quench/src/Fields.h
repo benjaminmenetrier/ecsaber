@@ -56,10 +56,6 @@ class Fields : public util::Printable,
   friend eckit::Stream & operator<<(eckit::Stream &, const Fields &);
   friend eckit::Stream & operator>>(eckit::Stream &, Fields &);
 
-// ATLAS FieldSet
-  void toFieldSet(atlas::FieldSet &) const;
-  void fromFieldSet(const atlas::FieldSet &);
-
 // Utilities
   void read(const eckit::Configuration &);
   void write(const eckit::Configuration &) const;

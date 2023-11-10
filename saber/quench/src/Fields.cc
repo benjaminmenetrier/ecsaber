@@ -581,26 +581,6 @@ void Fields::diff(const Fields & x1, const Fields & x2) {
   oops::Log::trace() << "Fields::diff done" << std::endl;
 }
 // -----------------------------------------------------------------------------
-void Fields::toFieldSet(atlas::FieldSet & fset) const {
-  oops::Log::trace() << "Fields::toFieldSet starting" << std::endl;
-  // Copy internal fieldset (possibly at another resolution)
-  fset = util::copyFieldSet(fset_);
-  for (auto field_external : fset) {
-    field_external.metadata().set("interp_type", "default");
-  }
-  oops::Log::trace() << "Fields::toFieldSet done" << std::endl;
-}
-// -----------------------------------------------------------------------------
-void Fields::fromFieldSet(const atlas::FieldSet & fset) {
-  oops::Log::trace() << "Fields::fromFieldSet starting" << std::endl;
-
-  // Copy internal fieldset (possibly at another resolution)
-  fset_ = util::copyFieldSet(fset);
-
-
-  oops::Log::trace() << "Fields::fromFieldSet done" << std::endl;
-}
-// -----------------------------------------------------------------------------
 void Fields::synchronizeFields() {
   if (geom_->gridType() == "regular_lonlat") {
     // Copy poles points
