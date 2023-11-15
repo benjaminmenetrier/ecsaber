@@ -1,5 +1,5 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/oops-patch/src/oops/base/FieldSet4D.h.tmp	2023-11-10 16:12:20.080298008 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/oops-patch/src/oops/base/FieldSet4D.h	2023-11-10 09:38:48.824253351 +0100
+--- /home/benjaminm/code/oops-bundle/ecsaber/oops-patch/src/oops/base/FieldSet4D.h.tmp.bak	2023-11-15 12:23:09.405106420 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/oops-patch/src/oops/base/FieldSet4D.h	2023-11-15 12:23:35.217153908 +0100
 @@ -12,8 +12,8 @@
  
  #include "oops/base/DataSetBase.h"
@@ -23,7 +23,7 @@
 +    this->dataset().emplace_back(new FieldSet3D(state4d[jj].state().fieldSet(),
                                                  state4d[jj].validTime(),
 -                                                state4d.geometry().getComm()));
-+                                                oops::mpi::world()));
++                                                eckit::mpi::comm()));
    }
  }
  
@@ -39,7 +39,7 @@
 +    this->dataset().emplace_back(new FieldSet3D(inc4d[jj].increment().fieldSet(),
                                                  inc4d[jj].validTime(),
 -                                                inc4d.geometry().getComm()));
-+                                                oops::mpi::world()));
++                                                eckit::mpi::comm()));
    }
  }
  

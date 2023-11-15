@@ -3,6 +3,7 @@
 # Source and destination paths
 srcPath=$1
 dstPath=$2
+commandPath=$3
 
 # Initial check
 if test -f "${dstPath}"; then
@@ -35,17 +36,16 @@ fi
 
 if test -f "${dstPath}.patch"; then
   # Apply residual patch
+  cp -f ${dstPath}.tmp ${dstPath}.tmp.bak
   patch -s ${dstPath}.tmp ${dstPath}.patch
 
   # Compare and update if needed
   if cmp -s ${dstPath}.tmp ${dstPath}; then
-    rm -f ${dstPath}.tmp
-    echo "--  - Update not needed for: ${dstPath}"
+    rm -f ${dstPath}.tmp ${dstPath}.tmp.bak
   else
-    mv ${dstPath} ${dstPath}.bak
-    mv ${dstPath}.tmp ${dstPath}
     echo "--  - Update needed for: ${dstPath}"
-    echo "--      Diff command: diff -u ${dstPath} ${dstPath}.bak"
+    echo "meld ${dstPath}.tmp ${dstPath} ${dstPath}.tmp.bak; diff -u ${dstPath}.tmp.bak ${dstPath} > ${dstPath}.patch; rm -f ${dstPath}.tmp ${dstPath}.tmp.bak" >> ${commandPath}
+    echo "" >> ${commandPath}
  fi
 else
   if test -f "${dstPath}"; then
@@ -55,10 +55,11 @@ else
     if test "${patchLength}" = "0"; then 
       rm -f ${dstPath}.patch
     else
-      echo "--  - Patch created for: "${dstPath}
-      echo "--      "`diffstat -C ${dstPath}.patch | head -n 1`
+      echo "--  - New patch needed for: "${dstPath}
+      rm -f ${dstPath}.patch
+      echo "meld ${dstPath}.tmp ${dstPath}; diff -u ${dstPath}.tmp ${dstPath} > ${dstPath}.patch; patchLength=\`cat ${dstPath}.patch | wc -l\`; if test "${patchLength}" = "0"; then rm -f ${dstPath}.patch;fi;rm -f ${dstPath}.tmp" >> ${commandPath}
+      echo "" >> ${commandPath}
     fi
-    rm -f ${dstPath}.tmp
   else
     # New file
     mv ${dstPath}.tmp ${dstPath}

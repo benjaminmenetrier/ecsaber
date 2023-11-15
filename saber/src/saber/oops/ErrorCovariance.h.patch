@@ -1,5 +1,5 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ErrorCovariance.h.tmp	2023-11-10 16:12:30.508284215 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ErrorCovariance.h	2023-11-10 11:17:28.114410204 +0100
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ErrorCovariance.h.tmp.bak	2023-11-15 12:03:34.353541901 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ErrorCovariance.h	2023-11-15 10:47:20.077990890 +0100
 @@ -13,20 +13,17 @@
  
  #include "atlas/field.h"
@@ -31,7 +31,7 @@
  
  #include "saber/blocks/SaberBlockChainBase.h"
  #include "saber/blocks/SaberBlockParametersBase.h"
-@@ -36,38 +33,57 @@
+@@ -36,6 +33,9 @@
  #include "saber/oops/ErrorCovarianceParameters.h"
  #include "saber/oops/Utilities.h"
  
@@ -40,6 +40,8 @@
 +
  namespace saber {
  
+ // -----------------------------------------------------------------------------
+@@ -50,33 +50,49 @@
  // -----------------------------------------------------------------------------
  
  template <typename MODEL>
@@ -106,7 +108,7 @@
  
    /// Chain of outer blocks applied to all components of hybrid covariances.
    /// Not initialized for non-hybrid covariances.
-@@ -86,15 +102,19 @@
+@@ -95,15 +111,19 @@
  
  template<typename MODEL>
  ErrorCovariance<MODEL>::ErrorCovariance(const Geometry_ & geom,
@@ -132,7 +134,7 @@
  
    // Local copy of background and first guess that can undergo interpolation
    const oops::FieldSet4D fset4dXbTmp(xb);
-@@ -107,8 +127,8 @@
+@@ -116,8 +136,8 @@
    // TODO(Benjamin, Marek, Mayeul, ?)
  
    // Initialize outer variables
@@ -143,7 +145,7 @@
    for (std::size_t i = 0; i < vlevs.size() ; ++i) {
      outerVars.addMetaData(outerVars[i], "levels", vlevs[i]);
    }
-@@ -146,9 +166,7 @@
+@@ -155,9 +175,7 @@
      const auto & dualResGeomConf = dualResParams->geometry.value();
      if (dualResGeomConf != boost::none) {
        // Create dualRes geometry
@@ -154,7 +156,7 @@
      }
      // Background and first guess at dual resolution geometry
      oops::State<MODEL> xbDualRes(*dualResGeom, xb[0]);
-@@ -196,8 +214,7 @@
+@@ -205,8 +223,7 @@
      // Create block geometry (needed for ensemble reading)
      const Geometry_ * hybridGeom = &geom;
      if (hybridConf.has("geometry")) {
@@ -164,7 +166,7 @@
      }
  
      // Loop over components
-@@ -323,16 +340,43 @@
+@@ -314,16 +331,43 @@
  
  // -----------------------------------------------------------------------------
  
@@ -212,7 +214,7 @@
    for (size_t jtime = 0; jtime < fset4dSum.size(); ++jtime) {
      fset4dSum[jtime].fieldSet() = util::copyFieldSet(fset);
    }
-@@ -340,7 +384,7 @@
+@@ -331,7 +375,7 @@
    // Loop over components for the central block
    for (size_t jj = 0; jj < hybridBlockChain_.size(); ++jj) {
      // Randomize covariance
@@ -221,13 +223,12 @@
      hybridBlockChain_[jj]->randomize(fset4dCmp);
  
      // Weight square-root multiplication
-@@ -360,21 +404,28 @@
+@@ -351,20 +395,28 @@
    if (outerBlockChain_) outerBlockChain_->applyOuterBlocks(fset4dSum);
  
    // ATLAS fieldset to Increment_
 -  for (size_t jtime = 0; jtime < dx.size(); ++jtime) {
--    util::copyFieldSet(fset4dSum[jtime].fieldSet(), dx[jtime].fieldSet());
--    dx[jtime].synchronizeFields();
+-    dx[jtime].fromFieldSet(fset4dSum[jtime].fieldSet());
 +  for (int jtime = dx.first(); jtime <= dx.last(); ++jtime) {
 +    util::copyFieldSet(fset4dSum[jtime].fieldSet(), dx[jtime].increment().fieldSet());
 +    dx[jtime].increment().synchronizeFields();
@@ -258,13 +259,12 @@
  
    // Copy input
    dxo = dxi;
-@@ -423,27 +474,126 @@
+@@ -413,26 +465,126 @@
    if (outerBlockChain_) outerBlockChain_->applyOuterBlocks(fset4dSum);
  
    // ATLAS fieldset to Increment_
 -  for (size_t jtime = 0; jtime < dxo.size(); ++jtime) {
--    util::copyFieldSet(fset4dSum[jtime].fieldSet(), dxo[jtime].fieldSet());
--    dxo[jtime].synchronizeFields();
+-    dxo[jtime].fromFieldSet(fset4dSum[jtime].fieldSet());
 +  for (int jtime = dxo.first(); jtime <= dxo.last(); ++jtime) {
 +    util::copyFieldSet(fset4dSum[jtime].fieldSet(), dxo[jtime].increment().fieldSet());
 +    dxo[jtime].increment().synchronizeFields();

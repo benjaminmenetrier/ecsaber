@@ -42,6 +42,7 @@ class Fields : public util::Printable,
 // Basic operators
   void zero();
   void constantValue(const double &);
+  void constantValue(const eckit::Configuration &);
   Fields & operator=(const Fields &);
   Fields & operator+=(const Fields &);
   Fields & operator-=(const Fields &);
@@ -53,6 +54,10 @@ class Fields : public util::Printable,
   void random();
   void diff(const Fields &, const Fields &);
 
+// Serialization
+  size_t serialSize() const;
+  void serialize(std::vector<double> &) const;
+  void deserialize(const std::vector<double> &, size_t &);
   friend eckit::Stream & operator<<(eckit::Stream &, const Fields &);
   friend eckit::Stream & operator>>(eckit::Stream &, Fields &);
 
@@ -66,11 +71,6 @@ class Fields : public util::Printable,
   const Variables & variables() const {return vars_;}
   const util::DateTime & time() const {return time_;}
   util::DateTime & time() {return time_;}
-
-/// Serialization
-  size_t serialSize() const;
-  void serialize(std::vector<double> &) const;
-  void deserialize(const std::vector<double> &, size_t &);
 
 /// ATLAS FieldSet
   const atlas::FieldSet & fieldSet() const {return fset_;}

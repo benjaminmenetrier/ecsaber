@@ -109,7 +109,7 @@ SaberParametricBlockChain::SaberParametricBlockChain(const oops::Geometry<MODEL>
       cmpOuterBlockParamsWrapper.deserialize(cmpOuterBlockConf);
       cmpOuterBlocksParams.push_back(cmpOuterBlockParamsWrapper);
     }
-    outerBlockChain_ = std::make_unique<SaberOuterBlockChain>(geom, outerVars,
+    outerBlockChain_ = std::make_unique<SaberOuterBlockChain>(geom, outerVariables_,
                           fset4dXb, fset4dFg, fsetEns, covarConf,
                           cmpOuterBlocksParams);
   }
@@ -175,7 +175,7 @@ SaberParametricBlockChain::SaberParametricBlockChain(const oops::Geometry<MODEL>
         // Read ensemble member
         atlas::FieldSet fset;
         readEnsembleMember(geom,
-                           outerVars,
+                           outerVariables_,
                            fset4dXb[0].validTime(),
                            ensembleConf,
                            ie,
@@ -222,14 +222,14 @@ SaberParametricBlockChain::SaberParametricBlockChain(const oops::Geometry<MODEL>
       // Initialization
       centralBlock_->iterativeCalibrationInit();
 
-     // Get dual resolution ensemble size
-      size_t dualResNens = dualResEnsembleConf.getInt("ensemble size");
+      // Get dual resolution ensemble size
+      const size_t dualResNens = dualResEnsembleConf.getInt("ensemble size");
 
       for (size_t ie = 0; ie < dualResNens; ++ie) {
         // Read ensemble member
         atlas::FieldSet fset;
         readEnsembleMember(dualResGeom,
-                           outerVars,
+                           outerVariables_,
                            fset4dXb[0].validTime(),
                            dualResEnsembleConf,
                            ie,

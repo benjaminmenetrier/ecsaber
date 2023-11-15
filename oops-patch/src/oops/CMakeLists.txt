@@ -85,11 +85,20 @@ util/stringFunctions.h
 util/TypeTraits.h
 )
 
+# Remove update summary
+file( REMOVE "${CMAKE_CURRENT_SOURCE_DIR}/update_summary.txt" )
+
 foreach( src_file ${oops_jedi_src_files} )
     check_diff( "oops"
                 ${CMAKE_CURRENT_SOURCE_DIR}/../../../oops-jedi/src/oops/${src_file}
-                ${CMAKE_CURRENT_SOURCE_DIR}/${src_file} )
+                ${CMAKE_CURRENT_SOURCE_DIR}/${src_file}
+                ${CMAKE_CURRENT_SOURCE_DIR}/update_summary.txt )
 endforeach()
+
+# Check update summary
+if( EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/update_summary.txt")
+    message( FATAL_ERROR "Merge required in ${CMAKE_CURRENT_SOURCE_DIR}/update_summary.txt" )
+endif()
 
 list( APPEND oops_ecmwf_src_files
 util/abor1_cpp.h

@@ -63,12 +63,14 @@ class SpectralToGauss : public SaberOuterBlockBase {
 
   atlas::FieldSet generateInnerFieldSet(const oops::GeometryData & innerGeometryData,
                                         const oops::patch::Variables & innerVars) const override
-    {return util::createSmoothFieldSet(innerGeometryData.functionSpace(),
+    {return util::createSmoothFieldSet(innerGeometryData.comm(),
+                                       innerGeometryData.functionSpace(),
                                        innerVars);}
 
   atlas::FieldSet generateOuterFieldSet(const oops::GeometryData & outerGeometryData,
                                         const oops::patch::Variables & outerVars) const override
-    {return util::createSmoothFieldSet(outerGeometryData.functionSpace(),
+    {return util::createSmoothFieldSet(outerGeometryData.comm(),
+                                       outerGeometryData.functionSpace(),
                                        outerVars);}
 
  private:

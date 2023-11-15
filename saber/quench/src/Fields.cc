@@ -200,6 +200,31 @@ void Fields::constantValue(const double & value) {
   oops::Log::trace() << "Fields::constantValue end" << std::endl;
 }
 // -----------------------------------------------------------------------------
+void Fields::constantValue(const eckit::Configuration & config) {
+  oops::Log::trace() << "Fields::constantValue starting" << std::endl;
+  for (const auto & group : config.getSubConfigurations("constant group-specific value")) {
+    const std::vector<std::string> vars = group.getStringVector("variables");
+    const double value = group.getDouble("constant value");
+    for (const auto & var : vars_.variablesList()) {
+      if (std::find(vars.begin(), vars.end(), var) != vars.end()) {
+        const auto gmaskView = atlas::array::make_view<int, 2>(
+          geom_->fields(geom_->groupIndex(var)).field("gmask"));
+        atlas::Field field = fset_[var];
+        if (field.rank() == 2) {
+          auto view = atlas::array::make_view<double, 2>(field);
+          view.assign(0.0);
+          for (atlas::idx_t jnode = 0; jnode < field.shape(0); ++jnode) {
+            for (atlas::idx_t jlevel = 0; jlevel < field.shape(1); ++jlevel) {
+              if (gmaskView(jnode, jlevel) == 1) view(jnode, jlevel) = value;
+            }
+          }
+        }
+      }
+    }
+  }
+  oops::Log::trace() << "Fields::constantValue end" << std::endl;
+}
+// -----------------------------------------------------------------------------
 Fields & Fields::operator=(const Fields & rhs) {
   oops::Log::trace() << "Fields::operator=(const Fields & rhs) starting" << std::endl;
   for (const auto & var : vars_.variablesList()) {
@@ -582,6 +607,7 @@ void Fields::diff(const Fields & x1, const Fields & x2) {
 }
 // -----------------------------------------------------------------------------
 void Fields::synchronizeFields() {
+  oops::Log::trace() << "Fields::synchronizeFields starting" << std::endl;
   if (geom_->gridType() == "regular_lonlat") {
     // Copy poles points
     for (auto field_internal : fset_) {
@@ -626,9 +652,11 @@ void Fields::synchronizeFields() {
       }
     }
   }
+  oops::Log::trace() << "Fields::synchronizeFields done" << std::endl;
 }
 // -----------------------------------------------------------------------------
 void Fields::read(const eckit::Configuration & config) {
+  oops::Log::trace() << "Fields::read starting" << std::endl;
   // Create variableSizes
   std::vector<size_t> variableSizes;
   for (const auto & var : vars_.variablesList()) {
@@ -648,9 +676,11 @@ void Fields::read(const eckit::Configuration & config) {
                      vars_.variablesList(),
                      conf,
                      fset_);
+  oops::Log::trace() << "Fields::read done" << std::endl;
 }
 // -----------------------------------------------------------------------------
 void Fields::write(const eckit::Configuration & config) const {
+  oops::Log::trace() << "Fields::write starting" << std::endl;
   // Copy configuration
   eckit::LocalConfiguration conf(config);
   if (geom_->functionSpace().type() == "PointCloud") {
@@ -676,6 +706,7 @@ void Fields::write(const eckit::Configuration & config) const {
     gmsh.write(geom_->mesh());
     gmsh.write(fset_, fset_[0].functionspace());
   }
+  oops::Log::trace() << "Fields::write done" << std::endl;
 }
 // -----------------------------------------------------------------------------
 double Fields::norm() const {

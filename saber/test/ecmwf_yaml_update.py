@@ -73,7 +73,10 @@ def expand_ensemble_template(d):
                 template = v["template"]
                 pattern = v["pattern"]
                 members = v["nmembers"]
-                zpad = v["zero padding"]
+                if "zero padding" in v:
+                    zpad = v["zero padding"]
+                else:
+                    zpad = 0
                 if "start" in v:
                     index = v["start"]
                 else:
@@ -270,6 +273,9 @@ if "background error" in config:
     # Remove linear variable change
     if "linear variable change" in config["Covariance"]:
         config["Covariance"].pop("linear variable change")
+
+# Ensemble
+config = add_ensemble_variables(config)
 
 # Write yaml file
 with open(args.outputYaml, "w") as file:

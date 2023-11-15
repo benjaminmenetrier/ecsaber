@@ -11,17 +11,25 @@ cmake_minimum_required( VERSION 3.12 )
 
 project( saber VERSION 1.8.0 LANGUAGES CXX Fortran )
 
+# Remove update summary
+file( REMOVE "${CMAKE_CURRENT_SOURCE_DIR}/update_summary.txt" )
+
 # Copy and update source from SABER
-check_diff_recursively( cmake )
-check_diff_recursively( quench/data )
-check_diff_recursively( src )
-check_diff_recursively( test )
-check_diff_recursively( tools )
-check_diff_recursively( COPYING )
-check_diff_recursively( CPPLINT.cfg )
-check_diff_recursively( LICENSE.md )
-check_diff_recursively( README.md )
-check_diff_recursively( saber-import.cmake.in )
+check_diff_recursively( cmake "${CMAKE_CURRENT_SOURCE_DIR}/update_summary.txt" )
+check_diff_recursively( quench/data "${CMAKE_CURRENT_SOURCE_DIR}/update_summary.txt" )
+check_diff_recursively( src "${CMAKE_CURRENT_SOURCE_DIR}/update_summary.txt" )
+check_diff_recursively( test "${CMAKE_CURRENT_SOURCE_DIR}/update_summary.txt" )
+check_diff_recursively( tools "${CMAKE_CURRENT_SOURCE_DIR}/update_summary.txt" )
+check_diff_recursively( COPYING "${CMAKE_CURRENT_SOURCE_DIR}/update_summary.txt" )
+check_diff_recursively( CPPLINT.cfg "${CMAKE_CURRENT_SOURCE_DIR}/update_summary.txt" )
+check_diff_recursively( LICENSE.md "${CMAKE_CURRENT_SOURCE_DIR}/update_summary.txt" )
+check_diff_recursively( README.md "${CMAKE_CURRENT_SOURCE_DIR}/update_summary.txt" )
+check_diff_recursively( saber-import.cmake.in "${CMAKE_CURRENT_SOURCE_DIR}/update_summary.txt" )
+
+# Check update summary
+if( EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/update_summary.txt")
+    message( FATAL_ERROR "Merge required in ${CMAKE_CURRENT_SOURCE_DIR}/update_summary.txt" )
+endif()
 
 option(OPENMP "Build saber with OpenMP support" ON)
 

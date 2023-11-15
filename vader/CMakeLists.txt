@@ -12,12 +12,20 @@ cmake_minimum_required( VERSION 3.12 )
 
 project( vader VERSION 1.4.0 LANGUAGES CXX Fortran )
 
+# Remove update summary
+file( REMOVE "${CMAKE_CURRENT_SOURCE_DIR}/update_summary.txt" )
+
 # Copy and update source from VADER
-check_diff_recursively( cmake )
-check_diff_recursively( src )
-check_diff_recursively( tools )
-check_diff_recursively( CPPLINT.cfg )
-check_diff_recursively( vader-import.cmake.in )
+check_diff_recursively( cmake "${CMAKE_CURRENT_SOURCE_DIR}/update_summary.txt" )
+check_diff_recursively( src "${CMAKE_CURRENT_SOURCE_DIR}/update_summary.txt" )
+check_diff_recursively( tools "${CMAKE_CURRENT_SOURCE_DIR}/update_summary.txt" )
+check_diff_recursively( CPPLINT.cfg "${CMAKE_CURRENT_SOURCE_DIR}/update_summary.txt" )
+check_diff_recursively( vader-import.cmake.in "${CMAKE_CURRENT_SOURCE_DIR}/update_summary.txt" )
+
+# Check update summary
+if( EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/update_summary.txt")
+    message( FATAL_ERROR "Merge required in ${CMAKE_CURRENT_SOURCE_DIR}/update_summary.txt" )
+endif()
 
 ## Ecbuild integration
 find_package( ecbuild QUIET )

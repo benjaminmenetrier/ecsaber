@@ -159,11 +159,11 @@ atlas::FieldSet createSpectralCovariances(const oops::patch::Variables & activeV
 }
 
 atlas::FieldSet createVerticalSD(const oops::patch::Variables & activeVars,
-                                 const int modelLevels,
                                  const atlas::FieldSet & spectralVerticalCovariances) {
   atlas::FieldSet verticalSDs;
 
   for (std::string var : activeVars.variables()) {
+    const int modelLevels = activeVars.getLevels(var);
     auto spectralVertCovView =
       atlas::array::make_view<const double, 3>(spectralVerticalCovariances[var]);
 
@@ -222,12 +222,12 @@ atlas::FieldSet createCorrelUMatrices(const oops::patch::Variables & activeVars,
 }
 
 atlas::FieldSet createSpectralCorrelations(const oops::patch::Variables & activeVars,
-                                           const int modelLevels,
                                            const atlas::FieldSet & spectralVerticalCovariances,
                                            const atlas::FieldSet & verticalSDs) {
   atlas::FieldSet spectralCorrelations;
 
   for (std::string var : activeVars.variables()) {
+    const int modelLevels = activeVars.getLevels(var);
     auto spectralVertCovView =
       atlas::array::make_view<const double, 3>(spectralVerticalCovariances[var]);
 
@@ -362,7 +362,7 @@ void readSpectralCovarianceFromFile(const std::string & var,
 
   // read from header file on root PE.
   std::size_t root = 0;
-  if (oops::mpi::world().rank() == root) {
+  if (eckit::mpi::comm().rank() == root) {
      util::atlasArrayInquire(ncfilepath,
                              dimNames,
                              dimSizes,
@@ -378,7 +378,7 @@ void readSpectralCovarianceFromFile(const std::string & var,
   auto specvertview = atlas::array::make_view<double, 3>(spectralVertCov);
   specvertview.assign(0.0);
 
-  if (oops::mpi::world().rank() == root) {
+  if (eckit::mpi::comm().rank() == root) {
     auto it = std::find(variableNames.begin(), variableNames.end(), filevar);
     std::size_t i = std::distance(variableNames.begin(), it);
     std::vector<atlas::idx_t> dimSizesForVar;
@@ -394,9 +394,9 @@ void readSpectralCovarianceFromFile(const std::string & var,
                              netcdfVarIDs[i],
                              specvertview);
   }
-  util::scatter<double>(oops::mpi::world(), root, specvertview);
+  util::scatter<double>(eckit::mpi::comm(), root, specvertview);
 
-  if (oops::mpi::world().rank() == root) {
+  if (eckit::mpi::comm().rank() == root) {
     const int retval = nc_close(netcdfGeneralIDs[0]);
     if (retval) ERR(retval);
   }

@@ -1,5 +1,5 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ProcessPerts.h.tmp	2023-11-10 16:12:30.380284383 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ProcessPerts.h	2023-11-10 10:34:00.819664430 +0100
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ProcessPerts.h.tmp.bak	2023-11-15 13:16:15.924281556 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ProcessPerts.h	2023-11-15 12:45:33.009066079 +0100
 @@ -18,16 +18,14 @@
  #include "eckit/config/LocalConfiguration.h"
  #include "eckit/exception/Exceptions.h"
@@ -25,17 +25,17 @@
  #include "oops/mpi/mpi.h"
  #include "oops/runs/Application.h"
  #include "oops/util/ConfigFunctions.h"
-@@ -44,117 +42,150 @@
+@@ -44,6 +42,9 @@
  #include "saber/blocks/SaberOuterBlockChain.h"
  #include "saber/blocks/SaberParametricBlockChain.h"
  
--#include "saber/oops/Utilities.h"
 +#include "saber/oops/instantiateCovarFactory.h"
 +#include "saber/oops/instantiateLocalizationFactory.h"
 +#include "saber/oops/ECUtilities.h"
+ #include "saber/oops/Utilities.h"
  
  namespace saber {
- 
+@@ -51,90 +52,113 @@
  // -----------------------------------------------------------------------------
  
  /// \brief Top-level options taken by the ProcessPerts application.
@@ -74,16 +74,9 @@
 +  /// Background error covariance model.
 +  oops::RequiredParameter<eckit::LocalConfiguration> filterCovarianceBlockConf{"saber filter blocks", this};
  
--  /// Where to read input ensemble: From states or perturbations
--  oops::OptionalParameter<eckit::LocalConfiguration> ensemble{"ensemble", this};
--  oops::OptionalParameter<eckit::LocalConfiguration> ensemblePert{"ensemble pert", this};
-+  /// Where to read optional input perturbations
-+  oops::OptionalParameter<std::vector<eckit::LocalConfiguration>>
-+    inputPerturbations{"input perturbations", this};
-+
-+  /// Where to read optional input states
-+  oops::OptionalParameter<eckit::LocalConfiguration>
-+    ensembleParams{"ensemble", this};
+   /// Where to read input ensemble: From states or perturbations
+   oops::OptionalParameter<eckit::LocalConfiguration> ensemble{"ensemble", this};
+   oops::OptionalParameter<eckit::LocalConfiguration> ensemblePert{"ensemble pert", this};
  
    /// Where to write low-pass filtered perturbations
 -  oops::OptionalParameter<IncrementWriterParameters_>
@@ -180,16 +173,16 @@
      // Setup geometry
 -    const Geometry_ geom(params.geometry, *commSpace, *commTime);
 +    const Geometry_ geom(params.geometry);
- 
--    // Setup background
--    const State4D_ xx(geom, params.background, *commTime);
++
 +    // Setup model
 +    eckit::LocalConfiguration modelConf;
 +    if (fullConfigUpdated.has("model")) {
 +      modelConf = fullConfigUpdated.getSubConfiguration("model");
 +    }
 +    const Model_ model(geom, modelConf);
-+
+ 
+-    // Setup background
+-    const State4D_ xx(geom, params.background, *commTime);
 +    // Setup background state
 +    const State4D_ xx(params.background, geom, model);
      oops::FieldSet4D fsetXb(xx);
@@ -201,13 +194,8 @@
      // Setup time
      const util::DateTime time = xx[0].validTime();
  
--    eckit::LocalConfiguration filterCovarianceBlockConf(fullConfig, "saber filter blocks");
-     std::unique_ptr<SaberParametricBlockChain> saberFilterBlocks;
+@@ -143,12 +167,13 @@
  
-+    //  List of input and output increments
-+    const auto & incrementsReadParams = params.inputPerturbations.value();
-+    const auto & ensembleParams = params.ensembleParams.value();
-+
      // List of output increments
      const auto & lowpassPerturbations = params.lowpassPerturbations.value();
 -    const IncrementWriteParameters_ & incrementsWriteParams =
@@ -216,109 +204,35 @@
 +      params.outputPerturbations.value();
  
 -    oops::patch::Variables incVars = params.inputVariables;
--    // Initialize outer variables
--    const std::vector<std::size_t> vlevs = geom.variableSizes(incVars);
-+    // Increment variables
 +    Variables_ incVarsT(params.inputVariables.value());
 +    oops::patch::Variables incVars = unTemplatedVars(incVarsT);
+     // Initialize outer variables
+-    const std::vector<std::size_t> vlevs = geom.variableSizes(incVars);
 +    const std::vector<std::size_t> vlevs = geom.geometry().variableSizes(incVarsT.variables());
      for (std::size_t i = 0; i < vlevs.size() ; ++i) {
        incVars.addMetaData(incVars[i], "levels", vlevs[i]);
      }
- 
-     std::vector<atlas::FieldSet> fsetEns;
--    std::vector<atlas::FieldSet> dualResFsetEns;
-+    std::vector<atlas::FieldSet> dualResolutionFsetEns;
-     eckit::LocalConfiguration covarConf;
-     covarConf.set("iterative ensemble loading", false);
-     covarConf.set("inverse test", false);
-@@ -165,96 +196,90 @@
- 
-     // Initialize filter blockchain
-     saberFilterBlocks = std::make_unique<SaberParametricBlockChain>(geom, geom,
--      incVars, fsetXb, fsetFg, fsetEns, dualResFsetEns,
--      covarConf, filterCovarianceBlockConf);
-+      incVars, fsetXb, fsetFg, fsetEns, dualResolutionFsetEns,
-+      covarConf, params.filterCovarianceBlockConf.value());
-+
-+    int nincrements(0);
-+    if (incrementsReadParams != boost::none) {
-+      nincrements = (*incrementsReadParams).size();
-+    }
- 
--    // Yaml validation
--    // TODO(Mayeul): Move this do an override of deserialize
--    if (((params.ensemble.value() == boost::none) &&
--        (params.ensemblePert.value() == boost::none)) ||
--        ((params.ensemble.value() != boost::none) &&
--        (params.ensemblePert.value() != boost::none)))
-+    if (((incrementsReadParams == boost::none) &&
-+        (ensembleParams == boost::none)) ||
-+        ((incrementsReadParams != boost::none) &&
-+        (ensembleParams != boost::none)))
-     {
-       throw eckit::UserError(
-        "Require either input states or input perturbations to be set in yaml",
-        Here());
-     }
- 
--    // Read input ensemble
--    const bool iterativeEnsembleLoading = false;
--    std::vector<atlas::FieldSet> fsetEnsI;
--    eckit::LocalConfiguration ensembleConf(fullConfig);
--    readEnsemble<MODEL>(geom,
--                        incVars,
--                        xx[0], xx[0],
--                        ensembleConf,
--                        iterativeEnsembleLoading,
--                        fsetEnsI);
--    int nincrements = fsetEnsI.size();
-+    // create ensemble mean states if states are read in
-+    Increment_ meanState(geom, incVarsT, time);
-+    meanState.zero();
-+    if (ensembleParams != boost::none) {
-+      nincrements = ensembleParams->getInt("nmembers");
-+    }
-+    std::unique_ptr<oops::Ensemble<MODEL>> stateEnsemble;
-+    if (ensembleParams != boost::none) {
-+      stateEnsemble.reset(new oops::Ensemble<MODEL>(time, *ensembleParams));
-+      stateEnsemble->linearize(xx[0], geom);
-+      for (int jm = 0; jm < nincrements; ++jm) {
-+        meanState += (*stateEnsemble)[jm];
-+      }
-+      meanState *= 1.0/static_cast<double>(nincrements);
-+    }
- 
-     //  Loop over perturbations
+@@ -196,9 +221,10 @@
      for (int jm = 0; jm < nincrements; ++jm) {
--      //  Read ensemble member perturbation
--      atlas::FieldSet fsetI = fsetEnsI[jm];
+       //  Read ensemble member perturbation
+       atlas::FieldSet fsetI = fsetEnsI[jm];
 -      Increment_ dxI(geom, incVars, time);
--      dxI.zero();
--      dxI.fromFieldSet(fsetI);
--
--      //  Copy perturbation
--      atlas::FieldSet fset;
--      util::copyFieldSet(fsetI, fset);
-+      //  Read ensemble member perturbations
 +      Increment_ dxI(geom, incVarsT, time);
+       dxI.zero();
+-      dxI.fromFieldSet(fsetI);
++      dxI.increment().fieldSet() = fsetI;
++      dxI.increment().synchronizeFields();
  
--      oops::Log::test() << "Norm of perturbation : member  " << jm+1
--                        << ": " << dxI.norm() << std::endl;
-+      if (incrementsReadParams != boost::none) {
-+        dxI.read((*incrementsReadParams)[jm]);
-+      }
-+      if (ensembleParams != boost::none) {
-+        dxI = (*stateEnsemble)[jm];
-+        dxI -= meanState;
-+      }
+       //  Copy perturbation
+       atlas::FieldSet fset;
+@@ -207,19 +233,20 @@
+       oops::Log::test() << "Norm of perturbation : member  " << jm+1
+                         << ": " << dxI.norm() << std::endl;
  
 -      oops::FieldSet4D fset4dDxI(oops::FieldSet3D{fsetI, time, geom.getComm()});
 -      oops::FieldSet4D fset4dDx(oops::FieldSet3D{fset, time, geom.getComm()});
-+      //  Copy pert to give #Copy
-+      Increment_ dx(dxI, true);
-+      oops::FieldSet4D fset4dDxI(oops::FieldSet3D{dxI.increment().fieldSet(), time, eckit::mpi::comm()});
-+      oops::FieldSet4D fset4dDx(oops::FieldSet3D{dx.increment().fieldSet(), time, eckit::mpi::comm()});
++      oops::FieldSet4D fset4dDxI(oops::FieldSet3D{fsetI, time, eckit::mpi::comm()});
++      oops::FieldSet4D fset4dDx(oops::FieldSet3D{fset, time, eckit::mpi::comm()});
  
        // Apply filter blocks
        saberFilterBlocks->filter(fset4dDx);
@@ -327,8 +241,7 @@
 -        Increment_ dxLowPass(geom, incVars, time);
 +        Increment_ dxLowPass(geom, incVarsT, time);
          dxLowPass.zero();
--        util::copyFieldSet(fset4dDx[0].fieldSet(), dxLowPass.fieldSet());
--        dxLowPass.synchronizeFields();
+-        dxLowPass.fromFieldSet(fset4dDx[0].fieldSet());
 +        dxLowPass.increment().fieldSet() = fset4dDx[0].fieldSet();
 +        dxLowPass.increment().synchronizeFields();
  
@@ -336,33 +249,23 @@
 -        lowpassPerturbationsUpdated.setMember(jm+1);
 +        setMember(lowpassPerturbationsUpdated,jm+1);
          dxLowPass.write(lowpassPerturbationsUpdated);
--        oops::Log::test() << "Norm of low pass perturbation : member  " << jm+1
--                          << ": " << dxLowPass.norm() << std::endl;
-       }
- 
-       // High pass = full pert - low pass
-       fset4dDx *= -1.0;
+         oops::Log::test() << "Norm of low pass perturbation : member  " << jm+1
+                           << ": " << dxLowPass.norm() << std::endl;
+@@ -230,10 +257,11 @@
        fset4dDxI += fset4dDx;
  
--      // Write high pass
--      util::copyFieldSet(fset4dDxI[0].fieldSet(), dxI.fieldSet());
--      dxI.synchronizeFields();
-+      // Write #Filtered.
-+      Increment_ dxO(geom, incVarsT, time);
-+      dxO.zero();
-+      dxO.increment().fieldSet() = fset4dDxI[0].fieldSet();
-+      dxO.increment().synchronizeFields();
+       // Write high pass
+-      dxI.fromFieldSet(fset4dDxI[0].fieldSet());
++      dxI.increment().fieldSet() = fset4dDxI[0].fieldSet();
++      dxI.increment().synchronizeFields();
  
        auto incrementsWriteParamsUpdated(incrementsWriteParams);
 -      incrementsWriteParamsUpdated.setMember(jm+1);
--      dxI.write(incrementsWriteParamsUpdated);
--
--      oops::Log::test() << "Norm of high pass perturbation : member  " << jm+1
--                        << ": " << dxI.norm() << std::endl;
 +      setMember(incrementsWriteParamsUpdated,jm+1);
-+      dxO.write(incrementsWriteParamsUpdated);
-     }
+       dxI.write(incrementsWriteParamsUpdated);
  
+       oops::Log::test() << "Norm of high pass perturbation : member  " << jm+1
+@@ -243,16 +271,6 @@
      return 0;
    }
  // -----------------------------------------------------------------------------

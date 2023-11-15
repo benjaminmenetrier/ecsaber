@@ -276,7 +276,6 @@ void BUMP::readAtlasFiles() {
 
 std::vector<std::pair<eckit::LocalConfiguration, atlas::FieldSet>> BUMP::fieldsToRead(
   const std::vector<eckit::LocalConfiguration> confs) {
-  // Write output fields
   for (const auto & conf : confs) {
     // Get file configuration
     eckit::LocalConfiguration file = this->getFileConf(*comm_, conf);
