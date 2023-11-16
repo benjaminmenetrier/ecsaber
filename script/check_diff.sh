@@ -54,6 +54,7 @@ else
     patchLength=`cat ${dstPath}.patch | wc -l`
     if test "${patchLength}" = "0"; then 
       rm -f ${dstPath}.patch
+      rm -f ${dstPath}.tmp
     else
       echo "--  - New patch needed for: "${dstPath}
       rm -f ${dstPath}.patch

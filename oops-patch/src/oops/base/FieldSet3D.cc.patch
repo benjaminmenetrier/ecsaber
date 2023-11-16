@@ -1,0 +1,51 @@
+--- /home/benjaminm/code/oops-bundle/ecsaber/oops-patch/src/oops/base/FieldSet3D.cc.tmp	2023-11-16 14:47:14.179971980 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/oops-patch/src/oops/base/FieldSet3D.cc	2023-11-16 14:37:08.832709800 +0100
+@@ -16,10 +16,13 @@
+ 
+ #include "eckit/exception/Exceptions.h"
+ 
++#include "oops/util/dateFunctions.h"
+ #include "oops/util/FieldSetHelpers.h"
+ #include "oops/util/FieldSetOperations.h"
+ #include "oops/util/Logger.h"
+ 
++namespace df = util::datefunctions;
++
+ namespace oops {
+ 
+ // -----------------------------------------------------------------------------
+@@ -104,7 +107,7 @@
+ 
+ size_t FieldSet3D::serialSize() const {
+   // size of valid time + number of variables
+-  size_t fset_size = validTime_.serialSize() + 1;
++  size_t fset_size = 2 + 1;
+   for (const auto & field : fset_) {
+     assert(field.rank() == 2);
+     // size of field + dimension sizes (2) + variable name hash (1)
+@@ -121,7 +124,10 @@
+   vect.reserve(vect.size() + fset_size);
+ 
+   // serialize valid time and number of variables
+-  validTime_.serialize(vect);
++  int year, month, day, hour, minute, second;
++  validTime_.toYYYYMMDDhhmmss(year, month, day, hour, minute, second);
++  vect.push_back(static_cast<double>(df::dateToJulian(year, month, day)));
++  vect.push_back(static_cast<double>(df::hmsToSeconds(hour, minute, second)));
+   vect.push_back(fset_.size());
+ 
+   static_assert(sizeof(double) == sizeof(size_t));
+@@ -146,8 +152,11 @@
+ // -----------------------------------------------------------------------------
+ 
+ void FieldSet3D::deserialize(const std::vector<double> & vect, size_t & index) {
+-  util::DateTime other_time;
+-  other_time.deserialize(vect, index);
++  int year, month, day, hour, minute, second;
++  df::julianToDate(std::lround(vect.at(index)), year, month, day);
++  df::secondToHms(std::lround(vect.at(index+1)), hour, minute, second);
++  index += 2;
++  util::DateTime other_time(year, month, day, hour, minute, second);
+   if (other_time != validTime_) {
+     // All current use cases for this method are needed for fieldsets at different
+     // times to handle 4D aspects in covariances: issue a warning that the dates are

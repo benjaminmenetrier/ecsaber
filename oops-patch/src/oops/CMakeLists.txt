@@ -32,6 +32,8 @@ util/ConfigFunctions.cc
 util/ConfigFunctions.h
 util/ConfigHelpers.cc
 util/ConfigHelpers.h
+util/dateFunctions.cc
+util/dateFunctions.h
 util/FieldSetHelpers.cc
 util/FieldSetHelpers.h
 util/FieldSetOperations.cc
@@ -40,6 +42,8 @@ util/FloatCompare.h
 util/gatherPrint.h
 util/IntSetParser.cc
 util/IntSetParser.h
+util/missingValues.cc
+util/missingValues.h
 util/NamedEnumerator.h
 util/parameters/ConfigurationParameter.cc
 util/parameters/ConfigurationParameter.h
@@ -102,8 +106,6 @@ endif()
 
 list( APPEND oops_ecmwf_src_files
 util/abor1_cpp.h
-util/dateFunctions.cc
-util/dateFunctions.h
 util/DateTime.cc
 util/DateTime.h
 util/Duration.cc
@@ -111,8 +113,6 @@ util/Duration.h
 util/formats.h
 util/kinds.F90
 util/Logger.h
-util/missingValues.cc
-util/missingValues.h
 util/ObjectCounter.h
 util/Printable.h
 util/Timer.h
