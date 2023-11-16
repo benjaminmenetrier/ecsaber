@@ -38,7 +38,7 @@ class HydroBalParameters : public SaberBlockParametersBase {
  public:
   oops::RequiredParameter<std::string> svp_file{"saturation vapour pressure file", this};
   oops::patch::Variables mandatoryActiveVars() const override {return oops::patch::Variables({
-    "air_pressure_levels_minus_one",
+    "air_pressure_levels",
     "hydrostatic_exner_levels",
     "virtual_potential_temperature"});}
 };

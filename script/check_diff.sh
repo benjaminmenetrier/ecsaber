@@ -58,7 +58,7 @@ else
     else
       echo "--  - New patch needed for: "${dstPath}
       rm -f ${dstPath}.patch
-      echo "meld ${dstPath}.tmp ${dstPath}; diff -u ${dstPath}.tmp ${dstPath} > ${dstPath}.patch; patchLength=\`cat ${dstPath}.patch | wc -l\`; if test "${patchLength}" = "0"; then rm -f ${dstPath}.patch;fi;rm -f ${dstPath}.tmp" >> ${commandPath}
+      echo "meld ${dstPath}.tmp ${dstPath}; diff -u ${dstPath}.tmp ${dstPath} > ${dstPath}.patch; patchLength=\`cat ${dstPath}.patch | wc -l\`; if test "\$\{patchLength\}" = "0"; then rm -f ${dstPath}.patch;fi;rm -f ${dstPath}.tmp" >> ${commandPath}
       echo "" >> ${commandPath}
     fi
   else

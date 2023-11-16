@@ -38,7 +38,7 @@ class DryAirDensityParameters : public SaberBlockParametersBase {
  public:
   oops::patch::Variables mandatoryActiveVars() const override {return oops::patch::Variables({
     "dry_air_density_levels_minus_one",
-    "air_pressure_levels_minus_one",
+    "air_pressure_levels",
     "virtual_potential_temperature"});}
 };
 
