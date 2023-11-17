@@ -204,18 +204,8 @@ class ErrorCovarianceToolbox : public oops::Application {
                                             covarParams, geom, vars, xx[0]));
 
       // Linearize
-      eckit::LocalConfiguration linConf;
       const std::string covarianceModel(covarParams.getString("covariance"));
-      if (covarianceModel == "hybrid") {
-        eckit::LocalConfiguration jbConf;
-        jbConf.set("Covariance", covarParams);
-        linConf.set("Jb", jbConf);
-      } else if (covarianceModel == "ensemble") {
-        linConf.set("ensemble_covariance", covarParams);
-      } else {
-        linConf = covarParams;
-      }
-      Bmat->linearize(xx[0], geom, linConf);
+      Bmat->linearize(xx[0], geom);
 
       // Randomization
       randomization(params, geom, vars, xx, Bmat, ntasks);
@@ -267,18 +257,8 @@ class ErrorCovarianceToolbox : public oops::Application {
                                           covarConf, geom, vars, xx[0]));
 
     // Linearize
-    eckit::LocalConfiguration linConf;
     const std::string covarianceModel(covarConf.getString("covariance"));
-    if (covarianceModel == "hybrid") {
-      eckit::LocalConfiguration jbConf;
-      jbConf.set("Covariance", covarConf);
-      linConf.set("Jb", jbConf);
-    } else if (covarianceModel == "ensemble") {
-      linConf.set("ensemble_covariance", covarConf);
-    } else {
-      linConf = covarConf;
-    }
-    Bmat->linearize(xx[0], geom, linConf);
+    Bmat->linearize(xx[0], geom);
 
     // Multiply
     Bmat->multiply(dxi[0], dxo[0]);

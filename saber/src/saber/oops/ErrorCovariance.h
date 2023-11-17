@@ -71,7 +71,7 @@ class ErrorCovariance : public oops::ModelSpaceCovarianceBase<MODEL> {
   ~ErrorCovariance();
 
   // Methods
-  void linearize(const State_ &, const Geometry_ &, const eckit::Configuration &) override;
+  void linearize(const State_ &, const Geometry_ &) override;
   void multiply(const Increment_ &, Increment_ &) const override;
   void inverseMultiply(const Increment_ &, Increment_ &) const override;
   void multiplySqrt(const IncrCtlVec_ &, Increment_ &) const override;
@@ -333,8 +333,7 @@ ErrorCovariance<MODEL>::~ErrorCovariance() {
 
 template <typename MODEL>
 void ErrorCovariance<MODEL>::linearize(const State_ &,
-                                       const Geometry_ &,
-                                       const eckit::Configuration &) {
+                                       const Geometry_ &) {
   oops::Log::trace() << "ErrorCovariance linearized." << std::endl;
 }
 
