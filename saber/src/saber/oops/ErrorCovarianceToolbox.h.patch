@@ -1,5 +1,5 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ErrorCovarianceToolbox.h.tmp	2023-11-10 16:12:30.548284162 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ErrorCovarianceToolbox.h	2023-11-10 10:23:02.320305089 +0100
+--- /home/benjaminm/code/Harmonie/bundle/ecsaber/saber/src/saber/oops/ErrorCovarianceToolbox.h.tmp.bak	2023-11-17 11:09:21.620400175 +0100
++++ /home/benjaminm/code/Harmonie/bundle/ecsaber/saber/src/saber/oops/ErrorCovarianceToolbox.h	2023-11-16 18:50:58.359966624 +0100
 @@ -1,38 +1,30 @@
  /*
 - * (C) Copyright 2021-2023 UCAR
@@ -247,7 +247,7 @@
        oops::Log::test() << "Input Dirac increment:" << dxi << std::endl;
  
        // Test configuration
-@@ -219,21 +181,41 @@
+@@ -219,21 +181,31 @@
          testConf.set("diagnostic points", *diagnostic);
        }
  
@@ -281,22 +281,12 @@
 +                                            covarParams, geom, vars, xx[0]));
 +
 +      // Linearize
-+      eckit::LocalConfiguration linConf;
 +      const std::string covarianceModel(covarParams.getString("covariance"));
-+      if (covarianceModel == "hybrid") {
-+        eckit::LocalConfiguration jbConf;
-+        jbConf.set("Covariance", covarParams);
-+        linConf.set("Jb", jbConf);
-+      } else if (covarianceModel == "ensemble") {
-+        linConf.set("ensemble_covariance", covarParams);
-+      } else {
-+        linConf = covarParams;
-+      }
-+      Bmat->linearize(xx[0], geom, linConf);
++      Bmat->linearize(xx[0], geom);
  
        // Randomization
        randomization(params, geom, vars, xx, Bmat, ntasks);
-@@ -242,16 +224,6 @@
+@@ -242,16 +214,6 @@
      return 0;
    }
  // -----------------------------------------------------------------------------
@@ -313,7 +303,7 @@
   private:
    std::string appname() const override {
      return "oops::ErrorCovarianceToolbox<" + MODEL::name() + ">";
-@@ -265,15 +237,15 @@
+@@ -265,15 +227,15 @@
  
      // Create diagnostic field
      Increment4D_ diagPoints(data);
@@ -336,7 +326,7 @@
      }
  
      oops::Log::trace() << appname() << "::print_value_at_position done" << std::endl;
-@@ -284,7 +256,7 @@
+@@ -284,7 +246,7 @@
               const eckit::LocalConfiguration & testConf,
               std::string & id,
               const Geometry_ & geom,
@@ -345,7 +335,7 @@
               const State4D_ & xx,
               const Increment4D_ & dxi) const {
      // Define output increment
-@@ -292,10 +264,24 @@
+@@ -292,10 +254,14 @@
  
      // Covariance
      std::unique_ptr<CovarianceBase_> Bmat(CovarianceFactory_::create(
@@ -353,18 +343,8 @@
 +                                          covarConf, geom, vars, xx[0]));
 +
 +    // Linearize
-+    eckit::LocalConfiguration linConf;
 +    const std::string covarianceModel(covarConf.getString("covariance"));
-+    if (covarianceModel == "hybrid") {
-+      eckit::LocalConfiguration jbConf;
-+      jbConf.set("Covariance", covarConf);
-+      linConf.set("Jb", jbConf);
-+    } else if (covarianceModel == "ensemble") {
-+      linConf.set("ensemble_covariance", covarConf);
-+    } else {
-+      linConf = covarConf;
-+    }
-+    Bmat->linearize(xx[0], geom, linConf);
++    Bmat->linearize(xx[0], geom);
  
      // Multiply
 -    Bmat->multiply(dxi, dxo);
@@ -372,7 +352,7 @@
  
      // Update ID
      if (id != "") id.append("_");
-@@ -324,17 +310,13 @@
+@@ -324,17 +290,13 @@
      oops::Log::test() << "Covariance(" << id << ") * Increment:" << dxo << std::endl;
  
      // Look for hybrid or ensemble covariance models
@@ -396,7 +376,7 @@
      }
      if (covarianceModel == "ensemble" && covarConf.has("localization")) {
        // Localization configuration
-@@ -348,7 +330,7 @@
+@@ -348,7 +310,7 @@
        Localization_ Lmat(geom, vars, locConfig);
  
        // Apply localization
@@ -405,7 +385,7 @@
  
        // Update ID
        std::string idL(id);
-@@ -375,9 +357,9 @@
+@@ -375,9 +337,9 @@
      }
    }
  // -----------------------------------------------------------------------------
@@ -417,7 +397,7 @@
                       const State4D_ & xx,
                       const std::unique_ptr<CovarianceBase_> & Bmat,
                       const size_t & ntasks) const {
-@@ -387,9 +369,9 @@
+@@ -387,9 +349,9 @@
        oops::Log::info() << "Info     : -----------------------" << std::endl;
  
        // Create increments
@@ -430,7 +410,7 @@
  
        // Initialize variance
        variance.zero();
-@@ -405,7 +387,7 @@
+@@ -405,7 +367,7 @@
        for (size_t jm = 0; jm < Bmat->randomizationSize(); ++jm) {
          // Generate member
          oops::Log::info() << "Info     : Member " << jm << std::endl;
@@ -439,7 +419,7 @@
  
          if ((outputPerturbations != boost::none) || (outputStates != boost::none)) {
            // Save member
-@@ -414,7 +396,9 @@
+@@ -414,7 +376,9 @@
  
          // Square perturbation
          dxsq = dx;
@@ -450,7 +430,7 @@
  
          // Update variance
          variance += dxsq;
-@@ -430,8 +414,8 @@
+@@ -430,8 +394,8 @@
  
            if (outputPerturbations != boost::none) {
              // Update config
@@ -461,7 +441,7 @@
              setMPI(outputPerturbationsUpdated, ntasks);
  
              // Write perturbation
-@@ -440,8 +424,8 @@
+@@ -440,8 +404,8 @@
  
            if (outputStates != boost::none) {
              // Update config
@@ -472,7 +452,7 @@
              setMPI(outputStatesUpdated, ntasks);
  
              // Add background state to perturbation
-@@ -466,7 +450,7 @@
+@@ -466,7 +430,7 @@
            variance *= rk_norm;
          }
  

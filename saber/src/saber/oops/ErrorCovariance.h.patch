@@ -1,5 +1,5 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ErrorCovariance.h.tmp.bak	2023-11-15 12:03:34.353541901 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ErrorCovariance.h	2023-11-15 10:47:20.077990890 +0100
+--- /home/benjaminm/code/Harmonie/bundle/ecsaber/saber/src/saber/oops/ErrorCovariance.h.tmp.bak	2023-11-17 11:09:21.596400179 +0100
++++ /home/benjaminm/code/Harmonie/bundle/ecsaber/saber/src/saber/oops/ErrorCovariance.h	2023-11-16 18:49:11.788222903 +0100
 @@ -13,20 +13,17 @@
  
  #include "atlas/field.h"
@@ -79,7 +79,7 @@
 +  ~ErrorCovariance();
 +
 +  // Methods
-+  void linearize(const State_ &, const Geometry_ &, const eckit::Configuration &) override;
++  void linearize(const State_ &, const Geometry_ &) override;
 +  void multiply(const Increment_ &, Increment_ &) const override;
 +  void inverseMultiply(const Increment_ &, Increment_ &) const override;
 +  void multiplySqrt(const IncrCtlVec_ &, Increment_ &) const override;
@@ -166,14 +166,13 @@
      }
  
      // Loop over components
-@@ -314,16 +331,43 @@
+@@ -314,16 +331,42 @@
  
  // -----------------------------------------------------------------------------
  
 +template <typename MODEL>
 +void ErrorCovariance<MODEL>::linearize(const State_ &,
-+                                       const Geometry_ &,
-+                                       const eckit::Configuration &) {
++                                       const Geometry_ &) {
 +  oops::Log::trace() << "ErrorCovariance linearized." << std::endl;
 +}
 +
@@ -214,7 +213,7 @@
    for (size_t jtime = 0; jtime < fset4dSum.size(); ++jtime) {
      fset4dSum[jtime].fieldSet() = util::copyFieldSet(fset);
    }
-@@ -331,7 +375,7 @@
+@@ -331,7 +374,7 @@
    // Loop over components for the central block
    for (size_t jj = 0; jj < hybridBlockChain_.size(); ++jj) {
      // Randomize covariance
@@ -223,7 +222,7 @@
      hybridBlockChain_[jj]->randomize(fset4dCmp);
  
      // Weight square-root multiplication
-@@ -351,20 +395,28 @@
+@@ -351,20 +394,28 @@
    if (outerBlockChain_) outerBlockChain_->applyOuterBlocks(fset4dSum);
  
    // ATLAS fieldset to Increment_
@@ -259,7 +258,7 @@
  
    // Copy input
    dxo = dxi;
-@@ -413,26 +465,126 @@
+@@ -413,26 +464,126 @@
    if (outerBlockChain_) outerBlockChain_->applyOuterBlocks(fset4dSum);
  
    // ATLAS fieldset to Increment_
