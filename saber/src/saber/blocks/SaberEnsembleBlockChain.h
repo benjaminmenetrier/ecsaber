@@ -185,8 +185,11 @@ SaberEnsembleBlockChain::SaberEnsembleBlockChain(const oops::Geometry<MODEL> & g
                               centralBlockConf.getSubConfiguration("inflation field.model file");
     // Copy file
     // Read fieldsets as increments
+    // Create variables
+    oops::Variables<MODEL> varsT(templatedVarsConf(activeVars));
+
     // Create increment
-    oops::Increment<MODEL> dx(geom, templatedVars<MODEL>(activeVars), fset4dXb[0].validTime());
+    oops::Increment<MODEL> dx(geom, varsT, fset4dXb[0].validTime());
     dx.read(inflationConf);
     oops::Log::test() << "Norm of input parameter inflation"
                       << ": " << dx.norm() << std::endl;

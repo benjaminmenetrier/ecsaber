@@ -153,8 +153,11 @@ void readHybridWeight(const oops::Geometry<MODEL> & geom,
   // Local copy
   eckit::LocalConfiguration localConf(conf);
 
+  // Create variables
+  oops::Variables<MODEL> varsT(templatedVarsConf(vars));
+
   // Create Increment
-  oops::Increment<MODEL> dx(geom, templatedVars<MODEL>(vars), date);
+  oops::Increment<MODEL> dx(geom, varsT, date);
 
   // Read file
   dx.read(localConf);
@@ -185,8 +188,11 @@ void readEnsembleMember(const oops::Geometry<MODEL> & geom,
     // Ensemble of states passed as increments
     std::vector<eckit::LocalConfiguration> membersConf = conf.getSubConfigurations("ensemble");
 
+    // Create variables
+    oops::Variables<MODEL> varsT(templatedVarsConf(vars));
+
     // Read state as increment
-    oops::Increment<MODEL> dx(geom, templatedVars<MODEL>(vars), date);
+    oops::Increment<MODEL> dx(geom, varsT, date);
     dx.read(membersConf[ie]);
 
     // Copy FieldSet
@@ -199,8 +205,11 @@ void readEnsembleMember(const oops::Geometry<MODEL> & geom,
     // Increment ensemble from difference of two states
     std::vector<eckit::LocalConfiguration> membersConf = conf.getSubConfigurations("ensemble");
 
+    // Create variables
+    oops::Variables<MODEL> varsT(templatedVarsConf(vars));
+
     // Read Increment
-    oops::Increment<MODEL> dx(geom, templatedVars<MODEL>(vars), date);
+    oops::Increment<MODEL> dx(geom, varsT, date);
     dx.read(membersConf[ie]);
 
     // Get FieldSet

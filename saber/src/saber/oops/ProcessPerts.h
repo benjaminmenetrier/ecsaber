@@ -171,7 +171,7 @@ class ProcessPerts : public oops::Application {
       params.outputPerturbations.value();
 
     Variables_ incVarsT(params.inputVariables.value());
-    oops::patch::Variables incVars = unTemplatedVars(incVarsT);
+    oops::patch::Variables incVars(incVarsT.variables().variablesList());
     // Initialize outer variables
     const std::vector<std::size_t> vlevs = geom.geometry().variableSizes(incVarsT.variables());
     for (std::size_t i = 0; i < vlevs.size() ; ++i) {

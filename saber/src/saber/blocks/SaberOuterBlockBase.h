@@ -268,8 +268,11 @@ void SaberOuterBlockBase::read(const oops::Geometry<MODEL> & geom,
 
   // Read fieldsets as increments
   for (auto & input : inputs) {
+    // Create variables
+    oops::Variables<MODEL> varsT(templatedVarsConf(vars));
+
     // Create increment
-    oops::Increment<MODEL> dx(geom, templatedVars<MODEL>(vars), date);
+    oops::Increment<MODEL> dx(geom, varsT, date);
     dx.read(input.first);
     oops::Log::test() << "Norm of input parameter " << input.second.name()
                       << ": " << dx.norm() << std::endl;
@@ -291,8 +294,11 @@ void SaberOuterBlockBase::write(const oops::Geometry<MODEL> & geom,
   std::vector<std::pair<eckit::LocalConfiguration, atlas::FieldSet>> outputs
     = this->fieldsToWrite();
 
+  // Create variables
+  oops::Variables<MODEL> varsT(templatedVarsConf(vars));
+
   // Create increment
-  oops::Increment<MODEL> dx(geom, templatedVars<MODEL>(vars), date);
+  oops::Increment<MODEL> dx(geom, varsT, date);
 
   // Loop and write
   for (const auto & output : outputs) {

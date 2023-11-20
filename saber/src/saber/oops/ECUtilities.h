@@ -14,10 +14,12 @@
 
 #include "oops/assimilation/Increment4D.h"
 #include "oops/base/Variables.h"
-#include "oops/interface/Variables.h"
-
 
 namespace saber {
+
+// -----------------------------------------------------------------------------
+
+eckit::LocalConfiguration templatedVarsConf(const oops::patch::Variables &);
 
 // -----------------------------------------------------------------------------
 
@@ -35,23 +37,6 @@ void dirac4D(const eckit::Configuration & conf,
       }
     }
   }
-}
-
-// -----------------------------------------------------------------------------
-
-template<typename MODEL>
-oops::patch::Variables unTemplatedVars(const oops::Variables<MODEL> & vars) {
-  return oops::patch::Variables(vars.variables().variablesList());
-}
-
-// -----------------------------------------------------------------------------
-
-template<typename MODEL>
-oops::Variables<MODEL> templatedVars(const oops::patch::Variables & vars) {
-  eckit::LocalConfiguration varConf;
-  varConf.set("variables list", vars.variables());
-  varConf.set("variables metadata", eckit::LocalConfiguration(vars.variablesMetaData()));
-  return oops::Variables<MODEL>(varConf);
 }
 
 // -----------------------------------------------------------------------------

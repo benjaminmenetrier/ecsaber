@@ -297,9 +297,11 @@ SaberParametricBlockChain::SaberParametricBlockChain(const oops::Geometry<MODEL>
 
     for (size_t ie = 0; ie < ensembleSize; ++ie) {
       oops::Log::info() << "Info     : Write member " << ie << std::endl;
+      // Create variables
+      oops::Variables<MODEL> varsT(templatedVarsConf(activeVars));
 
       // Increment pointer
-      oops::Increment<MODEL> dx(geom, templatedVars<MODEL>(activeVars), fset4dXb[0].validTime());
+      oops::Increment<MODEL> dx(geom, varsT, fset4dXb[0].validTime());
 
       // Get ensemble member
       if (iterativeEnsembleLoading) {

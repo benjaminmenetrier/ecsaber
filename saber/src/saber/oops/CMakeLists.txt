@@ -5,6 +5,7 @@
 
 list( APPEND oops_src_files_list
 # EC utilities
+ECUtilities.cc
 ECUtilities.h
 
 # Parameters
