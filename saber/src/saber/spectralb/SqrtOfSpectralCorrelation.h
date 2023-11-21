@@ -24,8 +24,8 @@ namespace spectralb {
 
 // -----------------------------------------------------------------------------
 
-class SqrtOfSpectralCovarianceParameters : public SaberBlockParametersBase {
-  OOPS_CONCRETE_PARAMETERS(SqrtOfSpectralCovarianceParameters, SaberBlockParametersBase)
+class SqrtOfSpectralCorrelationParameters : public SaberBlockParametersBase {
+  OOPS_CONCRETE_PARAMETERS(SqrtOfSpectralCorrelationParameters, SaberBlockParametersBase)
 
  public:
   oops::OptionalParameter<spectralbReadParameters> readParams{"read", this};
@@ -34,20 +34,20 @@ class SqrtOfSpectralCovarianceParameters : public SaberBlockParametersBase {
 
 // -----------------------------------------------------------------------------
 
-class SqrtOfSpectralCovariance : public SaberOuterBlockBase {
+class SqrtOfSpectralCorrelation : public SaberOuterBlockBase {
  public:
-  static const std::string classname() {return "saber::spectralb::SqrtOfSpectralCovariance";}
+  static const std::string classname() {return "saber::spectralb::SqrtOfSpectralCorrelation";}
 
-  typedef SqrtOfSpectralCovarianceParameters Parameters_;
+  typedef SqrtOfSpectralCorrelationParameters Parameters_;
 
-  SqrtOfSpectralCovariance(const oops::GeometryData &,
-                           const oops::patch::Variables &,
-                           const eckit::Configuration &,
-                           const Parameters_ &,
-                           const oops::FieldSet3D &,
-                           const oops::FieldSet3D &);
+  SqrtOfSpectralCorrelation(const oops::GeometryData &,
+                            const oops::patch::Variables &,
+                            const eckit::Configuration &,
+                            const Parameters_ &,
+                            const oops::FieldSet3D &,
+                            const oops::FieldSet3D &);
 
-  virtual ~SqrtOfSpectralCovariance() = default;
+  virtual ~SqrtOfSpectralCorrelation() = default;
 
   const oops::GeometryData & innerGeometryData() const override {return innerGeometryData_;}
   const oops::patch::Variables & innerVars() const override {return outerVars_;}
@@ -68,7 +68,7 @@ class SqrtOfSpectralCovariance : public SaberOuterBlockBase {
   oops::patch::Variables outerVars_;
 
   /// Covariance statistics
-  atlas::FieldSet spectralUMatrices_;
+  atlas::FieldSet spectralCorrelUMatrices_;
   /// Spectral FunctionSpace
   const atlas::functionspace::Spectral specFunctionSpace_;
   /// Geometry data

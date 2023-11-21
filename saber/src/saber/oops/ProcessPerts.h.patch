@@ -1,5 +1,5 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ProcessPerts.h.tmp.bak	2023-11-15 13:16:15.924281556 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ProcessPerts.h	2023-11-15 12:45:33.009066079 +0100
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ProcessPerts.h.tmp.bak	2023-11-20 18:49:11.367353327 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ProcessPerts.h	2023-11-20 18:54:55.611849908 +0100
 @@ -18,16 +18,14 @@
  #include "eckit/config/LocalConfiguration.h"
  #include "eckit/exception/Exceptions.h"
@@ -205,7 +205,7 @@
  
 -    oops::patch::Variables incVars = params.inputVariables;
 +    Variables_ incVarsT(params.inputVariables.value());
-+    oops::patch::Variables incVars = unTemplatedVars(incVarsT);
++    oops::patch::Variables incVars(incVarsT.variables().variablesList());
      // Initialize outer variables
 -    const std::vector<std::size_t> vlevs = geom.variableSizes(incVars);
 +    const std::vector<std::size_t> vlevs = geom.geometry().variableSizes(incVarsT.variables());

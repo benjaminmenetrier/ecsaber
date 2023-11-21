@@ -1,5 +1,5 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/Localization.h.tmp.bak	2023-11-15 12:14:08.891934978 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/Localization.h	2023-11-15 12:09:33.607109327 +0100
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/Localization.h.tmp.bak	2023-11-20 18:49:11.351353303 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/Localization.h	2023-11-20 18:54:42.615831586 +0100
 @@ -1,8 +1,6 @@
  /*
 - * (C) Copyright 2021 UCAR
@@ -79,7 +79,7 @@
 -  const std::vector<std::size_t> vlevs = geom.variableSizes(incVarsNoMeta);
 -  oops::patch::Variables incVars(incVarsNoMeta);
 +  const std::vector<std::size_t> vlevs = geom.geometry().variableSizes(incVarsNoMeta.variables());
-+  oops::patch::Variables incVars = unTemplatedVars(incVarsNoMeta);
++  oops::patch::Variables incVars(incVarsNoMeta.variables().variablesList());
    for (std::size_t i = 0; i < vlevs.size() ; ++i) {
      incVars.addMetaData(incVars[i], "levels", vlevs[i]);
    }

@@ -1,5 +1,5 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberCentralBlockBase.h.tmp	2023-11-10 16:12:29.140286024 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberCentralBlockBase.h	2023-11-09 10:22:21.334376184 +0100
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberCentralBlockBase.h.tmp.bak	2023-11-20 18:49:10.911352650 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberCentralBlockBase.h	2023-11-20 18:39:33.466418614 +0100
 @@ -30,6 +30,7 @@
  #include "oops/util/Printable.h"
  
@@ -8,12 +8,16 @@
  
  // Forward declaration
  namespace oops {
-@@ -224,11 +225,11 @@
+@@ -223,12 +224,15 @@
+ 
    // Read fieldsets as increments
    for (auto & input : this->fieldsToRead()) {
++    // Create variables
++    oops::Variables<MODEL> varsT(templatedVarsConf(vars));
++
      // Create increment
 -    oops::Increment<MODEL> dx(geom, vars, date);
-+    oops::Increment<MODEL> dx(geom, templatedVars<MODEL>(vars), date);
++    oops::Increment<MODEL> dx(geom, varsT, date);
      dx.read(input.first);
      oops::Log::test() << "Norm of input parameter " << input.second.name()
                        << ": " << dx.norm() << std::endl;
@@ -22,12 +26,16 @@
    }
  
    oops::Log::trace() << "SaberCentralBlockBase::read done" << std::endl;
-@@ -247,12 +248,12 @@
+@@ -246,13 +250,16 @@
+   std::vector<std::pair<eckit::LocalConfiguration, atlas::FieldSet>> outputs
      = this->fieldsToWrite();
  
++  // Create variables
++  oops::Variables<MODEL> varsT(templatedVarsConf(vars));
++
    // Create increment
 -  oops::Increment<MODEL> dx(geom, vars, date);
-+  oops::Increment<MODEL> dx(geom, templatedVars<MODEL>(vars), date);
++  oops::Increment<MODEL> dx(geom, varsT, date);
  
    // Write fieldsets as increments
    for (const auto & output : outputs) {

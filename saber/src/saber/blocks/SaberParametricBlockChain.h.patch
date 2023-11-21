@@ -1,5 +1,5 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberParametricBlockChain.h.tmp	2023-11-10 16:12:29.088286093 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberParametricBlockChain.h	2023-11-10 09:57:42.023201805 +0100
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberParametricBlockChain.h.tmp.bak	2023-11-20 18:49:10.891352620 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberParametricBlockChain.h	2023-11-20 18:39:33.470418620 +0100
 @@ -74,6 +74,8 @@
    size_t size4D_;
    oops::patch::Variables centralVars_;
@@ -55,12 +55,16 @@
        == util::getGridUid(currentOuterGeom.functionSpace()));
  
      // Get ensemble size
-@@ -293,26 +299,26 @@
+@@ -291,28 +297,30 @@
+ 
+     for (size_t ie = 0; ie < ensembleSize; ++ie) {
        oops::Log::info() << "Info     : Write member " << ie << std::endl;
++      // Create variables
++      oops::Variables<MODEL> varsT(templatedVarsConf(activeVars));
  
        // Increment pointer
 -      oops::Increment<MODEL> dx(geom, activeVars, fset4dXb[0].validTime());
-+      oops::Increment<MODEL> dx(geom, templatedVars<MODEL>(activeVars), fset4dXb[0].validTime());
++      oops::Increment<MODEL> dx(geom, varsT, fset4dXb[0].validTime());
  
        // Get ensemble member
        if (iterativeEnsembleLoading) {
