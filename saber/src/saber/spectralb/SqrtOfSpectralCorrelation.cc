@@ -5,7 +5,8 @@
  * which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
  */
 
-#include "saber/spectralb/SqrtOfSpectralCovariance.h"
+
+#include "saber/spectralb/SqrtOfSpectralCorrelation.h"
 
 #include "atlas/array/MakeView.h"
 #include "atlas/field/Field.h"
@@ -27,11 +28,11 @@ namespace spectralb {
 
 // -----------------------------------------------------------------------------
 
-static SaberOuterBlockMaker<SqrtOfSpectralCovariance>
-    makerSqrtOfSpectralCovariance_("square root of spectral covariance");
+static SaberOuterBlockMaker<SqrtOfSpectralCorrelation>
+    makerSqrtOfSpectralCorrelation_("square root of spectral correlation");
 
 // -----------------------------------------------------------------------------
-SqrtOfSpectralCovariance::SqrtOfSpectralCovariance(
+SqrtOfSpectralCorrelation::SqrtOfSpectralCorrelation(
     const oops::GeometryData & outerGeometryData,
     const oops::patch::Variables & outerVars,
     const eckit::Configuration & covarConf,
@@ -45,19 +46,19 @@ SqrtOfSpectralCovariance::SqrtOfSpectralCovariance(
     specFunctionSpace_(outerGeometryData.functionSpace()),
     innerGeometryData_(outerGeometryData)
 {
-  oops::Log::trace() << classname() << "::SqrtOfSpectralCovariance starting " << std::endl;
+  oops::Log::trace() << classname() << "::SqrtOfSpectralCorrelation starting " << std::endl;
 
-  oops::Log::trace() << classname() << "::SqrtOfSpectralCovariance done" << std::endl;
+  oops::Log::trace() << classname() << "::SqrtOfSpectralCorrelation done" << std::endl;
 }
 
 // -----------------------------------------------------------------------------
 
-void SqrtOfSpectralCovariance::multiply(atlas::FieldSet & fieldSet) const {
+void SqrtOfSpectralCorrelation::multiply(atlas::FieldSet & fieldSet) const {
   oops::Log::trace() << classname() << "::multiply starting" << std::endl;
 
   specutils::spectralVerticalConvolutionSqrt(activeVars_,
                                              specFunctionSpace_,
-                                             spectralUMatrices_,
+                                             spectralCorrelUMatrices_,
                                              fieldSet);
 
   oops::Log::trace() << classname() << "::multiply done" << std::endl;
@@ -65,12 +66,12 @@ void SqrtOfSpectralCovariance::multiply(atlas::FieldSet & fieldSet) const {
 
 // -----------------------------------------------------------------------------
 
-void SqrtOfSpectralCovariance::multiplyAD(atlas::FieldSet & fieldSet) const {
+void SqrtOfSpectralCorrelation::multiplyAD(atlas::FieldSet & fieldSet) const {
   oops::Log::trace() << classname() << "::multiplyUMatrixAD starting" << std::endl;
 
   specutils::spectralVerticalConvolutionSqrtAD(activeVars_,
                                                specFunctionSpace_,
-                                               spectralUMatrices_,
+                                               spectralCorrelUMatrices_,
                                                fieldSet);
 
   oops::Log::trace() << classname() << "::multiplyUMatrixAD done" << std::endl;
@@ -80,21 +81,37 @@ void SqrtOfSpectralCovariance::multiplyAD(atlas::FieldSet & fieldSet) const {
 
 // -----------------------------------------------------------------------------
 
-void SqrtOfSpectralCovariance::read() {
+void SqrtOfSpectralCorrelation::read() {
   oops::Log::trace() << classname() << "::read starting" << std::endl;
 
-  // Note this is reading in the full spectral bins that exist in the cov file
-  spectralUMatrices_.clear();
   const spectralbReadParameters readP = *params_.readParams.value();
   const std::vector<std::size_t> nSpectralBinsFull = specutils::getNSpectralBinsFull(readP);
-  spectralUMatrices_ = specutils::createUMatrices(activeVars_, nSpectralBinsFull, readP);
+
+  atlas::FieldSet spectralUMatrices = specutils::createUMatrices(activeVars_,
+                                                                 nSpectralBinsFull,
+                                                                 readP);
+
+  atlas::FieldSet spectralVerticalCovariances =
+    specutils::createSpectralCovariances(activeVars_,
+                                         nSpectralBinsFull,
+                                         specFunctionSpace_.truncation() + 1,
+                                         spectralUMatrices);
+
+  atlas::FieldSet verticalStdDevs = specutils::createVerticalSD(activeVars_,
+                                                                spectralVerticalCovariances);
+
+  spectralCorrelUMatrices_.clear();
+  spectralCorrelUMatrices_ = specutils::createCorrelUMatrices(activeVars_,
+                                                              spectralVerticalCovariances,
+                                                              spectralUMatrices,
+                                                              verticalStdDevs);
 
   oops::Log::trace() << classname() << "::read done" << std::endl;
 }
 
 // -----------------------------------------------------------------------------
 
-void SqrtOfSpectralCovariance::print(std::ostream & os) const {
+void SqrtOfSpectralCorrelation::print(std::ostream & os) const {
   os << classname();
 }
 

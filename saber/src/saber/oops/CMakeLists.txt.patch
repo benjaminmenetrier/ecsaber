@@ -1,16 +1,17 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/CMakeLists.txt.tmp	2023-11-10 16:12:30.460284278 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/CMakeLists.txt	2023-11-09 11:45:07.861675637 +0100
-@@ -4,6 +4,9 @@
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/CMakeLists.txt.tmp.bak	2023-11-20 18:49:11.391353362 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/CMakeLists.txt	2023-11-20 18:39:33.470418620 +0100
+@@ -4,6 +4,10 @@
  # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
  
  list( APPEND oops_src_files_list
 +# EC utilities
++ECUtilities.cc
 +ECUtilities.h
 +
  # Parameters
  ErrorCovarianceParameters.h
  
-@@ -13,7 +16,6 @@
+@@ -13,7 +17,6 @@
  
  # Application
  ErrorCovarianceToolbox.h

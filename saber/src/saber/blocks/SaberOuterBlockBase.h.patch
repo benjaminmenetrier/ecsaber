@@ -1,5 +1,5 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberOuterBlockBase.h.tmp	2023-11-10 16:12:29.368285722 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberOuterBlockBase.h	2023-11-10 11:15:21.678462197 +0100
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberOuterBlockBase.h.tmp.bak	2023-11-20 18:49:10.995352774 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberOuterBlockBase.h	2023-11-20 18:39:33.466418614 +0100
 @@ -19,9 +19,9 @@
  
  #include "eckit/exception/Exceptions.h"
@@ -20,12 +20,16 @@
  
  namespace oops {
    class FieldSet3D;
-@@ -268,11 +269,11 @@
+@@ -267,12 +268,15 @@
+ 
    // Read fieldsets as increments
    for (auto & input : inputs) {
++    // Create variables
++    oops::Variables<MODEL> varsT(templatedVarsConf(vars));
++
      // Create increment
 -    oops::Increment<MODEL> dx(geom, vars, date);
-+    oops::Increment<MODEL> dx(geom, templatedVars<MODEL>(vars), date);
++    oops::Increment<MODEL> dx(geom, varsT, date);
      dx.read(input.first);
      oops::Log::test() << "Norm of input parameter " << input.second.name()
                        << ": " << dx.norm() << std::endl;
@@ -34,12 +38,16 @@
    }
  
    oops::Log::trace() << "SaberOuterBlockBase::read done" << std::endl;
-@@ -291,12 +292,12 @@
+@@ -290,13 +294,16 @@
+   std::vector<std::pair<eckit::LocalConfiguration, atlas::FieldSet>> outputs
      = this->fieldsToWrite();
  
++  // Create variables
++  oops::Variables<MODEL> varsT(templatedVarsConf(vars));
++
    // Create increment
 -  oops::Increment<MODEL> dx(geom, vars, date);
-+  oops::Increment<MODEL> dx(geom, templatedVars<MODEL>(vars), date);
++  oops::Increment<MODEL> dx(geom, varsT, date);
  
    // Loop and write
    for (const auto & output : outputs) {

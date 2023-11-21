@@ -1,5 +1,5 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ErrorCovariance.h.tmp.bak	2023-11-15 12:03:34.353541901 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ErrorCovariance.h	2023-11-15 10:47:20.077990890 +0100
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ErrorCovariance.h.tmp.bak	2023-11-20 18:49:11.627353712 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ErrorCovariance.h	2023-11-20 18:40:05.618476334 +0100
 @@ -13,20 +13,17 @@
  
  #include "atlas/field.h"
@@ -141,7 +141,7 @@
 -  const std::vector<std::size_t> vlevs = geom.variableSizes(incVars);
 -  oops::patch::Variables outerVars(incVars);
 +  const std::vector<std::size_t> vlevs = geom.geometry().variableSizes(incVars.variables());
-+  oops::patch::Variables outerVars = unTemplatedVars(incVars);
++  oops::patch::Variables outerVars(incVars.variables().variablesList());
    for (std::size_t i = 0; i < vlevs.size() ; ++i) {
      outerVars.addMetaData(outerVars[i], "levels", vlevs[i]);
    }
