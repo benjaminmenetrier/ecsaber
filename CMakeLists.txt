@@ -17,6 +17,8 @@ function( check_diff_recursively input commandPath )
 endfunction()
 
 # Add subdirectories
-add_subdirectory( oops-patch )
-add_subdirectory( vader )
-add_subdirectory( saber )
+if( ECSABER )
+    add_subdirectory( oops-patch )
+    add_subdirectory( vader )
+    add_subdirectory( saber )
+endif()
