@@ -149,6 +149,7 @@ void Localization<MODEL>::multiplySqrt(const GenericCtlVec_ & dv,
   loc_->multiplySqrt(dv.data(), fset4d, 0);
 
   // ATLAS fieldset to Increment_
+  dx.increment().fieldSet() = fset4d[0].fieldSet();
   dx.increment().synchronizeFields();
 
   oops::Log::trace() << "Localization:multiplySqrt done" << std::endl;
