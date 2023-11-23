@@ -1,5 +1,5 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/Localization.h.tmp.bak	2023-11-20 18:49:11.351353303 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/Localization.h	2023-11-20 18:54:42.615831586 +0100
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/Localization.h.tmp.bak	2023-11-23 09:42:49.000208618 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/Localization.h	2023-11-23 09:39:10.251863721 +0100
 @@ -1,8 +1,6 @@
  /*
 - * (C) Copyright 2021 UCAR
@@ -107,7 +107,7 @@
                fsetEns, fsetEns, covarConf, conf);
  
    oops::Log::trace() << "Localization:Localization done" << std::endl;
-@@ -110,34 +123,49 @@
+@@ -110,34 +123,50 @@
  // -----------------------------------------------------------------------------
  
  template<typename MODEL>
@@ -151,6 +151,7 @@
  
    // ATLAS fieldset to Increment_
 -  dx.synchronizeFields();
++  dx.increment().fieldSet() = fset4d[0].fieldSet();
 +  dx.increment().synchronizeFields();
  
 -  oops::Log::trace() << "Localization:multiply done" << std::endl;
