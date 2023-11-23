@@ -7,6 +7,7 @@
 # ECSABER
 ################################################################################
 
+# Update functions
 function( check_diff projectName srcPath dstPath commandPath )
     execute_process( COMMAND ${CMAKE_SOURCE_DIR}/ecsaber/script/check_diff.sh ${srcPath} ${dstPath} ${commandPath} )
 endfunction()
@@ -14,3 +15,8 @@ endfunction()
 function( check_diff_recursively input commandPath )
     execute_process( COMMAND ${CMAKE_SOURCE_DIR}/ecsaber/script/check_diff_recursively.sh ${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/${input} ${commandPath} )
 endfunction()
+
+# Add subdirectories
+add_subdirectory( oops-patch )
+add_subdirectory( vader )
+add_subdirectory( saber )
