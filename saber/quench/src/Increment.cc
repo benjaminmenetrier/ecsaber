@@ -22,7 +22,7 @@ namespace quench {
 // -----------------------------------------------------------------------------
 /// Constructor, destructor
 // -----------------------------------------------------------------------------
-Increment::Increment(const Geometry & resol, const oops::Variables & vars,
+Increment::Increment(const Geometry & resol, const Variables & vars,
                      const util::DateTime & vt)
   : fields_(new Fields(resol, vars, vt))
 {
@@ -30,7 +30,7 @@ Increment::Increment(const Geometry & resol, const oops::Variables & vars,
   oops::Log::trace() << "Increment constructed." << std::endl;
 }
 // -----------------------------------------------------------------------------
-Increment::Increment(const Geometry & resol, const oops::Variables & vars,
+Increment::Increment(const Geometry & resol, const Variables & vars,
                      const util::DateTime &, const util::DateTime & vt)
   : fields_(new Fields(resol, vars, vt))
 {
@@ -116,16 +116,6 @@ void Increment::dirac(const eckit::Configuration & config) {
   fields_->dirac(config);
 }
 // -----------------------------------------------------------------------------
-/// ATLAS FieldSet accessor
-// -----------------------------------------------------------------------------
-void Increment::toFieldSet(atlas::FieldSet & fset) const {
-  fields_->toFieldSet(fset);
-}
-// -----------------------------------------------------------------------------
-void Increment::fromFieldSet(const atlas::FieldSet & fset) {
-  fields_->fromFieldSet(fset);
-}
-// -----------------------------------------------------------------------------
 /// I/O and diagnostics
 // -----------------------------------------------------------------------------
 void Increment::read(const eckit::Configuration & files) {
@@ -135,21 +125,6 @@ void Increment::read(const eckit::Configuration & files) {
 void Increment::write(const eckit::Configuration & files) const {
   fields_->write(files);
 }
-// -----------------------------------------------------------------------------
-/// Serialization
-// -----------------------------------------------------------------------------
-// size_t Increment::serialSize() const {
-//   size_t nn = fields_->serialSize();
-//   return nn;
-// }
-// -----------------------------------------------------------------------------
-// void Increment::serialize(std::vector<double> & vect) const {
-//   fields_->serialize(vect);
-// }
-// -----------------------------------------------------------------------------
-// void Increment::deserialize(const std::vector<double> & vect, size_t & index) {
-//   fields_->deserialize(vect, index);
-// }
 // -----------------------------------------------------------------------------
 void Increment::print(std::ostream & os) const {
   os << std::endl << "Valid time:" << this->validTime();

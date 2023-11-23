@@ -1,22 +1,27 @@
 # (C) Copyright 2023 Meteorologisk Institutt
 
-list( APPEND oops_modified_src_files
-base/ModelSpaceCovarianceParametersBase.h
-interface/ModelData.h
-mpi/mpi.cc
-mpi/mpi.h
-runs/ConvertState.h
-)
-
 list( APPEND oops_jedi_src_files
 base/DataSetBase.h
 base/FieldSet3D.cc
 base/FieldSet3D.h
 base/FieldSet4D.cc
 base/FieldSet4D.h
+base/GeometryData.cc
+base/GeometryData.h
+base/ModelSpaceCovarianceParametersBase.h
 base/ParameterTraitsVariables.cc
 base/ParameterTraitsVariables.h
+base/Variables.cc
+base/Variables.h
 base/WriteParametersBase.h
+interface/ModelData.h
+external/stripack/stripack.cc
+external/stripack/stripack.h
+external/stripack/stripack.f90
+external/stripack/stripack_interface.f90
+mpi/mpi.cc
+mpi/mpi.h
+runs/ConvertState.h
 util/AnyOf.h
 util/AssociativeContainers.h
 util/AtlasArrayUtil.cc
@@ -25,12 +30,20 @@ util/CompositePath.cc
 util/CompositePath.h
 util/ConfigFunctions.cc
 util/ConfigFunctions.h
+util/ConfigHelpers.cc
+util/ConfigHelpers.h
+util/dateFunctions.cc
+util/dateFunctions.h
 util/FieldSetHelpers.cc
 util/FieldSetHelpers.h
 util/FieldSetOperations.cc
 util/FieldSetOperations.h
 util/FloatCompare.h
 util/gatherPrint.h
+util/IntSetParser.cc
+util/IntSetParser.h
+util/missingValues.cc
+util/missingValues.h
 util/NamedEnumerator.h
 util/parameters/ConfigurationParameter.cc
 util/parameters/ConfigurationParameter.h
@@ -76,30 +89,30 @@ util/stringFunctions.h
 util/TypeTraits.h
 )
 
-file( MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/util )
-file( MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/util/parameters )
+# Remove update summary
+file( REMOVE "${CMAKE_CURRENT_SOURCE_DIR}/update_summary.txt" )
 
 foreach( src_file ${oops_jedi_src_files} )
-    execute_process( COMMAND ${CMAKE_COMMAND} -E create_symlink
-                     ${CMAKE_CURRENT_SOURCE_DIR}/../../../oops-jedi/src/oops/${src_file}
-                     ${CMAKE_CURRENT_SOURCE_DIR}/${src_file} )
+    check_diff( "oops"
+                ${CMAKE_CURRENT_SOURCE_DIR}/../../../oops-jedi/src/oops/${src_file}
+                ${CMAKE_CURRENT_SOURCE_DIR}/${src_file}
+                ${CMAKE_CURRENT_SOURCE_DIR}/update_summary.txt )
 endforeach()
+
+# Check update summary
+if( EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/update_summary.txt")
+    message( FATAL_ERROR "Merge required in ${CMAKE_CURRENT_SOURCE_DIR}/update_summary.txt" )
+endif()
 
 list( APPEND oops_ecmwf_src_files
 util/abor1_cpp.h
-util/dateFunctions.cc
-util/dateFunctions.h
 util/DateTime.cc
 util/DateTime.h
 util/Duration.cc
 util/Duration.h
 util/formats.h
-util/IntSetParser.cc
-util/IntSetParser.h
 util/kinds.F90
 util/Logger.h
-util/missingValues.cc
-util/missingValues.h
 util/ObjectCounter.h
 util/Printable.h
 util/Timer.h
@@ -111,35 +124,9 @@ foreach( src_file ${oops_ecmwf_src_files} )
                      ${CMAKE_CURRENT_SOURCE_DIR}/${src_file} )
 endforeach()
 
-list( APPEND oops_ecmwf_assimilation2base_src_files
-Increment4D.h
-State4D.h
-)
-
-foreach( src_file ${oops_ecmwf_assimilation2base_src_files} )
-    execute_process( COMMAND ${CMAKE_COMMAND} -E create_symlink
-                     ${CMAKE_SOURCE_DIR}/oops/src/oops/assimilation/${src_file}
-                     ${CMAKE_CURRENT_SOURCE_DIR}/base/${src_file} )
-endforeach()
-list( TRANSFORM oops_ecmwf_assimilation2base_src_files PREPEND base/ )
-
-list( APPEND oops_ecmwf_interface2base_src_files
-Geometry.h
-Increment.h
-)
-
-foreach( src_file ${oops_ecmwf_interface2base_src_files} )
-    execute_process( COMMAND ${CMAKE_COMMAND} -E create_symlink
-                     ${CMAKE_SOURCE_DIR}/oops/src/oops/interface/${src_file}
-                     ${CMAKE_CURRENT_SOURCE_DIR}/base/${src_file} )
-endforeach()
-list( TRANSFORM oops_ecmwf_interface2base_src_files PREPEND base/ )
-
 list( APPEND oops-patch_src_files
-${oops_modified_src_files}
 ${oops_jedi_src_files}
 ${oops_ecmwf_src_files}
-${oops_ecmwf_assimilation2base_src_files}
 )
 
 include(GNUInstallDirs)

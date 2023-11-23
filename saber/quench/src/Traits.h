@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include "src/ErrorCovariance.h"
+#include "src/Covariance.h"
 #include "src/Geometry.h"
 #include "src/Gom.h"
 #include "src/HorizScaleDecomposition.h"
@@ -26,6 +26,7 @@
 #include "src/ObsSpace.h"
 #include "src/ObsVec.h"
 #include "src/State.h"
+#include "src/Variables.h"
 
 namespace quench {
 
@@ -40,7 +41,8 @@ struct Traits {
   using Increment = quench::Increment;
   using IncrEnsCtlVec = quench::IncrEnsCtlVec;
   using IncrModCtlVec = quench::IncrModCtlVec;
-  using Covariance = quench::ErrorCovariance;
+  using Covariance = quench::Covariance;
+  using Variables = quench::Variables;
 
   using ModelAuxControl = quench::ModelBias;
   using ModelAuxControlEstimator = quench::ModelBiasEstimator;

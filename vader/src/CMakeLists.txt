@@ -1,6 +1,3 @@
-# Links from VADER
-links_from_source_repo()
-
 ecbuild_generate_config_headers( DESTINATION ${INSTALL_INCLUDE_DIR}/vader )
 
 list( APPEND vader_src_files
@@ -37,6 +34,7 @@ vader/recipes/LnAirPressureAtInterface_A.cc
 vader/recipes/LnAirPressureAtInterface.h
 vader/recipes/DryAirDensityLevelsMinusOne.h
 vader/recipes/DryAirDensityLevelsMinusOne_A.cc
+vader/recipes/DryAirDensityLevelsMinusOne_B.cc
 vader/recipes/HydrostaticExnerLevels.h
 vader/recipes/HydrostaticExnerLevels_A.cc
 vader/recipes/RainMixingRatio.h
@@ -141,11 +139,14 @@ ecbuild_add_library( TARGET ${PROJECT_NAME}
                      HEADER_DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}
                      LINKER_LANGUAGE CXX )
 
+# Mark Boost as a system library to silence compiler warnings from Boost headers
+target_include_directories( ${PROJECT_NAME} SYSTEM PUBLIC ${Boost_INCLUDE_DIRS} )
+
 target_link_libraries( ${PROJECT_NAME} PUBLIC ${oops_LIBRARIES} oops-patch ) #TODO: Change to "oops::oops" once oops adds namespace support
 
 if( gsw_FOUND )
-  target_link_libraries( ${PROJECT_NAME} PUBLIC gsw ) 
-  target_compile_definitions( ${PROJECT_NAME} PUBLIC GSW_FOUND ) 
+  target_link_libraries( ${PROJECT_NAME} PUBLIC gsw )
+  target_compile_definitions( ${PROJECT_NAME} PUBLIC GSW_FOUND )
 endif( gsw_FOUND )
 
 #Configure include directory layout for build-tree to match install-tree

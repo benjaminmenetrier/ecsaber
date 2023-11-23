@@ -1,0 +1,106 @@
+       Independent levels:  1[2]
+          Subset Sc0 size:              762
+          Min. / max. longitudes: -171.0 /   180.0
+          Min. / max. latitudes:   -90.0 /    90.0
+          Domain area (% of Earth area): 0.100E+03%
+             Level   1 ~> 100.0%
+             Level   2 ~> 100.0%
+             Level   1 ~>  0.100E+01 vert. coord.
+             Level   2 ~>  0.200E+01 vert. coord.
+          Level   1 ~> 100.0%
+          Level   2 ~> 100.0%
+          Decimate full grid, at least      500 points required,     762 valid points found
+          Subgrid hash:   -130003308
+             -90.00 deg.  ~>100-100- 2-100-100-100-100-99-100-100 
+             -45.00 deg.  ~>100-33-99-100-100-100-100-99-100-100 
+               0.00 deg.  ~>100-100-91-68-100-100-100-91-100-100 
+              45.00 deg.  ~>100-33-99-100-100-100-100-99-100-100 
+             -90.00 deg.  ~>100-100- 2-100-100-100-100-99-100-100 
+             -45.00 deg.  ~>100-33-99-100-100-100-100-99-100-100 
+               0.00 deg.  ~>100-100-91-68-100-100-100-91-100-100 
+              45.00 deg.  ~>100-33-99-100-100-100-100-99-100-100 
+          nc1 =      500
+          nc2 =      250
+          Independent levels:  1[2]
+          Independent levels for angular sector   1 / class   1:  1[2]
+          Independent levels for angular sector   1 / class   2:  1[2]
+          Independent levels for angular sector   1 / class   3:  1[2]
+          Independent levels for angular sector   1 / class   4:  1[2]
+          Independent levels for angular sector   1 / class   5:  1[2]
+          Independent levels for angular sector   1 / class   6:  1[2]
+          Independent levels for angular sector   1 / class   7:  1[2]
+          Independent levels for angular sector   1 / class   8:  1[2]
+          Independent levels for angular sector   1 / class   9:  1[2]
+          Independent levels for angular sector   1 / class  10:  1[2]
+          Independent levels for angular sector   2 / class   1:  1[2]
+          Independent levels for angular sector   2 / class   2:  1[2]
+          Independent levels for angular sector   2 / class   3:  1[2]
+          Independent levels for angular sector   2 / class   4:  1[2]
+          Independent levels for angular sector   2 / class   5:  1[2]
+          Independent levels for angular sector   2 / class   6:  1[2]
+          Independent levels for angular sector   2 / class   7:  1[2]
+          Independent levels for angular sector   2 / class   8:  1[2]
+          Independent levels for angular sector   2 / class   9:  1[2]
+          Independent levels for angular sector   2 / class  10:  1[2]
+          Independent levels for angular sector   3 / class   1:  1[2]
+          Independent levels for angular sector   3 / class   2:  1[2]
+          Independent levels for angular sector   3 / class   3:  1[2]
+          Independent levels for angular sector   3 / class   4:  1[2]
+          Independent levels for angular sector   3 / class   5:  1[2]
+          Independent levels for angular sector   3 / class   6:  1[2]
+          Independent levels for angular sector   3 / class   7:  1[2]
+          Independent levels for angular sector   3 / class   8:  1[2]
+          Independent levels for angular sector   3 / class   9:  1[2]
+          Independent levels for angular sector   3 / class  10:  1[2]
+          Independent levels for angular sector   4 / class   1:  1[2]
+          Independent levels for angular sector   4 / class   2:  1[2]
+          Independent levels for angular sector   4 / class   3:  1[2]
+          Independent levels for angular sector   4 / class   4:  1[2]
+          Independent levels for angular sector   4 / class   5:  1[2]
+          Independent levels for angular sector   4 / class   6:  1[2]
+          Independent levels for angular sector   4 / class   7:  1[2]
+          Independent levels for angular sector   4 / class   8:  1[2]
+          Independent levels for angular sector   4 / class   9:  1[2]
+          Independent levels for angular sector   4 / class  10:  1[2]
+                Level:   1 ~> cov. at class zero:  0.99E+00
+                Level:   2 ~> cov. at class zero:  0.10E+01
+             Block common:  0.19564850E+00 for    38768 diagnostic points
+                   Level:   1 ~> amplitude:        0.76
+                                 cor. hor. support:      4141.73 km
+                                 cor. ver. support:         3.98 vertical units
+                   Level:   2 ~> amplitude:        0.75
+                                 cor. hor. support:      4176.13 km
+                                 cor. ver. support:         4.20 vertical units
+                   Level:   1 ~> amplitude:        0.24
+                                 cor. hor. support:      2329.06 km
+                                 cor. ver. support:         0.40 vertical units
+                   Level:   2 ~> amplitude:        0.25
+                                 cor. hor. support:      2348.41 km
+                                 cor. ver. support:         0.42 vertical units
+             Block common:  0.33072278E+00 for    32873 diagnostic points
+                Level:   1 ~> loc. at class zero:       0.92
+                Level:   2 ~> loc. at class zero:       0.92
+                   Level:   1 ~> amplitude:        1.00
+                                 loc. hor. support:      5530.47 km
+                                 loc. ver. support:         3.93 vertical units
+                   Level:   2 ~> amplitude:        1.00
+                                 loc. hor. support:      5621.89 km
+                                 loc. ver. support:         4.10 vertical units
+                   Level:   1 ~> amplitude:        0.00
+                                 loc. hor. support:      5530.47 km
+                                 loc. ver. support:         3.93 vertical units
+                   Level:   2 ~> amplitude:        0.00
+                                 loc. hor. support:      5621.89 km
+                                 loc. ver. support:         4.10 vertical units
+Norm of output parameter loc_a - 1: 5.4466525830907102e+01
+Norm of output parameter loc_a - 2: 0.0000000000000000e+00
+Norm of output parameter loc_rh1 - 1: 3.5947085424041462e+08
+Norm of output parameter loc_rh1 - 2: 3.4064691498522782e+08
+Norm of output parameter loc_rh2 - 1: 4.0673913309894192e+08
+Norm of output parameter loc_rh2 - 2: 3.9254997525148344e+08
+Norm of output parameter loc_rhc - 1: 9.9968465768626906e+00
+Norm of output parameter loc_rhc - 2: 9.9968465768626906e+00
+Norm of output parameter loc_rh - 1: 3.7240784924580282e+08
+Norm of output parameter loc_rh - 2: 3.5646589914895284e+08
+Norm of output parameter loc_rv - 1: 2.8930468027111198e+02
+Norm of output parameter loc_rv - 2: 2.4451005839055995e+02

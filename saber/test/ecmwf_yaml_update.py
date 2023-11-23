@@ -73,7 +73,10 @@ def expand_ensemble_template(d):
                 template = v["template"]
                 pattern = v["pattern"]
                 members = v["nmembers"]
-                zpad = v["zero padding"]
+                if "zero padding" in v:
+                    zpad = v["zero padding"]
+                else:
+                    zpad = 0
                 if "start" in v:
                     index = v["start"]
                 else:
@@ -166,7 +169,7 @@ if "_4d" in args.inputYaml:
     exit()
 
 # Read yaml file
-print("Updating yaml: " + args.inputYaml)
+print("--  - Update yaml: " + args.inputYaml)
 with open(args.inputYaml, "r") as stream:
     try:
         config = yaml.safe_load(stream)
@@ -201,7 +204,8 @@ if "background" in config:
     variables = config["Background"]["state"][0]["variables"]
 
     # Variables
-    config["variables"] = variables
+    if not "increment variables" in config:
+      config["increment variables"] = variables
 
 # Background error
 if "background error" in config:
@@ -239,10 +243,10 @@ if "background error" in config:
             for component in components:
                 component["covariance"] = add_ensemble_variables(component["covariance"])
         else:
-            # Update static
+            # Update static_covariance
             covariance = components[0]["covariance"]
             if covariance["covariance model"] == "SABER":
-                config["Covariance"]["static"] = covariance
+                config["Covariance"]["static_covariance"] = covariance
             covariance = add_ensemble_variables(covariance)
 
             # Update ensemble
@@ -254,14 +258,14 @@ if "background error" in config:
                     covariance["localization"].pop("localization method")
                     covariance["localization"]["variables"] = variables
                 covariance = add_ensemble_variables(covariance)
-                config["Covariance"]["ensemble"] = covariance
+                config["Covariance"]["ensemble_covariance"] = covariance
                 config["Covariance"]["ensemble_weight"] = weight
 
             # Update covariance model
-            config["Covariance"]["static"]["covariance"] = config["Covariance"]["static"]["covariance model"]
-            config["Covariance"]["static"].pop("covariance model")
-            config["Covariance"]["ensemble"]["covariance"] = config["Covariance"]["ensemble"]["covariance model"]
-            config["Covariance"]["ensemble"].pop("covariance model")
+            config["Covariance"]["static_covariance"]["covariance"] = config["Covariance"]["static_covariance"]["covariance model"]
+            config["Covariance"]["static_covariance"].pop("covariance model")
+            config["Covariance"]["ensemble_covariance"]["covariance"] = config["Covariance"]["ensemble_covariance"]["covariance model"]
+            config["Covariance"]["ensemble_covariance"].pop("covariance model")
 
         # Remove components
         config["Covariance"].pop("components")
@@ -269,6 +273,9 @@ if "background error" in config:
     # Remove linear variable change
     if "linear variable change" in config["Covariance"]:
         config["Covariance"].pop("linear variable change")
+
+# Ensemble
+config = add_ensemble_variables(config)
 
 # Write yaml file
 with open(args.outputYaml, "w") as file:

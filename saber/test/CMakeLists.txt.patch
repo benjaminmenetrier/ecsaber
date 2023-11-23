@@ -1,0 +1,99 @@
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/test/CMakeLists.txt.tmp	2023-11-15 11:28:33.242170734 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/test/CMakeLists.txt	2023-11-15 10:51:17.449576246 +0100
+@@ -7,9 +7,6 @@
+ # Tests activated
+ message( STATUS "SABER tests activated:" )
+ 
+-# Use find_branch function in jedi-cmake
+-include( git_functions )
+-
+ # Default SABER_TEST_TIER
+ set( SABER_TEST_TIER 1 )
+ 
+@@ -65,6 +62,9 @@
+ if( DEFINED ENV{SABER_TEST_FASTLAM} )
+     set( SABER_TEST_FASTLAM $ENV{SABER_TEST_FASTLAM} )
+ endif()
++if( DEFINED ENV{SABER_TEST_FASTLAM} )
++    set( SABER_TEST_FASTLAM $ENV{SABER_TEST_FASTLAM} )
++endif()
+ if( gsibec_FOUND )
+     if( DEFINED ENV{SABER_TEST_GSI_GEOS} )
+         set( SABER_TEST_GSI_GEOS $ENV{SABER_TEST_GSI_GEOS} )
+@@ -135,7 +135,7 @@
+ # Input data
+ file( STRINGS testlist/saber_data.txt saber_data )
+ 
+-# Setup SABER directories and links
++# Setup SABER directories and copy
+ message( STATUS "Setup SABER directories and links" )
+ file( REMOVE_RECURSE ${CMAKE_CURRENT_BINARY_DIR}/testdata )
+ file( REMOVE_RECURSE ${CMAKE_CURRENT_BINARY_DIR}/testinput )
+@@ -147,10 +147,11 @@
+     # Make test-specific data directory
+     file( MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/testdata/${test} )
+ 
+-    # Link to yaml file
+-    execute_process( COMMAND ${CMAKE_COMMAND} -E create_symlink
+-                     ${CMAKE_CURRENT_SOURCE_DIR}/testinput/${test}.yaml
+-                     ${CMAKE_CURRENT_BINARY_DIR}/testinput/${test}.yaml )
++    # Create specific yaml file
++    execute_process(COMMAND ${Python3_EXECUTABLE}
++                    ${CMAKE_CURRENT_SOURCE_DIR}/ecmwf_yaml_update.py
++                    ${CMAKE_CURRENT_SOURCE_DIR}/testinput/${test}.yaml
++                    ${CMAKE_CURRENT_BINARY_DIR}/testinput/${test}.yaml )
+ 
+     # Link to reference file
+     if( EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/testref/${test}.ref )
+@@ -245,14 +246,44 @@
+                         list( TRANSFORM deps_list APPEND _${mpi}-${omp} )
+                     endif()
+ 
++                    # Special check for interpolation
++                    string( FIND ${test} "interpolation_2" interpolation_2_result )
++                    string( FIND ${test} "interpolation_3" interpolation_3_result )
++                    if( interpolation_2_result EQUAL -1 AND interpolation_3_result EQUAL -1 )
++                        set( interpCheck true CACHE BOOL "" FORCE )
++                    else()
++                        set( interpCheck false CACHE BOOL "" FORCE )
++                    endif()
++
++                    # Special check for VADER
++                    string( FIND ${test} "gauss_vader" gauss_vader_result )
++                    if( gauss_vader_result EQUAL -1 )
++                        set( vaderCheck true CACHE BOOL "" FORCE )
++                    else()
++                        set( vaderCheck false CACHE BOOL "" FORCE )
++                    endif()
++
++                    # Special check to avoid 4D tests
++                    string( FIND ${test} "_4d" fourd_result )
++                    string( FIND ${test} "_seq4d" seqfourd_result )
++                    if( fourd_result EQUAL -1 AND seqfourd_result EQUAL -1 )
++                        set( no4dCheck true CACHE BOOL "" FORCE )
++                    else()
++                        set( no4dCheck false CACHE BOOL "" FORCE )
++                    endif()
++
+                     # Add test
+-                    ecbuild_add_test( TARGET saber_test_${test}_${mpi}-${omp}
+-                                      MPI ${mpi}
+-                                      OMP ${omp}
+-                                      COMMAND ${CMAKE_BINARY_DIR}/bin/saber_quench_${exename}.x
+-                                      ARGS testinput/${test}.yaml
+-                                      DEPENDS saber_quench_${exename}.x
+-                                      TEST_DEPENDS ${deps_list} )
++                    if( interpCheck AND vaderCheck AND no4dCheck )
++                        ecbuild_add_test( TARGET saber_test_${test}_${mpi}-${omp}
++                                          COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/ecmwf_compare.sh
++                                          ARGS ${CMAKE_CURRENT_SOURCE_DIR}/ecmwf_compare.py
++                                               ${mpi}
++                                               ${omp}
++                                               "${CMAKE_BINARY_DIR}/bin/saber_quench_${exename}.x testinput/${test}.yaml"
++                                               "${CMAKE_CURRENT_BINARY_DIR}/testref/${test}.ref"
++                                          DEPENDS saber_quench_${exename}.x
++                                          TEST_DEPENDS ${deps_list} )
++                    endif()
+                 endif()
+             endif()
+         endforeach()

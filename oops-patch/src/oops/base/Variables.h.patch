@@ -1,0 +1,81 @@
+--- /home/benjaminm/code/oops-bundle/ecsaber/oops-patch/src/oops/base/Variables.h.tmp	2023-11-10 16:12:20.304297712 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/oops-patch/src/oops/base/Variables.h	2023-11-10 14:48:05.187220748 +0100
+@@ -21,6 +21,7 @@
+ }
+ 
+ namespace oops {
++namespace patch {
+ 
+ // -----------------------------------------------------------------------------
+ /// \brief Class to set an container of variable names and manipulate it.
+@@ -35,32 +36,33 @@
+ ///
+ ///        Most operators / methods do not affect/interact with the meta data.
+ ///        The exceptions are:
+-///         += patch::Variables;  where it updates the metadata and appends extra metadata
+-///                        from the right hand side patch::Variables object.
+-///         == patch::Variables;  where it compares the metadata for metadata keys that
++///         += Variables;  where it updates the metadata and appends extra metadata
++///                        from the right hand side Variables object.
++///         == Variables;  where it compares the metadata for metadata keys that
+ ///                        are internally consistent with the variable names.
+ ///         .addMetaData(  that will either update a value or add a value within
+ ///                        some metadata for a metadata (variable name) key.
+-class patch::Variables : public util::Printable {
++class Variables : public util::Printable {
+  public:
+-  static const std::string classname() {return "oops::patch::Variables";}
++  static const std::string classname() {return "oops::Variables";}
+ 
+-  patch::Variables();
+-  patch::Variables(const eckit::Configuration &, const std::string &);
+-  explicit patch::Variables(const std::vector<std::string> &, const std::string & conv = "");
+-  patch::Variables(const std::vector<std::string> & vars, const std::vector<int> & channels);
+-  patch::Variables(const eckit::Configuration &, const std::vector<std::string> & vars);
+-
+-  patch::Variables(const patch::Variables &);
+-  patch::Variables & operator+=(const patch::Variables &);
+-  patch::Variables & operator-=(const patch::Variables &);
+-  patch::Variables & operator-=(const std::string &);
++  Variables();
++  Variables(const eckit::Configuration &, const std::string &);
++  explicit Variables(const std::vector<std::string> &, const std::string & conv = "");
++  Variables(const std::vector<std::string> & vars, const std::vector<int> & channels);
++  Variables(const eckit::Configuration &, const std::vector<std::string> & vars);
++  Variables(const std::vector<std::string> & vars, const eckit::Configuration &);
++
++  Variables(const Variables &);
++  Variables & operator+=(const Variables &);
++  Variables & operator-=(const Variables &);
++  Variables & operator-=(const std::string &);
+ 
+   size_t size() const {return vars_.size();}
+   const std::string & operator[](const size_t kk) const {return vars_.at(kk);}
+-  bool operator==(const patch::Variables &) const;
+-  bool operator!=(const patch::Variables &) const;
+-  bool operator<=(const patch::Variables &) const;
++  bool operator==(const Variables &) const;
++  bool operator!=(const Variables &) const;
++  bool operator<=(const Variables &) const;
+ 
+   void addMetaData(const std::string & varname,
+                    const std::string & keyname,
+@@ -70,8 +72,8 @@
+ 
+   size_t find(const std::string &) const;
+ 
+-  /// make this patch::Variables an intersection between this patch::Variables and other variables
+-  void intersection(const patch::Variables & other);
++  /// make this Variables an intersection between this Variables and other variables
++  void intersection(const Variables & other);
+ 
+   const std::vector<std::string> & variables() const {return vars_;}
+   const std::vector<int> & channels() const {return channels_;}
+@@ -106,6 +108,7 @@
+ 
+ // -----------------------------------------------------------------------------
+ 
++}  // namespace patch
+ }  // namespace oops
+ 
+ #endif  // OOPS_BASE_VARIABLES_H_

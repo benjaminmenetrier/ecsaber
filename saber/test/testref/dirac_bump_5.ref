@@ -1,0 +1,49 @@
+Input Dirac increment:
+Valid time:2010-01-01T12:00:00Z
+Quench geometry grid:
+- name: L40x21
+- size: 840
+Partitioner:
+- type: equal_regions
+Function space:
+- type: StructuredColumns
+- halo: 1
+Groups: 
+- Group 0:
+  Vertical levels: 
+  - number: 2
+  - vert_coord: [1.0000000000000000e+00,2.0000000000000000e+00]
+  Mask size: 100%
+Fields:
+  stream_function: 1.0000000000000000e+00
+Norm of input parameter StdDev: 4.0693857173965277e+01
+       Independent levels:  1[2]
+          Subset Sc0 size:              762
+          Min. / max. longitudes: -171.0 /   180.0
+          Min. / max. latitudes:   -90.0 /    90.0
+          Domain area (% of Earth area): 0.100E+03%
+             Level   1 ~> 100.0%
+             Level   2 ~> 100.0%
+             Level   1 ~>  0.100E+01 vert. coord.
+             Level   2 ~>  0.200E+01 vert. coord.
+Square-root test for block BUMP_NICAS passed
+Adjoint test for block Ensemble passed
+Square-root test for block Ensemble passed
+Covariance(SABER) * Increment:
+Valid time:2010-01-01T12:00:00Z
+Quench geometry grid:
+- name: L40x21
+- size: 840
+Partitioner:
+- type: equal_regions
+Function space:
+- type: StructuredColumns
+- halo: 1
+Groups: 
+- Group 0:
+  Vertical levels: 
+  - number: 2
+  - vert_coord: [1.0000000000000000e+00,2.0000000000000000e+00]
+  Mask size: 100%
+Fields:
+  stream_function: 2.0497561324834241e+00

@@ -23,11 +23,8 @@ namespace eckit {
   class Configuration;
 }
 
-namespace oops {
-  class Variables;
-}
-
 namespace quench {
+  class Variables;
 
 // -----------------------------------------------------------------------------
 /// Geometry handles geometry for quench model.
@@ -58,7 +55,7 @@ class Geometry : public util::Printable,
 
   size_t variableSize(const std::string &) const;
   size_t maskLevel(const std::string &, const size_t &) const;
-  std::vector<size_t> variableSizes(const oops::Variables & vars) const;
+  std::vector<size_t> variableSizes(const Variables & vars) const;
   void latlon(std::vector<double> &, std::vector<double> &, const bool) const;
   bool levelsAreTopDown() const {return true;}
 
@@ -70,9 +67,7 @@ class Geometry : public util::Printable,
   atlas::Grid grid_;
   std::string gridType_;
   bool regionalGrid_;
-  bool unstructuredGrid_;
   atlas::grid::Partitioner partitioner_;
-  atlas::grid::Distribution distribution_;
   atlas::Mesh mesh_;
   atlas::FunctionSpace functionSpace_;
   std::unordered_map<std::string, size_t> groupIndex_;

@@ -13,7 +13,7 @@
 #include "util/DateTime.h"
 #include "util/Logger.h"
 
-#include "src/ErrorCovariance.h"
+#include "src/Covariance.h"
 
 using oops::Log;
 
@@ -22,9 +22,9 @@ namespace quench {
 // -----------------------------------------------------------------------------
 /// Constructor, destructor
 // -----------------------------------------------------------------------------
-IncrModCtlVec::IncrModCtlVec(const ErrorCovariance &) {}
+IncrModCtlVec::IncrModCtlVec(const Covariance &) {}
 // -----------------------------------------------------------------------------
-IncrModCtlVec::IncrModCtlVec(const ErrorCovariance &,
+IncrModCtlVec::IncrModCtlVec(const Covariance &,
                              const IncrModCtlVec &) {}
 // -----------------------------------------------------------------------------
 IncrModCtlVec::IncrModCtlVec(const IncrModCtlVec &,
@@ -34,9 +34,9 @@ IncrModCtlVec::~IncrModCtlVec() {}
 // -----------------------------------------------------------------------------
 // TODO(Benjamin): for cy46 only, should be removed later
 IncrModCtlVec::IncrModCtlVec(const Geometry &,
-                             const ErrorCovariance &) {}
+                             const Covariance &) {}
 IncrModCtlVec::IncrModCtlVec(const Geometry &,
-                             const ErrorCovariance &,
+                             const Covariance &,
                              const IncrModCtlVec &) {}
 // -----------------------------------------------------------------------------
 

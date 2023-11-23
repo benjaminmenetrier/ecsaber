@@ -1,0 +1,84 @@
+geometry:
+  function space: StructuredColumns
+  grid:
+    type: regular_gaussian
+    N: 15
+  groups:
+  - variables:
+    - streamfunction
+    - velocity_potential
+    - unbalanced_pressure
+    - moisture_control_variable
+    levels: 70
+  partitioner: ectrans
+background:
+  date: '2010-01-01T12:00:00Z'
+  state variables:
+  - streamfunction
+  - velocity_potential
+  - unbalanced_pressure
+  - moisture_control_variable
+background error:
+  covariance model: SABER
+  adjoint test: true
+  inverse test: true
+  saber central block:
+    saber block name: ID
+  saber outer blocks:
+  - saber block name: square root of spectral covariance
+    skip inverse test: true
+    read:
+      covariance_file: testdata/spectralcov.nc
+      umatrix_netcdf_names:
+      - PSI_inc_Uv_matrix
+      - CHI_inc_Uv_matrix
+      - aP_inc_Uv_matrix
+      - MU_inc_Uv_matrix
+  - saber block name: spectral to gauss
+dirac:
+  lon:
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  lat:  # slightly less than 0 to remove ambiguity on chosen grid point.
+  - -0.001
+  - -0.001
+  - -0.001
+  - -0.001
+  level:
+  - 1
+  - 1
+  - 1
+  - 1
+  variable:
+  - streamfunction
+  - velocity_potential
+  - unbalanced_pressure
+  - moisture_control_variable
+diagnostic points:
+  lon:
+  - 20.0
+  - 20.0
+  - 20.0
+  - 20.0
+  lat:
+  - 20.0
+  - 20.0
+  - 20.0
+  - 20.0
+  level:
+  - 2
+  - 2
+  - 2
+  - 2
+  variable:
+  - streamfunction
+  - velocity_potential
+  - unbalanced_pressure
+  - moisture_control_variable
+output dirac:
+  mpi pattern: '%MPI%'
+  filepath: testdata/dirac_spectralb/%MPI%_dirac_%id%
+test:
+  reference filename: testref/dirac_sqrtspectralb.ref

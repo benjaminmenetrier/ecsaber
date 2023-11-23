@@ -1,0 +1,483 @@
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ErrorCovarianceToolbox.h.tmp	2023-11-10 16:12:30.548284162 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ErrorCovarianceToolbox.h	2023-11-10 10:23:02.320305089 +0100
+@@ -1,38 +1,30 @@
+ /*
+- * (C) Copyright 2021-2023 UCAR
+  * (C) Copyright 2023 Meteorologisk Institutt
+  *
+- * This software is licensed under the terms of the Apache Licence Version 2.0
+- * which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+  */
+ 
+ #pragma once
+ 
+ #include <omp.h>
+ 
++#include <limits>
+ #include <memory>
+ #include <sstream>
+ #include <string>
+ #include <vector>
+ 
+ #include "eckit/config/Configuration.h"
+-#include "eckit/exception/Exceptions.h"
+ 
+-#include "oops/base/Geometry.h"
+-#include "oops/base/Increment.h"
+-#include "oops/base/Increment4D.h"
+-#include "oops/base/IncrementEnsemble.h"
+-#include "oops/base/instantiateCovarFactory.h"
+-#include "oops/base/ModelSpaceCovarianceBase.h"
+-#include "oops/base/PostProcessor.h"
+-#include "oops/base/State.h"
+-#include "oops/base/State4D.h"
+-#include "oops/base/StateWriter.h"
+-#include "oops/base/Variables.h"
+-#include "oops/mpi/mpi.h"
++#include "oops/assimilation/Increment4D.h"
++#include "oops/assimilation/State4D.h"
++#include "oops/interface/Geometry.h"
++#include "oops/interface/Increment.h"
++#include "oops/interface/Model.h"
++#include "oops/interface/State.h"
++#include "oops/interface/Variables.h"
+ #include "oops/runs/Application.h"
++#include "oops/util/abor1_cpp.h"
+ #include "oops/util/ConfigFunctions.h"
+-#include "oops/util/ConfigHelpers.h"
+ #include "oops/util/DateTime.h"
+ #include "oops/util/FieldSetHelpers.h"
+ #include "oops/util/Logger.h"
+@@ -41,35 +33,34 @@
+ #include "oops/util/parameters/Parameters.h"
+ #include "oops/util/parameters/RequiredParameter.h"
+ 
+-#include "saber/oops/Utilities.h"
++#include "saber/oops/instantiateCovarFactory.h"
++#include "saber/oops/instantiateLocalizationFactory.h"
++#include "saber/oops/ECUtilities.h"
+ 
+ namespace saber {
+ 
+ // -----------------------------------------------------------------------------
+ 
+ /// \brief Top-level options taken by the ErrorCovarianceToolbox application.
+-template <typename MODEL> class ErrorCovarianceToolboxParameters :
+-  public oops::ApplicationParameters {
+-  OOPS_CONCRETE_PARAMETERS(ErrorCovarianceToolboxParameters, oops::ApplicationParameters)
++class ErrorCovarianceToolboxParameters :
++  public oops::Parameters {
++  OOPS_CONCRETE_PARAMETERS(ErrorCovarianceToolboxParameters, oops::Parameters)
+ 
+  public:
+-  typedef oops::ModelSpaceCovarianceParametersWrapper<MODEL> CovarianceParameters_;
+-  typedef typename oops::Geometry<MODEL>::Parameters_        GeometryParameters_;
+-
+   /// Geometry parameters.
+-  oops::RequiredParameter<GeometryParameters_> geometry{"geometry", this};
++  oops::RequiredParameter<eckit::LocalConfiguration> geometry{"resolution", this};
+ 
+   /// Background parameters.
+-  oops::RequiredParameter<eckit::LocalConfiguration> background{"background", this};
++  oops::RequiredParameter<eckit::LocalConfiguration> background{"Background", this};
+ 
+   /// Background error covariance model.
+-  oops::RequiredParameter<CovarianceParameters_> backgroundError{"background error", this};
++  oops::RequiredParameter<eckit::LocalConfiguration> backgroundError{"Covariance", this};
+ 
+   /// Geometry parameters.
+   oops::Parameter<bool> parallel{"parallel subwindows", true, this};
+ 
+   /// Outer variables parameters
+-  oops::OptionalParameter<oops::patch::Variables> incrementVars{"increment variables", this};
++  oops::RequiredParameter<eckit::LocalConfiguration> incrementVars{"increment variables", this};
+ 
+   /// Dirac location/variables parameters.
+   oops::OptionalParameter<eckit::LocalConfiguration> dirac{"dirac", this};
+@@ -93,69 +84,42 @@
+ 
+ // -----------------------------------------------------------------------------
+ 
+-template <typename MODEL> class ErrorCovarianceToolbox : public oops::Application {
+-  typedef oops::ModelSpaceCovarianceBase<MODEL>           CovarianceBase_;
+-  typedef oops::CovarianceFactory<MODEL>                  CovarianceFactory_;
+-  typedef oops::ModelSpaceCovarianceParametersBase<MODEL> CovarianceParametersBase_;
+-  typedef oops::Geometry<MODEL>                           Geometry_;
+-  typedef oops::Increment<MODEL>                          Increment_;
+-  typedef oops::Increment4D<MODEL>                        Increment4D_;
+-  typedef oops::State<MODEL>                              State_;
+-  typedef oops::State4D<MODEL>                            State4D_;
+-  typedef oops::Localization<MODEL>                       Localization_;
+-  typedef ErrorCovarianceToolboxParameters<MODEL>         ErrorCovarianceToolboxParameters_;
++/*! @brief Error covariance training application
++
++ * Use input fields and ensemble data to perform the calibration of
++ * a background error covariance matrix
++ */
++
++template <typename MODEL>
++class ErrorCovarianceToolbox : public oops::Application {
++  using CovarianceFactory_ = oops::CovarianceFactory<MODEL>;
++  using Geometry_ = oops::Geometry<MODEL>;
++  using Increment_ = oops::Increment<MODEL>;
++  using Increment4D_ = oops::Increment4D<MODEL>;
++  using Localization_ = oops::Localization<MODEL>;
++  using Model_ = oops::Model<MODEL>;
++  using CovarianceBase_ = oops::ModelSpaceCovarianceBase<MODEL>;
++  using State_ = oops::State<MODEL>;
++  using State4D_ = oops::State4D<MODEL>;
++  using Variables_ = oops::Variables<MODEL>;
+ 
+  public:
+ // -----------------------------------------------------------------------------
+-  explicit ErrorCovarianceToolbox(const eckit::mpi::Comm & comm = eckit::mpi::comm()) :
+-    Application(comm) {
+-    oops::instantiateCovarFactory<MODEL>();
++  ErrorCovarianceToolbox() {
++    instantiateCovarFactory<MODEL>();
++    instantiateLocalizationFactory<MODEL>();
+   }
+ // -----------------------------------------------------------------------------
+   virtual ~ErrorCovarianceToolbox() {}
+ // -----------------------------------------------------------------------------
+-  int execute(const eckit::Configuration & fullConfig, bool validate) const override {
++  int execute(const eckit::Configuration & fullConfig) const {
+     // Deserialize parameters
+-    ErrorCovarianceToolboxParameters_ params;
+-    if (validate) params.validate(fullConfig);
++    ErrorCovarianceToolboxParameters params;
++    params.validate(fullConfig);
+     params.deserialize(fullConfig);
+ 
+-    // Define number of subwindows
+-    const eckit::LocalConfiguration backgroundConfig(fullConfig, "background");
+-    size_t nsubwin = 1;
+-    if (backgroundConfig.has("states")) {
+-      std::vector<eckit::LocalConfiguration> confs;
+-      backgroundConfig.get("states", confs);
+-      nsubwin = confs.size();
+-    }
+-
+     // Define space and time communicators
+-    const eckit::mpi::Comm * commSpace = &this->getComm();
+-    const eckit::mpi::Comm * commTime = &oops::mpi::myself();
+-    if (nsubwin > 1) {
+-      // Define sub-windows
+-      const size_t ntasks = this->getComm().size();
+-      size_t mysubwin = 0;
+-      size_t nsublocal = nsubwin;
+-      if (params.parallel) {
+-        ASSERT(ntasks % nsubwin == 0);
+-        nsublocal = 1;
+-        mysubwin = this->getComm().rank() / (ntasks / nsubwin);
+-        ASSERT(mysubwin < nsubwin);
+-      }
+-
+-      // Create a communicator for same sub-window, to be used for communications in space
+-      const std::string sgeom = "comm_geom_" + std::to_string(mysubwin);
+-      char const *geomName = sgeom.c_str();
+-      commSpace = &this->getComm().split(mysubwin, geomName);
+-
+-      // Create a communicator for same local area, to be used for communications in time
+-      const size_t myarea = commSpace->rank();
+-      const std::string stime = "comm_time_" + std::to_string(myarea);
+-      char const *timeName = stime.c_str();
+-      commTime = &this->getComm().split(myarea, timeName);
+-      ASSERT(commTime->size() == (nsubwin / nsublocal));
+-    }
++    const eckit::mpi::Comm * commSpace = &eckit::mpi::comm();
+ 
+     // Get number of MPI tasks and OpenMP threads
+     size_t ntasks = commSpace->size();
+@@ -173,38 +137,36 @@
+     util::seekAndReplace(fullConfigUpdated, "_OMP_", std::to_string(nthreads));
+     params.deserialize(fullConfigUpdated);
+ 
+-    // Setup geometry
+-    const Geometry_ geom(params.geometry, *commSpace, *commTime);
++    // Set precision for test channel
++    oops::Log::test() << std::scientific
++                      << std::setprecision(std::numeric_limits<double>::digits10+1);
+ 
+-    // Setup background
+-    const State4D_ xx(geom, params.background.value(), *commTime);
++    // Setup geometry
++    const Geometry_ geom(params.geometry);
+ 
+-    // Setup variables
+-    oops::patch::Variables tmpVars = xx.variables();
+-    if (params.incrementVars.value() != boost::none) {
+-      const auto & incrementVars = params.incrementVars.value().value();
+-      if (incrementVars <= tmpVars) {
+-        tmpVars.intersection(incrementVars);
+-      } else {
+-        throw eckit::UserError("Increment variables should be a subset of background variables",
+-                               Here());
+-      }
++    // Setup model
++    eckit::LocalConfiguration modelConf;
++    if (fullConfigUpdated.has("model")) {
++      modelConf = fullConfigUpdated.getSubConfiguration("model");
+     }
+-    const oops::patch::Variables vars = tmpVars;
++    const Model_ model(geom, modelConf);
+ 
+-    // Setup time
+-    util::DateTime time = xx[0].validTime();
++    // Setup background state
++    const State4D_ xx(params.background, geom, model);
++
++    // Setup variables
++    const Variables_ vars(params.incrementVars.value());
+ 
+     // Background error covariance parameters
+-    const CovarianceParametersBase_ & covarParams
+-      = params.backgroundError.value().covarianceParameters;
++    const eckit::LocalConfiguration & covarParams
++      = params.backgroundError.value();
+ 
+     // Dirac test
+     const auto & diracParams = params.dirac.value();
+     if (diracParams != boost::none) {
+       // Setup Dirac field
+-      Increment4D_ dxi(geom, vars, xx.times(), *commTime);
+-      dxi.dirac(*diracParams);
++      Increment4D_ dxi(geom, vars, xx.times());
++      dirac4D(*diracParams, dxi);
+       oops::Log::test() << "Input Dirac increment:" << dxi << std::endl;
+ 
+       // Test configuration
+@@ -219,21 +181,41 @@
+         testConf.set("diagnostic points", *diagnostic);
+       }
+ 
+-      // Add output Dirac configuration
+-      eckit::LocalConfiguration outputDiracUpdated = params.outputDirac.value().value();
++      // Dirac output parameters
++      const auto & outputDirac = params.outputDirac.value();
++
++      // Update parameters
++      auto outputDiracUpdated(*outputDirac);
+       setMPI(outputDiracUpdated, ntasks);
+-      testConf.set("output dirac", outputDiracUpdated);
++
++      // Add output Dirac configuration
++      eckit::LocalConfiguration outputConf(outputDiracUpdated);
++      testConf.set("output dirac", outputConf);
+ 
+       // Apply B matrix components recursively
+       std::string id;
+-      dirac(covarParams.toConfiguration(), testConf, id, geom, vars, xx, dxi);
++      dirac(covarParams, testConf, id, geom, vars, xx, dxi);
+     }
+ 
+-    const auto & randomizationSize = covarParams.randomizationSize.value();
+-    if ((diracParams == boost::none) || (randomizationSize != boost::none)) {
++    const auto & randomizationSize = covarParams.getInt("randomization size", 0);
++    if ((diracParams == boost::none) || (randomizationSize > 0)) {
+       // Background error covariance training
+       std::unique_ptr<CovarianceBase_> Bmat(CovarianceFactory_::create(
+-                                            geom, vars, covarParams, xx, xx));
++                                            covarParams, geom, vars, xx[0]));
++
++      // Linearize
++      eckit::LocalConfiguration linConf;
++      const std::string covarianceModel(covarParams.getString("covariance"));
++      if (covarianceModel == "hybrid") {
++        eckit::LocalConfiguration jbConf;
++        jbConf.set("Covariance", covarParams);
++        linConf.set("Jb", jbConf);
++      } else if (covarianceModel == "ensemble") {
++        linConf.set("ensemble_covariance", covarParams);
++      } else {
++        linConf = covarParams;
++      }
++      Bmat->linearize(xx[0], geom, linConf);
+ 
+       // Randomization
+       randomization(params, geom, vars, xx, Bmat, ntasks);
+@@ -242,16 +224,6 @@
+     return 0;
+   }
+ // -----------------------------------------------------------------------------
+-  void outputSchema(const std::string & outputPath) const override {
+-    ErrorCovarianceToolboxParameters_ params;
+-    params.outputSchema(outputPath);
+-  }
+-// -----------------------------------------------------------------------------
+-  void validateConfig(const eckit::Configuration & fullConfig) const override {
+-    ErrorCovarianceToolboxParameters_ params;
+-    params.validate(fullConfig);
+-  }
+-// -----------------------------------------------------------------------------
+  private:
+   std::string appname() const override {
+     return "oops::ErrorCovarianceToolbox<" + MODEL::name() + ">";
+@@ -265,15 +237,15 @@
+ 
+     // Create diagnostic field
+     Increment4D_ diagPoints(data);
+-    diagPoints.dirac(diagConf);
++    dirac4D(diagConf, diagPoints);
+ 
+     // Get diagnostic values
+-    for (size_t jj = 0; jj < data.size(); ++jj) {
+-      util::printDiagValues(diagPoints.commTime(),
+-                            geom.getComm(),
+-                            geom.functionSpace(),
+-                            data[jj].fieldSet(),
+-                            diagPoints[jj].fieldSet());
++    for (int jj = data.first(); jj <= data.last(); ++jj) {
++      util::printDiagValues(oops::mpi::myself(),
++                            eckit::mpi::comm(),
++                            geom.geometry().functionSpace(),
++                            data[jj].increment().fieldSet(),
++                            diagPoints[jj].increment().fieldSet());
+     }
+ 
+     oops::Log::trace() << appname() << "::print_value_at_position done" << std::endl;
+@@ -284,7 +256,7 @@
+              const eckit::LocalConfiguration & testConf,
+              std::string & id,
+              const Geometry_ & geom,
+-             const oops::patch::Variables & vars,
++             const Variables_ & vars,
+              const State4D_ & xx,
+              const Increment4D_ & dxi) const {
+     // Define output increment
+@@ -292,10 +264,24 @@
+ 
+     // Covariance
+     std::unique_ptr<CovarianceBase_> Bmat(CovarianceFactory_::create(
+-                                          geom, vars, covarConf, xx, xx));
++                                          covarConf, geom, vars, xx[0]));
++
++    // Linearize
++    eckit::LocalConfiguration linConf;
++    const std::string covarianceModel(covarConf.getString("covariance"));
++    if (covarianceModel == "hybrid") {
++      eckit::LocalConfiguration jbConf;
++      jbConf.set("Covariance", covarConf);
++      linConf.set("Jb", jbConf);
++    } else if (covarianceModel == "ensemble") {
++      linConf.set("ensemble_covariance", covarConf);
++    } else {
++      linConf = covarConf;
++    }
++    Bmat->linearize(xx[0], geom, linConf);
+ 
+     // Multiply
+-    Bmat->multiply(dxi, dxo);
++    Bmat->multiply(dxi[0], dxo[0]);
+ 
+     // Update ID
+     if (id != "") id.append("_");
+@@ -324,17 +310,13 @@
+     oops::Log::test() << "Covariance(" << id << ") * Increment:" << dxo << std::endl;
+ 
+     // Look for hybrid or ensemble covariance models
+-    const std::string covarianceModel(covarConf.getString("covariance model"));
+     if (covarianceModel == "hybrid") {
+-      std::vector<eckit::LocalConfiguration> confs;
+-      covarConf.get("components", confs);
+-      size_t componentIndex(1);
+-      for (const auto & conf : confs) {
+-        std::string idC(id + std::to_string(componentIndex));
+-        const eckit::LocalConfiguration componentConfig(conf, "covariance");
+-        dirac(componentConfig, testConf, idC, geom, vars, xx, dxi);
+-        ++componentIndex;
+-      }
++      eckit::LocalConfiguration staticConfig(covarConf, "static_covariance");
++      std::string staticID = "hybrid1";
++      dirac(staticConfig, testConf, staticID, geom, vars, xx, dxi);
++      eckit::LocalConfiguration ensembleConfig(covarConf, "ensemble_covariance");
++      std::string ensembleID = "hybrid2";
++      dirac(ensembleConfig, testConf, ensembleID, geom, vars, xx, dxi);
+     }
+     if (covarianceModel == "ensemble" && covarConf.has("localization")) {
+       // Localization configuration
+@@ -348,7 +330,7 @@
+       Localization_ Lmat(geom, vars, locConfig);
+ 
+       // Apply localization
+-      Lmat.multiply(dxo);
++      Lmat.multiply(dxo[0]);
+ 
+       // Update ID
+       std::string idL(id);
+@@ -375,9 +357,9 @@
+     }
+   }
+ // -----------------------------------------------------------------------------
+-  void randomization(const ErrorCovarianceToolboxParameters_ & params,
++  void randomization(const ErrorCovarianceToolboxParameters & params,
+                      const Geometry_ & geom,
+-                     const oops::patch::Variables & vars,
++                     const Variables_ & vars,
+                      const State4D_ & xx,
+                      const std::unique_ptr<CovarianceBase_> & Bmat,
+                      const size_t & ntasks) const {
+@@ -387,9 +369,9 @@
+       oops::Log::info() << "Info     : -----------------------" << std::endl;
+ 
+       // Create increments
+-      Increment4D_ dx(geom, vars, xx.times(), xx.commTime());
+-      Increment4D_ dxsq(geom, vars, xx.times(), xx.commTime());
+-      Increment4D_ variance(geom, vars, xx.times(), xx.commTime());
++      Increment4D_ dx(geom, vars, xx.times());
++      Increment4D_ dxsq(geom, vars, xx.times());
++      Increment4D_ variance(geom, vars, xx.times());
+ 
+       // Initialize variance
+       variance.zero();
+@@ -405,7 +387,7 @@
+       for (size_t jm = 0; jm < Bmat->randomizationSize(); ++jm) {
+         // Generate member
+         oops::Log::info() << "Info     : Member " << jm << std::endl;
+-        Bmat->randomize(dx);
++        Bmat->randomize(dx[0]);
+ 
+         if ((outputPerturbations != boost::none) || (outputStates != boost::none)) {
+           // Save member
+@@ -414,7 +396,9 @@
+ 
+         // Square perturbation
+         dxsq = dx;
+-        dxsq.schur_product_with(dx);
++        for (int jsub = dxsq.first(); jsub <= dxsq.last(); ++jsub) {
++          dxsq[jsub].schur_product_with(dx[jsub]);
++        }
+ 
+         // Update variance
+         variance += dxsq;
+@@ -430,8 +414,8 @@
+ 
+           if (outputPerturbations != boost::none) {
+             // Update config
+-            auto outputPerturbationsUpdated = *outputPerturbations;
+-            util::setMember(outputPerturbationsUpdated, jm+1);
++            auto outputPerturbationsUpdated(*outputPerturbations);
++            setMember(outputPerturbationsUpdated, jm+1);
+             setMPI(outputPerturbationsUpdated, ntasks);
+ 
+             // Write perturbation
+@@ -440,8 +424,8 @@
+ 
+           if (outputStates != boost::none) {
+             // Update config
+-            auto outputStatesUpdated = *outputStates;
+-            util::setMember(outputStatesUpdated, jm+1);
++            auto outputStatesUpdated(*outputStates);
++            setMember(outputStatesUpdated, jm+1);
+             setMPI(outputStatesUpdated, ntasks);
+ 
+             // Add background state to perturbation
+@@ -466,7 +450,7 @@
+           variance *= rk_norm;
+         }
+ 
+-        // Update config
++        // Update parameters
+         auto outputVarianceUpdated = *outputVariance;
+         setMPI(outputVarianceUpdated, ntasks);
+ 

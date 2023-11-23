@@ -25,8 +25,7 @@ namespace oops {
 template <typename MODEL>
 class ModelData : public  util::Printable,
                   private util::ObjectCounter<ModelData<MODEL> >  {
-//  typedef typename MODEL::ModelData ModelData_;
-  typedef Geometry<MODEL>           Geometry_;
+  typedef Geometry<MODEL> Geometry_;
 
  public:
   static const std::string classname() {return "oops::ModelData";}

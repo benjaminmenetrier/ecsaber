@@ -1,0 +1,284 @@
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ProcessPerts.h.tmp.bak	2023-11-20 18:49:11.367353327 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ProcessPerts.h	2023-11-20 18:54:55.611849908 +0100
+@@ -18,16 +18,14 @@
+ #include "eckit/config/LocalConfiguration.h"
+ #include "eckit/exception/Exceptions.h"
+ 
+-#include "oops/base/Geometry.h"
+-
+-#include "oops/base/Increment.h"
+-#include "oops/base/Increment4D.h"
+-#include "oops/base/instantiateCovarFactory.h"
+-#include "oops/base/ModelSpaceCovarianceBase.h"
+-#include "oops/base/State.h"
+-#include "oops/base/State4D.h"
+-#include "oops/base/StateEnsemble.h"
+-#include "oops/base/Variables.h"
++#include "oops/assimilation/Increment4D.h"
++#include "oops/assimilation/State4D.h"
++#include "oops/interface/Geometry.h"
++#include "oops/interface/Increment.h"
++#include "oops/interface/Model.h"
++#include "oops/interface/State.h"
++#include "oops/interface/Variables.h"
++#include "oops/runs/Application.h"
+ #include "oops/mpi/mpi.h"
+ #include "oops/runs/Application.h"
+ #include "oops/util/ConfigFunctions.h"
+@@ -44,6 +42,9 @@
+ #include "saber/blocks/SaberOuterBlockChain.h"
+ #include "saber/blocks/SaberParametricBlockChain.h"
+ 
++#include "saber/oops/instantiateCovarFactory.h"
++#include "saber/oops/instantiateLocalizationFactory.h"
++#include "saber/oops/ECUtilities.h"
+ #include "saber/oops/Utilities.h"
+ 
+ namespace saber {
+@@ -51,90 +52,113 @@
+ // -----------------------------------------------------------------------------
+ 
+ /// \brief Top-level options taken by the ProcessPerts application.
+-template <typename MODEL> class ProcessPertsParameters :
+-  public oops::ApplicationParameters {
+-  OOPS_CONCRETE_PARAMETERS(ProcessPertsParameters, oops::ApplicationParameters)
++class ProcessPertsParameters :
++  public oops::Parameters {
++  OOPS_CONCRETE_PARAMETERS(ProcessPertsParameters, oops::Parameters)
+ 
+  public:
+-  typedef oops::ModelSpaceCovarianceParametersWrapper<MODEL> CovarianceParameters_;
+-
+-  typedef typename oops::Geometry<MODEL>::Parameters_        GeometryParameters_;
+-  typedef oops::State<MODEL>                                 State_;
+-  typedef oops::IncrementMemberTemplateParameters<MODEL>     IncrementMemberTemplateParameters_;
+-  typedef oops::StateEnsembleParameters<MODEL>               StateEnsembleParameters_;
+-  typedef typename oops::Increment<MODEL>::ReadParameters_   IncrementReadParameters_;
+-  typedef typename oops::Increment<MODEL>::WriteParameters_  IncrementWriterParameters_;
+-  typedef ErrorCovarianceParameters<MODEL>                   ErrorCovarianceParameters_;
+-
+   /// Geometry parameters.
+-  oops::RequiredParameter<GeometryParameters_> geometry{"geometry", this};
++  oops::RequiredParameter<eckit::LocalConfiguration> geometry{"resolution", this};
+ 
+   /// Background parameters.
+-  oops::RequiredParameter<eckit::LocalConfiguration> background{"background", this};
++  oops::RequiredParameter<eckit::LocalConfiguration> background{"Background", this};
+ 
+   oops::RequiredParameter<util::DateTime> date{"date", this};
+-  oops::RequiredParameter<oops::patch::Variables> inputVariables{"input variables", this};
++  oops::RequiredParameter<eckit::LocalConfiguration> inputVariables{"input variables", this};
+ 
+-  oops::RequiredParameter<ErrorCovarianceParameters_>
+-    saberFilterCovarianceParams{"saber filter blocks", this};
++  /// Background error covariance model.
++  oops::RequiredParameter<eckit::LocalConfiguration> filterCovarianceBlockConf{"saber filter blocks", this};
+ 
+   /// Where to read input ensemble: From states or perturbations
+   oops::OptionalParameter<eckit::LocalConfiguration> ensemble{"ensemble", this};
+   oops::OptionalParameter<eckit::LocalConfiguration> ensemblePert{"ensemble pert", this};
+ 
+   /// Where to write low-pass filtered perturbations
+-  oops::OptionalParameter<IncrementWriterParameters_>
++  oops::OptionalParameter<eckit::LocalConfiguration>
+     lowpassPerturbations{"low pass perturbations", this};
+ 
+   /// Where to write high-pass filtered perturbations
+-  oops::RequiredParameter<IncrementWriterParameters_>
++  oops::RequiredParameter<eckit::LocalConfiguration>
+     outputPerturbations{"output perturbations", this};
+ };
+ 
+ // -----------------------------------------------------------------------------
+ 
+-template <typename MODEL> class ProcessPerts : public oops::Application {
+-  typedef oops::ModelSpaceCovarianceBase<MODEL>           CovarianceBase_;
+-  typedef oops::CovarianceFactory<MODEL>                  CovarianceFactory_;
+-  typedef oops::ModelSpaceCovarianceParametersBase<MODEL> CovarianceParametersBase_;
+-  typedef oops::Geometry<MODEL>                           Geometry_;
+-  typedef oops::Increment<MODEL>                          Increment_;
+-  typedef oops::Increment4D<MODEL>                        Increment4D_;
+-  typedef oops::State<MODEL>                              State_;
+-  typedef oops::State4D<MODEL>                            State4D_;
+-  typedef typename Increment_::WriteParameters_           IncrementWriteParameters_;
+-  typedef ProcessPertsParameters<MODEL>                   ProcessPertsParameters_;
++/*! @brief Error covariance training application
++
++ * Use input fields and ensemble data to perform the calibration of
++ * a background error covariance matrix
++ */
++
++template <typename MODEL>
++class ProcessPerts : public oops::Application {
++  using CovarianceFactory_ = oops::CovarianceFactory<MODEL>;
++  using Geometry_ = oops::Geometry<MODEL>;
++  using Increment_ = oops::Increment<MODEL>;
++  using Increment4D_ = oops::Increment4D<MODEL>;
++  using Localization_ = oops::Localization<MODEL>;
++  using Model_ = oops::Model<MODEL>;
++  using CovarianceBase_ = oops::ModelSpaceCovarianceBase<MODEL>;
++  using State_ = oops::State<MODEL>;
++  using State4D_ = oops::State4D<MODEL>;
++  using Variables_ = oops::Variables<MODEL>;
+ 
+  public:
+ // -----------------------------------------------------------------------------
+-  explicit ProcessPerts(const eckit::mpi::Comm & comm = eckit::mpi::comm()) :
+-    Application(comm) {
+-    oops::instantiateCovarFactory<MODEL>();
++  ProcessPerts() {
++    instantiateCovarFactory<MODEL>();
++    instantiateLocalizationFactory<MODEL>();
+   }
+ // -----------------------------------------------------------------------------
+   virtual ~ProcessPerts() {}
+ // -----------------------------------------------------------------------------
+-  int execute(const eckit::Configuration & fullConfig, bool validate) const override {
++  int execute(const eckit::Configuration & fullConfig) const {
+     // Deserialize parameters
+-    ProcessPertsParameters_ params;
+-    if (validate) params.validate(fullConfig);
++    ProcessPertsParameters params;
++    params.validate(fullConfig);
+     params.deserialize(fullConfig);
+ 
+-    // Define number of subwindows
+-    const eckit::LocalConfiguration backgroundConfig(fullConfig, "background");
+-
+     // Define space and time communicators
+-    const eckit::mpi::Comm * commSpace = &this->getComm();
+-    const eckit::mpi::Comm * commTime = &oops::mpi::myself();
++    const eckit::mpi::Comm * commSpace = &eckit::mpi::comm();
++
++    // Get number of MPI tasks and OpenMP threads
++    size_t ntasks = commSpace->size();
++    size_t nthreads = 1;
++#ifdef _OPENMP
++    # pragma omp parallel
++    {
++      nthreads = omp_get_num_threads();
++    }
++#endif
++
++    // Replace patterns in full configuration and deserialize parameters
++    eckit::LocalConfiguration fullConfigUpdated(fullConfig);
++    util::seekAndReplace(fullConfigUpdated, "_MPI_", std::to_string(ntasks));
++    util::seekAndReplace(fullConfigUpdated, "_OMP_", std::to_string(nthreads));
++    params.deserialize(fullConfigUpdated);
++
++    // Set precision for test channel
++    oops::Log::test() << std::scientific
++                      << std::setprecision(std::numeric_limits<double>::digits10+1);
+ 
+     // Setup geometry
+-    const Geometry_ geom(params.geometry, *commSpace, *commTime);
++    const Geometry_ geom(params.geometry);
++
++    // Setup model
++    eckit::LocalConfiguration modelConf;
++    if (fullConfigUpdated.has("model")) {
++      modelConf = fullConfigUpdated.getSubConfiguration("model");
++    }
++    const Model_ model(geom, modelConf);
+ 
+-    // Setup background
+-    const State4D_ xx(geom, params.background, *commTime);
++    // Setup background state
++    const State4D_ xx(params.background, geom, model);
+     oops::FieldSet4D fsetXb(xx);
+     oops::FieldSet4D fsetFg(xx);
+ 
++    // Setup variables
++    const Variables_ statevars(params.inputVariables.value());
++
+     // Setup time
+     const util::DateTime time = xx[0].validTime();
+ 
+@@ -143,12 +167,13 @@
+ 
+     // List of output increments
+     const auto & lowpassPerturbations = params.lowpassPerturbations.value();
+-    const IncrementWriteParameters_ & incrementsWriteParams =
+-      params.outputPerturbations;
++    const auto & incrementsWriteParams =
++      params.outputPerturbations.value();
+ 
+-    oops::patch::Variables incVars = params.inputVariables;
++    Variables_ incVarsT(params.inputVariables.value());
++    oops::patch::Variables incVars(incVarsT.variables().variablesList());
+     // Initialize outer variables
+-    const std::vector<std::size_t> vlevs = geom.variableSizes(incVars);
++    const std::vector<std::size_t> vlevs = geom.geometry().variableSizes(incVarsT.variables());
+     for (std::size_t i = 0; i < vlevs.size() ; ++i) {
+       incVars.addMetaData(incVars[i], "levels", vlevs[i]);
+     }
+@@ -196,9 +221,10 @@
+     for (int jm = 0; jm < nincrements; ++jm) {
+       //  Read ensemble member perturbation
+       atlas::FieldSet fsetI = fsetEnsI[jm];
+-      Increment_ dxI(geom, incVars, time);
++      Increment_ dxI(geom, incVarsT, time);
+       dxI.zero();
+-      dxI.fromFieldSet(fsetI);
++      dxI.increment().fieldSet() = fsetI;
++      dxI.increment().synchronizeFields();
+ 
+       //  Copy perturbation
+       atlas::FieldSet fset;
+@@ -207,19 +233,20 @@
+       oops::Log::test() << "Norm of perturbation : member  " << jm+1
+                         << ": " << dxI.norm() << std::endl;
+ 
+-      oops::FieldSet4D fset4dDxI(oops::FieldSet3D{fsetI, time, geom.getComm()});
+-      oops::FieldSet4D fset4dDx(oops::FieldSet3D{fset, time, geom.getComm()});
++      oops::FieldSet4D fset4dDxI(oops::FieldSet3D{fsetI, time, eckit::mpi::comm()});
++      oops::FieldSet4D fset4dDx(oops::FieldSet3D{fset, time, eckit::mpi::comm()});
+ 
+       // Apply filter blocks
+       saberFilterBlocks->filter(fset4dDx);
+ 
+       if (lowpassPerturbations != boost::none) {
+-        Increment_ dxLowPass(geom, incVars, time);
++        Increment_ dxLowPass(geom, incVarsT, time);
+         dxLowPass.zero();
+-        dxLowPass.fromFieldSet(fset4dDx[0].fieldSet());
++        dxLowPass.increment().fieldSet() = fset4dDx[0].fieldSet();
++        dxLowPass.increment().synchronizeFields();
+ 
+         auto lowpassPerturbationsUpdated(*lowpassPerturbations);
+-        lowpassPerturbationsUpdated.setMember(jm+1);
++        setMember(lowpassPerturbationsUpdated,jm+1);
+         dxLowPass.write(lowpassPerturbationsUpdated);
+         oops::Log::test() << "Norm of low pass perturbation : member  " << jm+1
+                           << ": " << dxLowPass.norm() << std::endl;
+@@ -230,10 +257,11 @@
+       fset4dDxI += fset4dDx;
+ 
+       // Write high pass
+-      dxI.fromFieldSet(fset4dDxI[0].fieldSet());
++      dxI.increment().fieldSet() = fset4dDxI[0].fieldSet();
++      dxI.increment().synchronizeFields();
+ 
+       auto incrementsWriteParamsUpdated(incrementsWriteParams);
+-      incrementsWriteParamsUpdated.setMember(jm+1);
++      setMember(incrementsWriteParamsUpdated,jm+1);
+       dxI.write(incrementsWriteParamsUpdated);
+ 
+       oops::Log::test() << "Norm of high pass perturbation : member  " << jm+1
+@@ -243,16 +271,6 @@
+     return 0;
+   }
+ // -----------------------------------------------------------------------------
+-  void outputSchema(const std::string & outputPath) const override {
+-    ProcessPertsParameters_ params;
+-    params.outputSchema(outputPath);
+-  }
+-// -----------------------------------------------------------------------------
+-  void validateConfig(const eckit::Configuration & fullConfig) const override {
+-    ProcessPertsParameters_ params;
+-    params.validate(fullConfig);
+-  }
+-// -----------------------------------------------------------------------------
+  private:
+   std::string appname() const override {
+     return "oops::ProcessPerts<" + MODEL::name() + ">";

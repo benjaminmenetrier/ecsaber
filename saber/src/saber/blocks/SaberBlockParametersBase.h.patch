@@ -1,0 +1,11 @@
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberBlockParametersBase.h.tmp	2023-11-10 16:12:29.316285791 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberBlockParametersBase.h	2023-11-08 14:01:26.274030079 +0100
+@@ -30,7 +30,7 @@
+   oops::RequiredParameter<std::string> saberBlockName{"saber block name", this};
+ 
+   // PARAMETERS WITH DEFAULTS
+-  // patch::Variables to update with left inverse for background and first guess
++  // Variables to update with left inverse for background and first guess
+   oops::Parameter<oops::patch::Variables> inverseVars{"state variables to inverse", oops::patch::Variables(),
+     this};
+ 

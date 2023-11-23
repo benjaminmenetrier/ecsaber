@@ -4,9 +4,6 @@
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
 
-# Links from SABER
-links_from_source_repo()
-
 # Tests activated
 message( STATUS "SABER tests activated:" )
 
@@ -30,6 +27,7 @@ endif()
 
 # Default test selection variables (TIER-independent)
 set( SABER_TEST_VALGRIND 0 )
+set( SABER_TEST_FASTLAM 1 )
 set( SABER_TEST_GSI_GEOS 0 )
 if( gsibec_FOUND )
     if( gsibec_VERSION VERSION_GREATER_EQUAL "1.0.7" )
@@ -61,6 +59,12 @@ endif()
 if( DEFINED ENV{SABER_TEST_VALGRIND} )
     set( SABER_TEST_VALGRIND $ENV{SABER_TEST_VALGRIND} )
 endif()
+if( DEFINED ENV{SABER_TEST_FASTLAM} )
+    set( SABER_TEST_FASTLAM $ENV{SABER_TEST_FASTLAM} )
+endif()
+if( DEFINED ENV{SABER_TEST_FASTLAM} )
+    set( SABER_TEST_FASTLAM $ENV{SABER_TEST_FASTLAM} )
+endif()
 if( gsibec_FOUND )
     if( DEFINED ENV{SABER_TEST_GSI_GEOS} )
         set( SABER_TEST_GSI_GEOS $ENV{SABER_TEST_GSI_GEOS} )
@@ -86,6 +90,11 @@ endif()
 message( STATUS "  - TIER 1 base" )
 file( STRINGS testlist/saber_test_tier1.txt saber_test )
 list( APPEND saber_test_full ${saber_test} )
+if( SABER_TEST_FASTLAM )
+    message( STATUS "  - TIER 1 FastLAM-specific" )
+    file( STRINGS testlist/saber_test_tier1-fastlam.txt saber_test )
+    list( APPEND saber_test_full ${saber_test} )
+endif()
 if( SABER_TEST_GSI_GEOS )
     message( STATUS "  - TIER 1 GSI-GEOS-specific" )
     file( STRINGS testlist/saber_test_tier1-gsi-geos.txt saber_test )
@@ -126,7 +135,7 @@ endif()
 # Input data
 file( STRINGS testlist/saber_data.txt saber_data )
 
-# Setup SABER directories and links
+# Setup SABER directories and copy
 message( STATUS "Setup SABER directories and links" )
 file( REMOVE_RECURSE ${CMAKE_CURRENT_BINARY_DIR}/testdata )
 file( REMOVE_RECURSE ${CMAKE_CURRENT_BINARY_DIR}/testinput )
@@ -145,11 +154,7 @@ foreach( test ${saber_test_full} )
                     ${CMAKE_CURRENT_BINARY_DIR}/testinput/${test}.yaml )
 
     # Link to reference file
-    if( EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/testref_ecmwf/${test}.ref )
-        execute_process( COMMAND ${CMAKE_COMMAND} -E create_symlink
-                         ${CMAKE_CURRENT_SOURCE_DIR}/testref_ecmwf/${test}.ref
-                         ${CMAKE_CURRENT_BINARY_DIR}/testref/${test}.ref )
-    elseif( EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/testref/${test}.ref )
+    if( EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/testref/${test}.ref )
         execute_process( COMMAND ${CMAKE_COMMAND} -E create_symlink
                          ${CMAKE_CURRENT_SOURCE_DIR}/testref/${test}.ref
                          ${CMAKE_CURRENT_BINARY_DIR}/testref/${test}.ref )
@@ -175,7 +180,7 @@ if( SABER_TEST_OMP )
 endif()
 
 # Executables list
-list( APPEND exe_list convertstate randomization error_covariance_training dirac )
+list( APPEND exe_list convertstate randomization error_covariance_training process_perts dirac )
 
 # Loop over MPI/OpenMP configurations
 foreach( mpi omp IN ZIP_LISTS mpi_list omp_list )
@@ -185,6 +190,8 @@ foreach( mpi omp IN ZIP_LISTS mpi_list omp_list )
     foreach( exe ${exe_list} )
         if( "${exe}" STREQUAL "convertstate" )
             set( exename "convertstate" )
+        elseif ("${exe}" STREQUAL "process_perts" )
+            set( exename "process_perts" )
         else()
             set( exename "error_covariance_toolbox" )
         endif()
@@ -216,7 +223,19 @@ foreach( mpi omp IN ZIP_LISTS mpi_list omp_list )
                     set( 4dCheck false CACHE BOOL "" FORCE )
                 endif()
 
-                if( docTutorialCheck AND gsiGfsCheck AND 4dCheck )
+                # Special check for processPert, only run with 1 MPI for the interpolation from csdual
+                # (TODO: should be removed with atlas 0.34.0)
+                string( FIND ${test} "_perts_from_csdual_" interp_csdual_result )
+                if( interp_csdual_result EQUAL -1 OR
+                  ( interp_csdual_result GREATER_EQUAL 0 AND ${mpi} GREATER 1 AND
+                      ${atlas_VERSION} GREATER_EQUAL 0.34.0) OR
+                  ( interp_csdual_result GREATER_EQUAL 0 AND ${mpi} EQUAL 1) )
+                    set( interp_csdual_result true CACHE BOOL "" FORCE )
+                else()
+                    set( interp_csdual_result false CACHE BOOL "" FORCE )
+                endif()
+
+                if( docTutorialCheck AND gsiGfsCheck AND 4dCheck AND interp_csdual_result )
                     # Get dependencies
                     file( STRINGS testdeps/${test}.txt deps )
                     set( deps_list "" )

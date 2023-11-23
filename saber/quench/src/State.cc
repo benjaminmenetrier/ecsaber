@@ -22,7 +22,7 @@ namespace quench {
 State::State(const Geometry & resol, const eckit::Configuration & file)
   : fields_()
 {
-  const oops::Variables vars(file.getStringVector("variables"));
+  const Variables vars(file);
   fields_.reset(new Fields(resol, vars, util::DateTime()));
   if (file.has("filepath")) {
     oops::Log::info() << "Info     : Create state from file" << std::endl;
@@ -31,6 +31,8 @@ State::State(const Geometry & resol, const eckit::Configuration & file)
     oops::Log::info() << "Info     : Create empty state" << std::endl;
     if (file.has("constant value")) {
       fields_->constantValue(file.getDouble("constant value"));
+    } else if (file.has("constant group-specific value")) {
+      fields_->constantValue(file);
     } else {
       fields_->zero();
     }
@@ -90,41 +92,16 @@ State & State::operator+=(const Increment & dx) {
 // -----------------------------------------------------------------------------
 void State::read(const eckit::Configuration & files) {
   fields_->read(files);
-  fields_->fields().haloExchange();
+  fields_->fieldSet().haloExchange();
 }
 // -----------------------------------------------------------------------------
 void State::write(const eckit::Configuration & files) const {
   fields_->write(files);
 }
 // -----------------------------------------------------------------------------
-/// Serialization
-// -----------------------------------------------------------------------------
-// size_t State::serialSize() const {
-//   size_t nn = fields_->serialSize();
-//   return nn;
-// }
-// -----------------------------------------------------------------------------
-// void State::serialize(std::vector<double> & vect) const {
-//   fields_->serialize(vect);
-// }
-// -----------------------------------------------------------------------------
-// void State::deserialize(const std::vector<double> & vect, size_t & index) {
-//   fields_->deserialize(vect, index);
-//}
-// -----------------------------------------------------------------------------
 void State::print(std::ostream & os) const {
   os << std::endl << "  Valid time: " << this->validTime();
   os << *fields_;
-}
-// -----------------------------------------------------------------------------
-/// ATLAS FieldSet accessor
-// -----------------------------------------------------------------------------
-void State::toFieldSet(atlas::FieldSet & fset) const {
-  fields_->toFieldSet(fset);
-}
-// -----------------------------------------------------------------------------
-void State::fromFieldSet(const atlas::FieldSet & fset) {
-  fields_->fromFieldSet(fset);
 }
 // -----------------------------------------------------------------------------
 /// For accumulator

@@ -1,0 +1,43 @@
+geometry:
+  function space: StructuredColumns
+  grid:
+    type: regular_gaussian
+    N: 12
+  groups:
+  - variables:
+    - dry_air_density_levels_minus_one
+    - eastward_wind
+    - northward_wind
+    - geostrophic_pressure_levels_minus_one
+    levels: 70
+  partitioner: ectrans
+  halo: 1
+background:
+  date: '2010-01-01T12:00:00Z'
+  state variables:
+  - dry_air_density_levels_minus_one
+  - eastward_wind
+  - northward_wind
+  - geostrophic_pressure_levels_minus_one
+  filepath: testdata/gauss_state
+background error:
+  covariance model: SABER
+  adjoint test: true
+  saber central block:
+    saber block name: ID
+  saber outer blocks:
+  - saber block name: gauss winds to geostrophic pressure
+dirac:
+  lon:
+  - 0.0
+  lat:
+  - 3.6727
+  level:
+  - 1
+  variable:
+  - geostrophic_pressure_levels_minus_one
+output dirac:
+  mpi pattern: '%MPI%'
+  filepath: testdata/dirac_gaussuvtogp/%MPI%_dirac_%id%
+test:
+  reference filename: testref/dirac_gaussuvtogp.ref

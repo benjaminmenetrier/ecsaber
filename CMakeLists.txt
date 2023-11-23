@@ -7,12 +7,10 @@
 # ECSABER
 ################################################################################
 
-function(links_from_source_repo)
-    file( STRINGS .gitignore targets )
-    string( REPLACE "ecsaber/${PROJECT_NAME}" "ecsaber/${PROJECT_NAME}-jedi" JEDI_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR} )
-    foreach( target IN LISTS targets )
-        execute_process( COMMAND ${CMAKE_COMMAND} -E create_symlink
-                         ${JEDI_SOURCE_DIR}/${target}
-                         ${CMAKE_CURRENT_SOURCE_DIR}/${target} )
-    endforeach()
+function( check_diff projectName srcPath dstPath commandPath )
+    execute_process( COMMAND ${CMAKE_SOURCE_DIR}/ecsaber/script/check_diff.sh ${srcPath} ${dstPath} ${commandPath} )
+endfunction()
+
+function( check_diff_recursively input commandPath )
+    execute_process( COMMAND ${CMAKE_SOURCE_DIR}/ecsaber/script/check_diff_recursively.sh ${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/${input} ${commandPath} )
 endfunction()

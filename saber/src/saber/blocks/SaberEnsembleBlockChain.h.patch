@@ -1,0 +1,94 @@
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberEnsembleBlockChain.h.tmp.bak	2023-11-20 18:49:11.007352792 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberEnsembleBlockChain.h	2023-11-20 18:39:33.466418614 +0100
+@@ -16,8 +16,8 @@
+ #include "eckit/exception/Exceptions.h"
+ 
+ #include "oops/base/FieldSet4D.h"
+-#include "oops/base/Geometry.h"
+-#include "oops/base/Increment.h"
++#include "oops/interface/Geometry.h"
++#include "oops/interface/Increment.h"
+ #include "oops/interface/ModelData.h"
+ #include "oops/util/Logger.h"
+ #include "oops/util/Random.h"
+@@ -26,6 +26,7 @@
+ #include "saber/blocks/SaberBlockParametersBase.h"
+ #include "saber/blocks/SaberOuterBlockChain.h"
+ #include "saber/blocks/SaberParametricBlockChain.h"
++#include "saber/oops/ECUtilities.h"
+ #include "saber/oops/Utilities.h"
+ 
+ namespace saber {
+@@ -74,20 +75,21 @@
+   std::vector<atlas::FieldSet> ensemble_;
+   /// @brief Control vector size.
+   size_t ctlVecSize_;
+-  /// @brief patch::Variables used in the ensemble covariance.
++  /// @brief Variables used in the ensemble covariance.
+   /// TODO(AS): check whether this is needed or can be inferred from ensemble.
+   oops::patch::Variables vars_;
+   /// @brief Geometry communicator.
+   /// TODO(AS): this can be removed once FieldSet4D/FieldSet3D are used.
+   const eckit::mpi::Comm & comm_;
+   int seed_ = 7;  // For reproducibility
++  const oops::GeometryData geomData_;
+ };
+ 
+ // -----------------------------------------------------------------------------
+ 
+ template<typename MODEL>
+ SaberEnsembleBlockChain::SaberEnsembleBlockChain(const oops::Geometry<MODEL> & geom,
+-                       const oops::Geometry<MODEL> & dualResGeom,
++                       const oops::Geometry<MODEL> & dualResolutionGeom,
+                        const oops::patch::Variables & outerVars,
+                        const oops::FieldSet4D & fset4dXb,
+                        const oops::FieldSet4D & fset4dFg,
+@@ -99,8 +101,10 @@
+                        std::vector<atlas::FieldSet> & fsetDualResEns,
+                        const eckit::LocalConfiguration & covarConf,
+                        const eckit::Configuration & conf)
+-  : outerFunctionSpace_(geom.functionSpace()), outerVariables_(outerVars),
+-    ctlVecSize_(0), comm_(geom.getComm()) {
++  : outerFunctionSpace_(geom.geometry().functionSpace()), outerVariables_(outerVars),
++    ctlVecSize_(0), comm_(eckit::mpi::comm()),
++    geomData_(geom.geometry().functionSpace(), geom.geometry().fields(),
++    geom.geometry().levelsAreTopDown(), eckit::mpi::comm()) {
+   oops::Log::trace() << "SaberEnsembleBlockChain ctor starting" << std::endl;
+ 
+   // Check that there is an ensemble of at least 2 members.
+@@ -126,7 +130,7 @@
+   const oops::patch::Variables currentOuterVars = outerBlockChain_ ?
+                                            outerBlockChain_->innerVars() : outerVars;
+   const oops::GeometryData & currentOuterGeom = outerBlockChain_ ?
+-                                     outerBlockChain_->innerGeometryData() : geom.generic();
++                                     outerBlockChain_->innerGeometryData() : geomData_;
+ 
+   // Get parameters:
+   SaberCentralBlockParametersWrapper saberCentralBlockParamsWrapper;
+@@ -181,12 +185,15 @@
+                               centralBlockConf.getSubConfiguration("inflation field.model file");
+     // Copy file
+     // Read fieldsets as increments
++    // Create variables
++    oops::Variables<MODEL> varsT(templatedVarsConf(activeVars));
++
+     // Create increment
+-    oops::Increment<MODEL> dx(geom, activeVars, fset4dXb[0].validTime());
++    oops::Increment<MODEL> dx(geom, varsT, fset4dXb[0].validTime());
+     dx.read(inflationConf);
+     oops::Log::test() << "Norm of input parameter inflation"
+                       << ": " << dx.norm() << std::endl;
+-    util::copyFieldSet(dx.fieldSet(), inflationField);
++    util::copyFieldSet(dx.increment().fieldSet(), inflationField);
+   }
+ 
+   // Apply inflation on ensemble members
+@@ -252,7 +259,7 @@
+   const auto & locConf = saberCentralBlockParams.localization.value();
+   if (locConf != boost::none) {
+     // Initialize localization blockchain
+-    locBlockChain_ = std::make_unique<SaberParametricBlockChain>(geom, dualResGeom,
++    locBlockChain_ = std::make_unique<SaberParametricBlockChain>(geom, dualResolutionGeom,
+       outerVars, fset4dXb, fset4dFg, fsetEns, fsetDualResEns, covarConfUpdated, *locConf);
+   }
+   // Direct calibration

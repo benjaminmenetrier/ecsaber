@@ -1,0 +1,87 @@
+       Independent levels:  1[2]
+          Subset Sc0 size:              762
+          Min. / max. longitudes: -171.0 /   180.0
+          Min. / max. latitudes:   -90.0 /    90.0
+          Domain area (% of Earth area): 0.100E+03%
+             Level   1 ~> 100.0%
+             Level   2 ~> 100.0%
+             Level   1 ~>  0.100E+01 vert. coord.
+             Level   2 ~>  0.200E+01 vert. coord.
+          nc1 =      500
+          nc2 =      250
+          Independent levels:  1[2]
+          Independent levels for angular sector   1 / class   1:  1[2]
+          Independent levels for angular sector   1 / class   2:  1[2]
+          Independent levels for angular sector   1 / class   3:  1[2]
+          Independent levels for angular sector   1 / class   4:  1[2]
+          Independent levels for angular sector   1 / class   5:  1[2]
+          Independent levels for angular sector   1 / class   6:  1[2]
+          Independent levels for angular sector   1 / class   7:  1[2]
+          Independent levels for angular sector   1 / class   8:  1[2]
+          Independent levels for angular sector   1 / class   9:  1[2]
+          Independent levels for angular sector   1 / class  10:  1[2]
+          Independent levels for angular sector   2 / class   1:  1[2]
+          Independent levels for angular sector   2 / class   2:  1[2]
+          Independent levels for angular sector   2 / class   3:  1[2]
+          Independent levels for angular sector   2 / class   4:  1[2]
+          Independent levels for angular sector   2 / class   5:  1[2]
+          Independent levels for angular sector   2 / class   6:  1[2]
+          Independent levels for angular sector   2 / class   7:  1[2]
+          Independent levels for angular sector   2 / class   8:  1[2]
+          Independent levels for angular sector   2 / class   9:  1[2]
+          Independent levels for angular sector   2 / class  10:  1[2]
+          Independent levels for angular sector   3 / class   1:  1[2]
+          Independent levels for angular sector   3 / class   2:  1[2]
+          Independent levels for angular sector   3 / class   3:  1[2]
+          Independent levels for angular sector   3 / class   4:  1[2]
+          Independent levels for angular sector   3 / class   5:  1[2]
+          Independent levels for angular sector   3 / class   6:  1[2]
+          Independent levels for angular sector   3 / class   7:  1[2]
+          Independent levels for angular sector   3 / class   8:  1[2]
+          Independent levels for angular sector   3 / class   9:  1[2]
+          Independent levels for angular sector   3 / class  10:  1[2]
+          Independent levels for angular sector   4 / class   1:  1[2]
+          Independent levels for angular sector   4 / class   2:  1[2]
+          Independent levels for angular sector   4 / class   3:  1[2]
+          Independent levels for angular sector   4 / class   4:  1[2]
+          Independent levels for angular sector   4 / class   5:  1[2]
+          Independent levels for angular sector   4 / class   6:  1[2]
+          Independent levels for angular sector   4 / class   7:  1[2]
+          Independent levels for angular sector   4 / class   8:  1[2]
+          Independent levels for angular sector   4 / class   9:  1[2]
+          Independent levels for angular sector   4 / class  10:  1[2]
+                Level:   1 ~> cov. at class zero:  0.99E+00
+                Level:   2 ~> cov. at class zero:  0.10E+01
+                Level:   1 ~> cov. at class zero:  0.97E+00
+             Block stream_function:  0.36473349E+00 for    37356 diagnostic points
+             Block surface_pressure:  0.39283396E+00 for     9339 diagnostic points
+                   Level:   1 ~> amplitude:        0.75
+                                 cor. hor. support:      4076.21 km
+                                 cor. ver. support:         4.12 vertical units
+                   Level:   2 ~> amplitude:        0.74
+                                 cor. hor. support:      4274.19 km
+                                 cor. ver. support:         4.36 vertical units
+                   Level:   1 ~> amplitude:        0.25
+                                 cor. hor. support:      2292.22 km
+                                 cor. ver. support:         0.41 vertical units
+                   Level:   2 ~> amplitude:        0.26
+                                 cor. hor. support:      2403.55 km
+                                 cor. ver. support:         0.44 vertical units
+                   Level:   1 ~> amplitude:        0.73
+                                 cor. hor. support:      3939.75 km
+                                 cor. ver. support:         0.00 vertical units
+                   Level:   1 ~> amplitude:        0.27
+                                 cor. hor. support:      2215.49 km
+                                 cor. ver. support:         0.00 vertical units
+Norm of output parameter cor_a - 1: 4.5284084295113104e+01
+Norm of output parameter cor_a - 2: 1.2136727368580550e+01
+Norm of output parameter cor_rh1 - 1: 1.9447566264513829e+08
+Norm of output parameter cor_rh1 - 2: 1.6258871853000057e+08
+Norm of output parameter cor_rh2 - 1: 2.0817045185395339e+08
+Norm of output parameter cor_rh2 - 2: 1.7816984334180197e+08
+Norm of output parameter cor_rhc - 1: 6.5732728479733238e+00
+Norm of output parameter cor_rhc - 2: 6.5732728479733238e+00
+Norm of output parameter cor_rh - 1: 1.9955235675044242e+08
+Norm of output parameter cor_rh - 2: 1.6885824490019208e+08
+Norm of output parameter cor_rv - 1: 1.3794318322016778e+02
+Norm of output parameter cor_rv - 2: 4.1608119182917349e+01

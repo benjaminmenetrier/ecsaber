@@ -1,0 +1,46 @@
+geometry:
+  function space: StructuredColumns
+  grid:
+    type: regular_lonlat
+    nx : 72
+    ny : 46
+  groups:
+  - variables:
+    - stream_function
+    - velocity_potential
+    - air_temperature
+    levels: 4
+    vert_coord: [-1.0,-5.0,-9.0,-11.0]
+  - variables:
+    - surface_pressure
+    levels: 1
+background:
+  date: '2010-01-01T12:00:00Z'
+  state variables:
+  - stream_function
+  - velocity_potential
+  - air_temperature
+  - surface_pressure
+background error:
+  covariance model: SABER
+  saber central block:
+    saber block name: ID
+  saber outer blocks:
+  - saber block name: BUMP_StdDev
+    calibration:
+      general:
+        testing: true
+      io:
+        data directory: testdata
+        files prefix: error_covariance_training_bump_stddev_6/_MPI_-_OMP_
+        gsi data file: gsi-coeffs-gmao-global-l72x72y46
+        gsi namelist: dirac_gsi_geos_global.nml
+      drivers:
+        compute variance: true
+        interpolate from gsi data: true
+      output model files:
+      - parameter: stddev
+        file:
+          filepath: testdata/error_covariance_training_bump_stddev_6/_MPI_-_OMP__stddev
+test:
+  reference filename: testref/error_covariance_training_bump_stddev_6.ref

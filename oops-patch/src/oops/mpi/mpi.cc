@@ -154,9 +154,15 @@ void allGather(const eckit::mpi::Comm & comm,
 void allGatherv(const eckit::mpi::Comm & comm, std::vector<util::DateTime> &x) {
     size_t globalSize = x.size();
     comm.allReduceInPlace(globalSize, eckit::mpi::sum());
-    std::vector<util::DateTime> globalX(globalSize);
-    oops::mpi::allGathervUsingSerialize(comm, x.begin(), x.end(), globalX.begin());
-    x = std::move(globalX);
+    std::vector<std::string> xStr;
+    for (const auto & item : x) {
+      xStr.push_back(item.toString());
+    }
+    oops::mpi::allGatherv(comm, xStr);
+    x.clear();
+    for (const auto & item : xStr) {
+      x.push_back(util::DateTime(item));
+    }
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -189,7 +195,7 @@ void exclusiveScan(const eckit::mpi::Comm &comm, size_t &x) {
 }
 
 // ------------------------------------------------------------------------------------------------
-void broadcastBool(const eckit::mpi::Comm & comm, bool & boolVar, const int root) {
+void broadcastBool(const eckit::mpi::Comm & comm, bool & boolVar, const size_t root) {
     // Send bool as int since eckit MPI broadcast doesn't accept bool
     int tempInt;
     if (comm.rank() == root) {
@@ -201,7 +207,7 @@ void broadcastBool(const eckit::mpi::Comm & comm, bool & boolVar, const int root
     }
 }
 
-void broadcastString(const eckit::mpi::Comm & comm, std::string & stringVar, const int root) {
+void broadcastString(const eckit::mpi::Comm & comm, std::string & stringVar, const size_t root) {
     std::vector<char> buffer;
     if (comm.rank() == root) {
         // Send string as vector of char since eckit MPI broadcast doesn't accept string

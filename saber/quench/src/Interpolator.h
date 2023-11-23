@@ -17,14 +17,11 @@
 #include "util/Printable.h"
 
 // Forward declarations
-namespace oops {
-  class Variables;
-}
-
 namespace quench {
   class Geometry;
   class State;
   class Increment;
+  class Variables;
 
 /// Interpolator matrix for quench model.
 
@@ -45,8 +42,8 @@ class Interpolator: public util::Printable,
     void set(const Geometry &, const Geometry &) {}
     virtual void set_vector(const eckit::Configuration &) {}
 
-    void interpolate(const Increment &, const oops::Variables &,  Increment &) const {}
-    void interpolate(const State &, const oops::Variables &,  State &) const {}
+    void interpolate(const Increment &, const Variables &,  Increment &) const {}
+    void interpolate(const State &, const Variables &,  State &) const {}
     void smooth(Increment &) const {}
     void save(Increment &) const {}
     void read(const Increment &) {}

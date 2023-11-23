@@ -9,6 +9,8 @@
 #include <ostream>
 #include <string>
 
+#include "eckit/exception/Exceptions.h"
+
 #include "util/DateTime.h"
 #include "util/dot_product.h"
 #include "util/Duration.h"
@@ -37,31 +39,43 @@ class IncrEnsCtlVec : public util::Printable,
   static const std::string classname() {return "quench::IncrEnsCtlVec";}
 
 /// Constructor, destructor
-  IncrEnsCtlVec() {}
-  IncrEnsCtlVec(const Geometry &, const LocalizationMatrix &) {}
-  IncrEnsCtlVec(const Geometry &, const LocalizationMatrix &, const IncrEnsCtlVec &) {}
-  IncrEnsCtlVec(const IncrEnsCtlVec &, const bool) {}
+  IncrEnsCtlVec()
+    {throw eckit::Exception("no IncrEnsCtlVec with quench", Here());}
+  IncrEnsCtlVec(const Geometry &, const LocalizationMatrix &)
+    {throw eckit::Exception("no IncrEnsCtlVec with quench", Here());}
+  IncrEnsCtlVec(const Geometry &, const LocalizationMatrix &, const IncrEnsCtlVec &)
+    {throw eckit::Exception("no IncrEnsCtlVec with quench", Here());}
+  IncrEnsCtlVec(const IncrEnsCtlVec &, const bool)
+    {throw eckit::Exception("no IncrEnsCtlVec with quench", Here());}
   virtual ~IncrEnsCtlVec() {}
 
 /// Basic operators
-  void zero() {}
-  // void zero(const util::DateTime &);
+  void zero()
+    {throw eckit::Exception("no IncrEnsCtlVec with quench", Here());}
   IncrEnsCtlVec & operator =(const IncrEnsCtlVec &) {return *this;}
   IncrEnsCtlVec & operator+=(const IncrEnsCtlVec &) {return *this;}
   IncrEnsCtlVec & operator-=(const IncrEnsCtlVec &) {return *this;}
   IncrEnsCtlVec & operator*=(const double &) {return *this;}
-  void axpy(const double &, const IncrEnsCtlVec &, const bool check = true) {}
-  double dot_product_with(const IncrEnsCtlVec &) const {return 0.0;}
-  void schur_product_with(const IncrEnsCtlVec &) {}
-  void random();
+  void axpy(const double &, const IncrEnsCtlVec &, const bool check = true)
+    {throw eckit::Exception("no IncrEnsCtlVec with quench", Here());}
+  double dot_product_with(const IncrEnsCtlVec &) const
+    {throw eckit::Exception("no IncrEnsCtlVec with quench", Here()); return 0.0;}
+  void schur_product_with(const IncrEnsCtlVec &)
+    {throw eckit::Exception("no IncrEnsCtlVec with quench", Here());}
+  void random()
+    {throw eckit::Exception("no IncrEnsCtlVec with quench", Here());}
 
 /// I/O and diagnostics
-  void read(const eckit::Configuration &) {}
-  void write(const eckit::Configuration &) const {}
-  double norm() const {return 0.0;}
+  void read(const eckit::Configuration &)
+    {throw eckit::Exception("no IncrEnsCtlVec with quench", Here());}
+  void write(const eckit::Configuration &) const
+    {throw eckit::Exception("no IncrEnsCtlVec with quench", Here());}
+  double norm() const
+    {throw eckit::Exception("no IncrEnsCtlVec with quench", Here()); return 0.0;}
 
  private:
-  void print(std::ostream &) const {}
+  void print(std::ostream &) const
+    {throw eckit::Exception("no IncrEnsCtlVec with quench", Here());}
 };
 // -----------------------------------------------------------------------------
 

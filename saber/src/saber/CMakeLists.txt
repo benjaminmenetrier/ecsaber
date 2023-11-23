@@ -3,11 +3,8 @@
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
 
-# Links from SABER
-links_from_source_repo()
-
 # Build list of subdirs with files to add
-set( _subdirs blocks bump generic gsi interpolation oops spectralb util vader )
+set( _subdirs blocks bump fastlam generic gsi interpolation oops spectralb util vader )
 foreach( _subdir IN LISTS _subdirs )
     add_subdirectory( ${_subdir} )
     list( TRANSFORM ${_subdir}_src_files PREPEND ${_subdir}/ )

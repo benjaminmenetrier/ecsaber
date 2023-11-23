@@ -1,0 +1,10 @@
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/CMakeLists.txt.tmp	2023-11-10 16:12:31.516282881 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/CMakeLists.txt	2023-11-09 10:27:00.237922371 +0100
+@@ -29,6 +29,7 @@
+ target_link_libraries( ${PROJECT_NAME} PUBLIC fckit )
+ target_link_libraries( ${PROJECT_NAME} PUBLIC atlas_f )
+ target_link_libraries( ${PROJECT_NAME} PUBLIC ${oops_LIBRARIES} )
++target_link_libraries( ${PROJECT_NAME} PUBLIC oops-patch )
+ 
+ if( gsibec_FOUND )
+     target_link_libraries( ${PROJECT_NAME} PUBLIC gsibec )

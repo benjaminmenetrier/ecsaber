@@ -28,16 +28,12 @@ namespace eckit {
   class Configuration;
 }
 
-namespace oops {
-  class Variables;
-}
-
 namespace quench {
   class Gom;
   class Locations;
   class ModelBiasIncrement;
-  class ErrorCovariance;
   class State;
+  class Variables;
 
 /// Increment Class: Difference between two states
 /*!
@@ -55,8 +51,8 @@ class Increment : public oops::GeneralizedDepartures,
   static const std::string classname() {return "quench::Increment";}
 
 /// Constructor, destructor
-  Increment(const Geometry &, const oops::Variables &, const util::DateTime &);
-  Increment(const Geometry &, const oops::Variables &, const util::DateTime &,
+  Increment(const Geometry &, const Variables &, const util::DateTime &);
+  Increment(const Geometry &, const Variables &, const util::DateTime &,
             const util::DateTime &);
   Increment(const Geometry &, const Increment &);
   Increment(const Increment &, const bool);
@@ -86,8 +82,8 @@ class Increment : public oops::GeneralizedDepartures,
   void read(const eckit::Configuration &);
   void write(const eckit::Configuration &) const;
   double norm() const {return fields_->norm();}
-  double max(const oops::Variables & var) const {return fields_->max(var);}
-  double min(const oops::Variables & var) const {return fields_->min(var);}
+  double max(const Variables & var) const {return fields_->max(var);}
+  double min(const Variables & var) const {return fields_->min(var);}
   void dirac(const eckit::Configuration &);
   const util::DateTime & validTime() const {return fields_->time();}
   util::DateTime & validTime() {return fields_->time();}
@@ -115,9 +111,9 @@ class Increment : public oops::GeneralizedDepartures,
   void accumul(const double &, const State &);
 
 /// ATLAS FieldSet accessor
-  void toFieldSet(atlas::FieldSet &) const;
-  void toFieldSetAD(const atlas::FieldSet &) {ABORT("not implemented");}
-  void fromFieldSet(const atlas::FieldSet &);
+  const atlas::FieldSet & fieldSet() const {return fields_->fieldSet();}
+  atlas::FieldSet & fieldSet() {return fields_->fieldSet();}
+  void synchronizeFields() {fields_->synchronizeFields();}
 
 /// Data
  private:

@@ -1,0 +1,59 @@
+# To be called by saber_quench_error_covariance_toolbox.x
+geometry:
+  function space: StructuredColumns
+  grid:
+    type: regular_gaussian
+    N: 12
+  groups:
+  - variables:
+    - eastward_wind
+    - mu
+    - northward_wind
+    - streamfunction
+    - unbalanced_pressure_levels_minus_one
+    - velocity_potential
+    levels: 70
+  partitioner: ectrans
+background:
+  date: '2010-01-01T12:00:00Z'
+  state variables:
+  - eastward_wind
+  - northward_wind
+  - unbalanced_pressure_levels_minus_one
+  - mu
+background error:
+  covariance model: SABER
+  randomization size: 2
+  saber central block:
+    saber block name: ID
+  saber outer blocks:
+  - saber block name: square root of spectral covariance
+    skip inverse test: true
+    active variables:
+    - mu
+    - streamfunction
+    - unbalanced_pressure_levels_minus_one
+    - velocity_potential
+    read:
+      covariance_file: testdata/spectralcov.nc
+      umatrix_netcdf_names:
+      - MU_inc_Uv_matrix
+      - PSI_inc_Uv_matrix
+      - aP_inc_Uv_matrix
+      - CHI_inc_Uv_matrix
+  - saber block name: spectral to gauss
+    active variables:
+    - eastward_wind
+    - mu
+    - northward_wind
+    - streamfunction
+    - unbalanced_pressure_levels_minus_one
+    - velocity_potential
+output variance:  # This section is optional
+  mpi pattern: '%MPI%'
+  filepath: testdata/randomization_sqrtspectralb/variance_%MPI%pes
+output perturbations:
+  member pattern: '%MEM%'
+  filepath: testdata/randomization_sqrtspectralb/randomized_gauss_mb%MEM%
+test:
+  reference filename: testref/randomization_sqrtspectralb.ref

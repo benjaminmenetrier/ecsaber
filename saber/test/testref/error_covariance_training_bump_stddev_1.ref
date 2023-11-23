@@ -1,0 +1,36 @@
+       Independent levels:  1[2]
+          Subset Sc0 size:              762
+          Min. / max. longitudes: -171.0 /   180.0
+          Min. / max. latitudes:   -90.0 /    90.0
+          Domain area (% of Earth area): 0.100E+03%
+             Level   1 ~> 100.0%
+             Level   2 ~> 100.0%
+             Level   1 ~>  0.100E+01 vert. coord.
+             Level   2 ~>  0.200E+01 vert. coord.
+          Norm of stream_function:  0.35396179E+02
+          Norm of stream_function:  0.38076755E+02
+          Norm of stream_function:  0.40804483E+02
+          Norm of stream_function:  0.36862100E+02
+          Norm of stream_function:  0.41519621E+02
+          Norm of stream_function:  0.38500152E+02
+          Norm of stream_function:  0.35352190E+02
+          Norm of stream_function:  0.38195989E+02
+          Norm of stream_function:  0.38655007E+02
+          Norm of stream_function:  0.41941606E+02
+          Norm of stream_function:  0.38221939E+02
+          Norm of stream_function:  0.40015189E+02
+          Norm of stream_function:  0.40233105E+02
+          Norm of stream_function:  0.35662190E+02
+          Norm of stream_function:  0.38758212E+02
+          Norm of stream_function:  0.33106432E+02
+          Norm of stream_function:  0.37570543E+02
+          Norm of stream_function:  0.38633052E+02
+          Norm of stream_function:  0.40024833E+02
+          Norm of stream_function:  0.39135818E+02
+                Level   1: rhflt =   40000.00 km, rel. diff. =  0.33902E-02
+                Level   2: rhflt =   40000.00 km, rel. diff. =  0.19375E-01
+             Level   1 ~>  0.10169E+01 /  0.10169E+01
+             Level   2 ~>  0.10195E+01 /  0.10195E+01
+Norm of output parameter stddev - 1: 4.1359270513803665e+01
+Norm of output parameter var - 1: 4.3289362578921313e+01
+Norm of output parameter m4 - 1: 1.3993375181143369e+02

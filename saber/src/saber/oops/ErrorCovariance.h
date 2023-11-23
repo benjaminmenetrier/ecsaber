@@ -1,6 +1,5 @@
 /*
- * (C) Copyright 2021 UCAR
- * (C) Copyright 2023 Meteorologisk Institutt
+ * (C) Copyright 2021-2023 UCAR
  *
  * This software is licensed under the terms of the Apache Licence Version 2.0
  * which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -18,12 +17,13 @@
 #include "eckit/exception/Exceptions.h"
 
 #include "oops/assimilation/IncrCtlVec.h"
+#include "oops/assimilation/Increment4D.h"
 #include "oops/assimilation/State4D.h"
 #include "oops/base/ModelSpaceCovarianceBase.h"
-#include "oops/base/Variables.h"
 #include "oops/interface/Geometry.h"
 #include "oops/interface/Increment.h"
 #include "oops/interface/State.h"
+#include "oops/interface/Variables.h"
 
 #include "saber/blocks/SaberBlockChainBase.h"
 #include "saber/blocks/SaberBlockParametersBase.h"
@@ -40,6 +40,15 @@ namespace saber {
 
 // -----------------------------------------------------------------------------
 
+inline std::string parametricIfNotEnsemble(const std::string & blockName) {
+  if (blockName == "Ensemble")
+    return blockName;
+  else
+    return "Parametric";
+}
+
+// -----------------------------------------------------------------------------
+
 template <typename MODEL>
 class ErrorCovariance : public oops::ModelSpaceCovarianceBase<MODEL> {
   using Geometry_ = oops::Geometry<MODEL>;
@@ -50,18 +59,19 @@ class ErrorCovariance : public oops::ModelSpaceCovarianceBase<MODEL> {
   using IncrModCtlVec_ = oops::IncrModCtlVec<MODEL>;
   using State_ = oops::State<MODEL>;
   using State4D_ = oops::State4D<MODEL>;
+  using Variables_ = oops::Variables<MODEL>;
 
  public:
   typedef ErrorCovarianceParameters<MODEL> Parameters_;
 
   static const std::string classname() {return "saber::ErrorCovariance";}
 
-  ErrorCovariance(const Geometry_ &, const oops::Variables &, const eckit::Configuration &,
+  ErrorCovariance(const Geometry_ &, const Variables_ &, const eckit::Configuration &,
                   const State_ &);
   ~ErrorCovariance();
 
   // Methods
-  void linearize(const State_ &, const Geometry_ &) override;
+  void linearize(const State_ &, const Geometry_ &, const eckit::Configuration &) override;
   void multiply(const Increment_ &, Increment_ &) const override;
   void inverseMultiply(const Increment_ &, Increment_ &) const override;
   void multiplySqrt(const IncrCtlVec_ &, Increment_ &) const override;
@@ -101,7 +111,7 @@ class ErrorCovariance : public oops::ModelSpaceCovarianceBase<MODEL> {
 
 template<typename MODEL>
 ErrorCovariance<MODEL>::ErrorCovariance(const Geometry_ & geom,
-                                        const oops::Variables & incVars,
+                                        const Variables_ & incVars,
                                         const eckit::Configuration & config,
                                         const State_ & xb3D)
   : oops::ModelSpaceCovarianceBase<MODEL>(config)
@@ -116,15 +126,18 @@ ErrorCovariance<MODEL>::ErrorCovariance(const Geometry_ & geom,
   params.validateAndDeserialize(config);
 
   // Local copy of background and first guess that can undergo interpolation
-  oops::FieldSet4D fset4dXb(xb);
-  oops::FieldSet4D fset4dFg(fg);
+  const oops::FieldSet4D fset4dXbTmp(xb);
+  const oops::FieldSet4D fset4dFgTmp(fg);
+
+  oops::FieldSet4D fset4dXb = oops::copyFieldSet4D(fset4dXbTmp);
+  oops::FieldSet4D fset4dFg = oops::copyFieldSet4D(fset4dFgTmp);
 
   // Extend background and first guess with geometry fields
   // TODO(Benjamin, Marek, Mayeul, ?)
 
   // Initialize outer variables
-  const std::vector<std::size_t> vlevs = geom.variableSizes(incVars);
-  oops::Variables outerVars(incVars.variables());
+  const std::vector<std::size_t> vlevs = geom.geometry().variableSizes(incVars.variables());
+  oops::patch::Variables outerVars(incVars.variables().variablesList());
   for (std::size_t i = 0; i < vlevs.size() ; ++i) {
     outerVars.addMetaData(outerVars[i], "levels", vlevs[i]);
   }
@@ -156,13 +169,13 @@ ErrorCovariance<MODEL>::ErrorCovariance(const Geometry_ & geom,
   covarConf.set("ensemble configuration", ensembleConf);
   // Read dual resolution ensemble if needed
   const auto & dualResParams = params.dualResParams.value();
-  const oops::Geometry<MODEL> * dualResGeom = &geom;
+  const Geometry_ * dualResGeom = &geom;
   std::vector<atlas::FieldSet> fsetDualResEns;
   if (dualResParams != boost::none) {
     const auto & dualResGeomConf = dualResParams->geometry.value();
     if (dualResGeomConf != boost::none) {
       // Create dualRes geometry
-      dualResGeom = new oops::Geometry<MODEL>(*dualResGeomConf);
+      dualResGeom = new Geometry_(*dualResGeomConf);
     }
     // Background and first guess at dual resolution geometry
     oops::State<MODEL> xbDualRes(*dualResGeom, xb[0]);
@@ -208,16 +221,16 @@ ErrorCovariance<MODEL>::ErrorCovariance(const Geometry_ & geom,
     eckit::LocalConfiguration hybridConf = saberCentralBlockParams.toConfiguration();
 
     // Create block geometry (needed for ensemble reading)
-    const oops::Geometry<MODEL> * hybridGeom = &geom;
+    const Geometry_ * hybridGeom = &geom;
     if (hybridConf.has("geometry")) {
-      hybridGeom = new oops::Geometry<MODEL>(hybridConf.getSubConfiguration("geometry"));
+      hybridGeom = new Geometry_(hybridConf.getSubConfiguration("geometry"));
     }
 
     // Loop over components
     for (const auto & cmp : hybridConf.getSubConfigurations("components")) {
       // Initialize component outer variables
       // TODO(AS): this should be either outerVars or outerBlockChain_->innerVars();
-      oops::Variables cmpOuterVars(outerVars);
+      const oops::patch::Variables cmpOuterVars(outerVars);
 
       // Set weight
       eckit::LocalConfiguration weightConf = cmp.getSubConfiguration("weight");
@@ -267,52 +280,35 @@ ErrorCovariance<MODEL>::ErrorCovariance(const Geometry_ & geom,
       cmpCentralBlockParamsWrapper.deserialize(cmpConf.getSubConfiguration("saber central block"));
       const auto & centralBlockParams =
                    cmpCentralBlockParamsWrapper.saberCentralBlockParameters.value();
-      // TODO(AS): move construction of BlockChain to factory method or function
-      if (centralBlockParams.saberBlockName.value() == "Ensemble") {
-        hybridBlockChain_.push_back(std::make_unique<SaberEnsembleBlockChain>(*hybridGeom,
-                          *dualResGeom,
-                          cmpOuterVars,
-                          fset4dXb,
-                          fset4dFg,
-                          fset4dCmpEns,
-                          fsetDualResEns,
-                          cmpCovarConf,
-                          cmpConf));
-      } else {
-        hybridBlockChain_.push_back(std::make_unique<SaberParametricBlockChain>(*hybridGeom,
-                          *dualResGeom,
-                          cmpOuterVars,
-                          fset4dXb,
-                          fset4dFg,
-                          fset4dCmpEns,
-                          fsetDualResEns,
-                          cmpCovarConf,
-                          cmpConf));
-      }
+
+      hybridBlockChain_.push_back
+        (SaberBlockChainFactory<MODEL>::create
+         (parametricIfNotEnsemble(centralBlockParams.saberBlockName.value()),
+          *hybridGeom,
+          *dualResGeom,
+          cmpOuterVars,
+          fset4dXb,
+          fset4dFg,
+          fset4dCmpEns,
+          fsetDualResEns,
+          cmpCovarConf,
+          cmpConf));
     }
+    ASSERT(hybridBlockChain_.size() > 0);
   } else {
     // Non-hybrid covariance: single block chain
-    if (saberCentralBlockParams.saberBlockName.value() == "Ensemble") {
-      hybridBlockChain_.push_back(std::make_unique<SaberEnsembleBlockChain>(geom,
-                          *dualResGeom,
-                          outerVars,
-                          fset4dXb,
-                          fset4dFg,
-                          fsetEns,
-                          fsetDualResEns,
-                          covarConf,
-                          params.toConfiguration()));
-    } else {
-      hybridBlockChain_.push_back(std::make_unique<SaberParametricBlockChain>(geom,
-                          *dualResGeom,
-                          outerVars,
-                          fset4dXb,
-                          fset4dFg,
-                          fsetEns,
-                          fsetDualResEns,
-                          covarConf,
-                          params.toConfiguration()));
-    }
+    hybridBlockChain_.push_back
+      (SaberBlockChainFactory<MODEL>::create
+       (parametricIfNotEnsemble(saberCentralBlockParams.saberBlockName.value()),
+        geom,
+        *dualResGeom,
+        outerVars,
+        fset4dXb,
+        fset4dFg,
+        fsetEns,
+        fsetDualResEns,
+        covarConf,
+        params.toConfiguration()));
 
     // Set weights
     hybridScalarWeightSqrt_.push_back(1.0);
@@ -336,8 +332,9 @@ ErrorCovariance<MODEL>::~ErrorCovariance() {
 // -----------------------------------------------------------------------------
 
 template <typename MODEL>
-void ErrorCovariance<MODEL>::linearize(const State_ &xb,
-                                       const Geometry_ &geom) {
+void ErrorCovariance<MODEL>::linearize(const State_ &,
+                                       const Geometry_ &,
+                                       const eckit::Configuration &) {
   oops::Log::trace() << "ErrorCovariance linearized." << std::endl;
 }
 
@@ -366,11 +363,19 @@ void ErrorCovariance<MODEL>::randomize(Increment_ & dx3d) const {
   // JEDI compatibility
   Increment4D_ dx(dx3d.geometry(), dx3d.variables(), {dx3d.validTime()});
 
+  // Create FieldSet4D, set to zero
+  atlas::FieldSet fset = util::createFieldSet(hybridBlockChain_[0]->outerFunctionSpace(),
+                                              hybridBlockChain_[0]->outerVariables(),
+                                              0.0);
+  oops::FieldSet4D fset4dSum(dx.times(), oops::mpi::myself(), eckit::mpi::comm());
+  for (size_t jtime = 0; jtime < fset4dSum.size(); ++jtime) {
+    fset4dSum[jtime].fieldSet() = util::copyFieldSet(fset);
+  }
+
   // Loop over components for the central block
-  oops::FieldSet4D fset4dSum(dx.times(), dx.commTime(), dx.geometry().getComm());
   for (size_t jj = 0; jj < hybridBlockChain_.size(); ++jj) {
     // Randomize covariance
-    oops::FieldSet4D fset4dCmp(dx.times(), dx.commTime(), dx.geometry().getComm());
+    oops::FieldSet4D fset4dCmp(dx.times(), oops::mpi::myself(), eckit::mpi::comm());
     hybridBlockChain_[jj]->randomize(fset4dCmp);
 
     // Weight square-root multiplication
@@ -383,22 +388,16 @@ void ErrorCovariance<MODEL>::randomize(Increment_ & dx3d) const {
       fset4dCmp *= hybridFieldWeightSqrt_[jj];
     }
 
-    if (jj == 0) {
-      // Initialize sum
-      for (size_t jtime = 0; jtime < fset4dSum.size(); ++jtime) {
-        fset4dSum[jtime].fieldSet() = util::copyFieldSet(fset4dCmp[jtime].fieldSet());
-      }
-    } else {
-      // Add component
-      fset4dSum += fset4dCmp;
-    }
+    // Add component
+    fset4dSum += fset4dCmp;
   }
 
   if (outerBlockChain_) outerBlockChain_->applyOuterBlocks(fset4dSum);
 
   // ATLAS fieldset to Increment_
-  for (size_t jtime = 0; jtime < dx.size(); ++jtime) {
-    dx[jtime].fromFieldSet(fset4dSum[jtime].fieldSet());
+  for (int jtime = dx.first(); jtime <= dx.last(); ++jtime) {
+    util::copyFieldSet(fset4dSum[jtime].fieldSet(), dx[jtime].increment().fieldSet());
+    dx[jtime].increment().synchronizeFields();
   }
 
   // JEDI compatibility
@@ -466,8 +465,9 @@ void ErrorCovariance<MODEL>::multiply(const Increment_ &dx3di, Increment_ &dx3do
   if (outerBlockChain_) outerBlockChain_->applyOuterBlocks(fset4dSum);
 
   // ATLAS fieldset to Increment_
-  for (size_t jtime = 0; jtime < dxo.size(); ++jtime) {
-    dxo[jtime].fromFieldSet(fset4dSum[jtime].fieldSet());
+  for (int jtime = dxo.first(); jtime <= dxo.last(); ++jtime) {
+    util::copyFieldSet(fset4dSum[jtime].fieldSet(), dxo[jtime].increment().fieldSet());
+    dxo[jtime].increment().synchronizeFields();
   }
 
   // JEDI compatibility
@@ -503,10 +503,10 @@ void ErrorCovariance<MODEL>::multiplySqrt(const IncrCtlVec_ &dv,
 
   // Loop over components for the central block
   size_t offset = 0;
-  oops::FieldSet4D fset4dSum(dx.times(), dx.commTime(), dx.geometry().getComm());
+  oops::FieldSet4D fset4dSum(dx.times(), oops::mpi::myself(), eckit::mpi::comm());
   for (size_t jj = 0; jj < hybridBlockChain_.size(); ++jj) {
     // Apply covariance square-root
-    oops::FieldSet4D fset4dCmp(dx.times(), dx.commTime(), dx.geometry().getComm());
+    oops::FieldSet4D fset4dCmp(dx.times(), oops::mpi::myself(), eckit::mpi::comm());
     hybridBlockChain_[jj]->multiplySqrt(dv.modCtlVec().genCtlVec().data(), fset4dCmp, offset);
     offset += hybridBlockChain_[jj]->ctlVecSize();
 
@@ -535,8 +535,9 @@ void ErrorCovariance<MODEL>::multiplySqrt(const IncrCtlVec_ &dv,
   if (outerBlockChain_) outerBlockChain_->applyOuterBlocks(fset4dSum);
 
   // ATLAS fieldset to Increment_
-  for (size_t jtime = 0; jtime < dx.size(); ++jtime) {
-    dx[jtime].fromFieldSet(fset4dSum[jtime].fieldSet());
+  for (int jtime = dx.first(); jtime <= dx.last(); ++jtime) {
+    util::copyFieldSet(fset4dSum[jtime].fieldSet(), dx[jtime].increment().fieldSet());
+    dx[jtime].increment().synchronizeFields();
   }
 
   // JEDI compatibility
@@ -579,7 +580,7 @@ void ErrorCovariance<MODEL>::multiplySqrtTrans(const Increment_ &dx3d,
     }
 
     // Apply covariance square-root adjoint
-    hybridBlockChain_[jj]->multiplySqrtTrans(fset4dCmp, dv.modCtlVec().genCtlVec().data(), offset);
+    hybridBlockChain_[jj]->multiplySqrtAD(fset4dCmp, dv.modCtlVec().genCtlVec().data(), offset);
     offset += hybridBlockChain_[jj]->ctlVecSize();
   }
 

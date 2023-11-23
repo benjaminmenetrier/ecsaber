@@ -14,10 +14,10 @@ namespace saber {
 
 // -----------------------------------------------------------------------------
 
-oops::Variables getActiveVars(const SaberBlockParametersBase & params,
-                              const oops::Variables & defaultVars) {
+oops::patch::Variables getActiveVars(const SaberBlockParametersBase & params,
+                                     const oops::patch::Variables & defaultVars) {
   oops::Log::trace() << "getActiveVars starting" << std::endl;
-  oops::Variables activeVars;
+  oops::patch::Variables activeVars;
   if (params.mandatoryActiveVars().size() == 0) {
     // No mandatory active variables for this block
     activeVars = params.activeVars.value().get_value_or(defaultVars);
@@ -33,7 +33,7 @@ oops::Variables getActiveVars(const SaberBlockParametersBase & params,
     for (const std::string & var : activeVars.variables()) {
       varsconf = varsconf | atlas::util::Config(var, defvarsconf.getSubConfiguration(var));
     }
-    return oops::Variables(varsconf, varsStrings);
+    return oops::patch::Variables(varsconf, varsStrings);
   } else {
     return activeVars;
   }

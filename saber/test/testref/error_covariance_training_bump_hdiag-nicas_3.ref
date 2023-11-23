@@ -1,0 +1,160 @@
+       Independent levels:  1[2]
+          Subset Sc0 size:             1106
+          Min. / max. longitudes: -172.5 /   180.0
+          Min. / max. latitudes:   -90.0 /    90.0
+          Domain area (% of Earth area): 0.100E+03%
+             Level   1 ~> 100.0%
+             Level   2 ~> 100.0%
+             Level   1 ~>  0.100E+01 vert. coord.
+             Level   2 ~>  0.200E+01 vert. coord.
+       Independent levels:  1[2]
+          Subset Sc0 size:              762
+          Min. / max. longitudes: -171.0 /   180.0
+          Min. / max. latitudes:   -90.0 /    90.0
+          Domain area (% of Earth area): 0.100E+03%
+             Level   1 ~> 100.0%
+             Level   2 ~> 100.0%
+             Level   1 ~>  0.100E+01 vert. coord.
+             Level   2 ~>  0.200E+01 vert. coord.
+          nc1 =      500
+          Independent levels:  1[2]
+          Independent levels for angular sector   1 / class   1:  1[2]
+          Independent levels for angular sector   1 / class   2:  1[2]
+          Independent levels for angular sector   1 / class   3:  1[2]
+          Independent levels for angular sector   1 / class   4:  1[2]
+          Independent levels for angular sector   1 / class   5:  1[2]
+          Independent levels for angular sector   1 / class   6:  1[2]
+          Independent levels for angular sector   1 / class   7:  1[2]
+          Independent levels for angular sector   1 / class   8:  1[2]
+          Independent levels for angular sector   1 / class   9:  1[2]
+          Independent levels for angular sector   1 / class  10:  1[2]
+          Independent levels for angular sector   1 / class  11:  1[2]
+          Independent levels for angular sector   1 / class  12:  1[2]
+          Independent levels for angular sector   1 / class  13:  1[2]
+          Independent levels for angular sector   1 / class  14:  1[2]
+          Independent levels for angular sector   1 / class  15:  1[2]
+          nc1 =      500
+          Independent levels:  1[2]
+          Independent levels for angular sector   1 / class   1:  1[2]
+          Independent levels for angular sector   1 / class   2:  1[2]
+          Independent levels for angular sector   1 / class   3:  1[2]
+          Independent levels for angular sector   1 / class   4:  1[2]
+          Independent levels for angular sector   1 / class   5:  1[2]
+          Independent levels for angular sector   1 / class   6:  1[2]
+          Independent levels for angular sector   1 / class   7:  1[2]
+          Independent levels for angular sector   1 / class   8:  1[2]
+          Independent levels for angular sector   1 / class   9:  1[2]
+          Independent levels for angular sector   1 / class  10:  1[2]
+          Independent levels for angular sector   1 / class  11:  1[2]
+          Independent levels for angular sector   1 / class  12:  1[2]
+          Independent levels for angular sector   1 / class  13:  1[2]
+          Independent levels for angular sector   1 / class  14:  1[2]
+          Independent levels for angular sector   1 / class  15:  1[2]
+                Level:   1 ~> cov. at class zero:  0.96E+00
+                Level:   2 ~> cov. at class zero:  0.91E+00
+                Level:   1 ~> cov. at class zero:  0.10E+01
+                Level:   2 ~> cov. at class zero:  0.99E+00
+             Block stream_function:  0.15184402E+00 for       60 diagnostic points
+                   Level:   1 ~> amplitude:        1.00
+                                 cor. hor. support:      3645.05 km
+                                 cor. ver. support:         3.09 vertical units
+                   Level:   2 ~> amplitude:        1.00
+                                 cor. hor. support:      3787.87 km
+                                 cor. ver. support:         3.09 vertical units
+             Block stream_function:  0.17246196E+00 for       60 diagnostic points
+                   Level:   1 ~> amplitude:        1.00
+                                 cor. hor. support:      3508.85 km
+                                 cor. ver. support:         3.24 vertical units
+                   Level:   2 ~> amplitude:        1.00
+                                 cor. hor. support:      3585.72 km
+                                 cor. ver. support:         3.24 vertical units
+             Block stream_function:  0.23630391E+00 for       40 diagnostic points
+                Level:   1 ~> loc. at class zero:       0.83
+                Level:   2 ~> loc. at class zero:       0.82
+                   Level:   1 ~> amplitude:        1.00
+                                 loc. hor. support:      4639.25 km
+                                 loc. ver. support:         4.09 vertical units
+                   Level:   2 ~> amplitude:        1.00
+                                 loc. hor. support:      4214.09 km
+                                 loc. ver. support:         4.09 vertical units
+             Block stream_function:  0.27508840E+00 for       38 diagnostic points
+                Level:   1 ~> loc. at class zero:       0.92
+                Level:   2 ~> loc. at class zero:       0.92
+                   Level:   1 ~> amplitude:        1.00
+                                 loc. hor. support:      5554.25 km
+                                 loc. ver. support:         6.02 vertical units
+                   Level:   2 ~> amplitude:        1.00
+                                 loc. hor. support:      5998.77 km
+                                 loc. ver. support:         6.02 vertical units
+                Level:   1 ~> hybrid coefficients: 0.56 / 0.42
+                Level:   2 ~> hybrid coefficients: 0.53 / 0.43
+             Effective levels:   1   2 
+                Horizontal support radius:    4639.25 km (   4639.25 km -    4639.25 km)
+                Estimated nc1 from horizontal support radius:      437
+                   Decimate full grid, at least      437 points required,    1082 valid points found
+                   Subgrid hash:   -706992417
+                Final nc1:      437
+                Effective horizontal resolution:  4.00
+                Horizontal support radius:    4214.09 km (   4214.09 km -    4214.09 km)
+                Estimated nc1 from horizontal support radius:      530
+                   Decimate full grid, at least      530 points required,    1090 valid points found
+                   Subgrid hash:  -1943090031
+                Final nc1:      530
+                Effective horizontal resolution:  4.00
+             nc1(  1) =                        437
+             nc1(  2) =                        530
+             ns =                              967
+             v%n_s =                             2
+             c%n_s[global] =                 26567
+             Effective levels:   1   2 
+                Horizontal support radius:    5554.25 km (   5554.25 km -    5554.25 km)
+                Estimated nc1 from horizontal support radius:      305
+                   Decimate full grid, at least      305 points required,     762 valid points found
+                   Subgrid hash:    618298028
+                Final nc1:      305
+                Effective horizontal resolution:  4.00
+                Horizontal support radius:    5998.77 km (   5998.77 km -    5998.77 km)
+                Estimated nc1 from horizontal support radius:      261
+                   Decimate full grid, at least      261 points required,     762 valid points found
+                   Subgrid hash:   -216098172
+                Final nc1:      261
+                Effective horizontal resolution:  3.99
+             nc1(  1) =                        305
+             nc1(  2) =                        261
+             ns =                              566
+             v%n_s =                             2
+             c%n_s[global] =                 14959
+    Full NICAS adjoint test result:                        T
+       Block NICAS adjoint test result:                    T
+          Interpolation adjoint test (horizontal) result:  T
+          Interpolation adjoint test (vertical) result:    T
+          Interpolation adjoint test (total) result:       T
+          Communication AB adjoint test result:            T
+          Communication AC adjoint test result:            T
+          Convolution / communication adjoint test result: T
+          Component NICAS adjoint test result:             T
+             Min / max: 1.0000000 /  1.0000000 over     10 tests
+             Min / max: 1.0000000 /  1.0000000 over     10 tests
+             0.0 /    0.0:  1.0000000
+          Level   1:  0.0000000 -  1.0000000
+          Level   2:  0.0000000 -  0.8081698
+    Full NICAS adjoint test result:                        T
+       Block NICAS adjoint test result:                    T
+          Interpolation adjoint test (horizontal) result:  T
+          Interpolation adjoint test (vertical) result:    T
+          Interpolation adjoint test (total) result:       T
+          Communication AB adjoint test result:            T
+          Communication AC adjoint test result:            T
+          Convolution / communication adjoint test result: T
+          Component NICAS adjoint test result:             T
+             Min / max: 1.0000000 /  1.0000000 over     10 tests
+             Min / max: 1.0000000 /  1.0000000 over     10 tests
+             0.0 /    0.0:  1.0000000
+          Level   1:  0.0000000 -  1.0000000
+          Level   2:  0.0000000 -  0.9227963
+Norm of output parameter loc_rh - 1: 2.1711165838792601e+08
+Norm of output parameter loc_rv - 1: 2.0044142458539670e+02
+Norm of output parameter hyb_coef_ens - 1: 2.6732620444699819e+01
+Norm of output parameter hyb_coef_ens_lr - 1: 2.0822510714431008e+01
+Norm of output parameter loc_rh_lr - 1: 2.3694160476838183e+08
+Norm of output parameter loc_rv_lr - 1: 2.4681360916537037e+02
