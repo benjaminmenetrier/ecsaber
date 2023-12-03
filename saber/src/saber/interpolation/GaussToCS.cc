@@ -63,23 +63,7 @@ auto createInverseInterpolation(const bool initializeInverseInterpolation,
   const auto config = atlas::util::Config("type", "cubedsphere");
   const atlas::grid::MatchingMeshPartitioner csMatchingPartitioner(csFunctionSpace.mesh(),
                                                                    config);
-  try {
-    inverseInterpolation.matchingPtcldFspace = createPointCloud(gaussGrid, csMatchingPartitioner);
-  } catch (const eckit::Exception &) {
-    oops::Log::error()
-            << "ERROR  : SABER block \"gauss to cubed-sphere dual\" inverse cannot run"
-            << std::endl
-            << "ERROR  : with 2 or 3 MPI tasks from an " << gaussGrid.name()
-            << " grid to a " << csFunctionSpace.mesh().grid().name() << " grid."
-            << std::endl
-            << "ERROR  : Try one of the three possible solutions:" << std::endl
-            << "ERROR  :   1. Add yaml key `initialize inverse interpolator: false` to the block"
-            << std::endl
-            << "ERROR  :   2. Use 1, 4 or more MPI tasks" << std::endl
-            << "ERROR  :   3. Use a Gaussian grid with less points" << std::endl;
-    throw(eckit::FunctionalityNotSupported(
-                "Inverse not implemented on 2 and 3 PEs with these grids.", Here()));
-  }
+  inverseInterpolation.matchingPtcldFspace = createPointCloud(gaussGrid, csMatchingPartitioner);
 
   inverseInterpolation.targetPtcldFspace = createPointCloud(gaussGrid, gaussPartitioner);
 
@@ -200,7 +184,7 @@ GaussToCS::GaussToCS(const oops::GeometryData & outerGeometryData,
                      const Parameters_ & params,
                      const oops::FieldSet3D & xb,
                      const oops::FieldSet3D & fg)
-  : SaberOuterBlockBase(params),
+  : SaberOuterBlockBase(params, xb.validTime()),
     innerVars_(outerVars),
     activeVars_(params.activeVariables.value().get_value_or(innerVars_)),
     CSFunctionSpace_(outerGeometryData.functionSpace()),
@@ -225,7 +209,7 @@ GaussToCS::GaussToCS(const oops::GeometryData & outerGeometryData,
 
 // -----------------------------------------------------------------------------
 
-void GaussToCS::multiply(atlas::FieldSet & fieldSet) const {
+void GaussToCS::multiply(oops::FieldSet3D & fieldSet) const {
   oops::Log::trace() << classname() << "::multiply starting " << std::endl;
 
   // Create empty Model fieldset
@@ -262,7 +246,7 @@ void GaussToCS::multiply(atlas::FieldSet & fieldSet) const {
     newFields.add(csFieldSet[fieldname]);
   }
 
-  fieldSet = newFields;
+  fieldSet.fieldSet() = newFields;
 
   oops::Log::trace() << classname() << "::multiply done"
                      << fieldSet.field_names() << std::endl;
@@ -270,7 +254,7 @@ void GaussToCS::multiply(atlas::FieldSet & fieldSet) const {
 
 // -----------------------------------------------------------------------------
 
-void GaussToCS::multiplyAD(atlas::FieldSet & fieldSet) const {
+void GaussToCS::multiplyAD(oops::FieldSet3D & fieldSet) const {
   oops::Log::trace() << classname()
                      << "::multiplyAD starting" << std::endl;
 
@@ -304,14 +288,14 @@ void GaussToCS::multiplyAD(atlas::FieldSet & fieldSet) const {
     newFields.add(gaussFieldSet[fieldname]);
   }
 
-  fieldSet = newFields;
+  fieldSet.fieldSet() = newFields;
 
   oops::Log::trace() << classname() << "::multiplyAD done" << std::endl;
 }
 
 // -----------------------------------------------------------------------------
 
-void GaussToCS::leftInverseMultiply(atlas::FieldSet & fieldSet) const {
+void GaussToCS::leftInverseMultiply(oops::FieldSet3D & fieldSet) const {
   oops::Log::trace() << classname() << "::leftInverseMultiply starting" << std::endl;
 
   atlas::FieldSet newFieldSet = atlas::FieldSet();
@@ -331,10 +315,7 @@ void GaussToCS::leftInverseMultiply(atlas::FieldSet & fieldSet) const {
                                  gaussFunctionSpace_,
                                  srcFieldSet, newFieldSet);
   } else {
-    // Approach above uses the cubed-sphere matching partitioner, which fails
-    // to partition on 1-3 PEs for some configurations (e.g. from a CS-LFR-12
-    // to F15). As a temporary and partial fix, we use a bespoke interpolation
-    // when running on one MPI task.
+    // A faster and more direct route is possible on a single PE
     inverseInterpolateSinglePE(activeVars_,
                                CSFunctionSpace_,
                                gaussFunctionSpace_,
@@ -342,9 +323,31 @@ void GaussToCS::leftInverseMultiply(atlas::FieldSet & fieldSet) const {
                                srcFieldSet, newFieldSet);
   }
 
-  fieldSet = newFieldSet;
+  fieldSet.fieldSet() = newFieldSet;
 
   oops::Log::trace() << classname() << "::leftInverseMultiply done" << std::endl;
+}
+
+// -----------------------------------------------------------------------------
+
+oops::FieldSet3D GaussToCS::generateInnerFieldSet(const oops::GeometryData & innerGeometryData,
+                                                  const oops::patch::Variables & innerVars) const {
+  oops::FieldSet3D fset(this->validTime(), innerGeometryData.comm());
+  fset.deepCopy(util::createSmoothFieldSet(innerGeometryData.comm(),
+                                           innerGeometryData.functionSpace(),
+                                           innerVars));
+  return fset;
+}
+
+// -----------------------------------------------------------------------------
+
+oops::FieldSet3D GaussToCS::generateOuterFieldSet(const oops::GeometryData & outerGeometryData,
+                                                  const oops::patch::Variables & outerVars) const {
+  oops::FieldSet3D fset(this->validTime(), outerGeometryData.comm());
+  fset.deepCopy(util::createSmoothFieldSet(outerGeometryData.comm(),
+                                           outerGeometryData.functionSpace(),
+                                           outerVars));
+  return fset;
 }
 
 // -----------------------------------------------------------------------------

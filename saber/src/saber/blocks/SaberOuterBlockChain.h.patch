@@ -1,5 +1,5 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberOuterBlockChain.h.tmp	2023-11-10 16:12:29.048286146 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberOuterBlockChain.h	2023-11-10 11:09:40.422605344 +0100
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberOuterBlockChain.h.tmp.bak	2023-12-03 11:17:50.252059427 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberOuterBlockChain.h	2023-12-03 11:06:39.484131569 +0100
 @@ -15,7 +15,7 @@
  #include "eckit/exception/Exceptions.h"
  
@@ -19,7 +19,7 @@
  // -----------------------------------------------------------------------------
 @@ -129,7 +130,9 @@
                         const oops::FieldSet4D & fset4dFg,
-                        std::vector<atlas::FieldSet> & fsetEns,
+                        std::vector<oops::FieldSet3D> & fsetEns,
                         const eckit::LocalConfiguration & covarConf,
 -                       const std::vector<saber::SaberOuterBlockParametersWrapper> & params) {
 +                       const std::vector<saber::SaberOuterBlockParametersWrapper> & params) :
@@ -37,3 +37,23 @@
  
      // Get outer block parameters
      const SaberBlockParametersBase & saberOuterBlockParams =
+@@ -193,7 +196,7 @@
+ 
+         for (size_t ie = 0; ie < nens; ++ie) {
+           // Read ensemble member
+-          oops::FieldSet3D fset(fset4dXb[0].validTime(), geom.getComm());
++          oops::FieldSet3D fset(fset4dXb[0].validTime(), eckit::mpi::comm());
+           readEnsembleMember(geom,
+                              currentOuterVars,
+                              ensembleConf,
+@@ -265,8 +268,8 @@
+       && saberOuterBlockParams.inverseVars.value().size() > 0) {
+       oops::Log::info() << "Info     : Left inverse multiplication on xb and fg" << std::endl;
+       // Share fields pointers
+-      oops::FieldSet3D fsetXbInv(fset4dXb[0].validTime(), geom.getComm());
+-      oops::FieldSet3D fsetFgInv(fset4dXb[0].validTime(), geom.getComm());
++      oops::FieldSet3D fsetXbInv(fset4dXb[0].validTime(), eckit::mpi::comm());
++      oops::FieldSet3D fsetFgInv(fset4dXb[0].validTime(), eckit::mpi::comm());
+       for (const auto & var : saberOuterBlockParams.inverseVars.value().variables()) {
+         fsetXbInv.fieldSet().add(fset4dXb[0].fieldSet().field(var));
+         fsetFgInv.fieldSet().add(fset4dFg[0].fieldSet().field(var));

@@ -22,7 +22,6 @@
 #include "eckit/types/Types.h"
 #include "eckit/utils/Hash.h"
 
-#include "oops/util/ConfigFunctions.h"
 #include "oops/util/IntSetParser.h"
 #include "oops/util/Logger.h"
 

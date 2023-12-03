@@ -104,7 +104,7 @@ class ErrorCovariance : public oops::ModelSpaceCovarianceBase<MODEL> {
   std::vector<double> hybridScalarWeightSqrt_;
   /// Vector of field weights for hybrid B components (one element, empty
   /// fieldset for non-hybrid case).
-  std::vector<atlas::FieldSet> hybridFieldWeightSqrt_;
+  std::vector<oops::FieldSet3D> hybridFieldWeightSqrt_;
 };
 
 // -----------------------------------------------------------------------------
@@ -157,7 +157,7 @@ ErrorCovariance<MODEL>::ErrorCovariance(const Geometry_ & geom,
   const bool iterativeEnsembleLoading = params.iterativeEnsembleLoading.value();
 
   // Initialize ensembles as vector of FieldSets
-  std::vector<atlas::FieldSet> fsetEns;
+  std::vector<oops::FieldSet3D> fsetEns;
   // Read ensemble (for non-iterative ensemble loading)
   eckit::LocalConfiguration ensembleConf = readEnsemble(geom,
                                                         outerVars,
@@ -170,7 +170,7 @@ ErrorCovariance<MODEL>::ErrorCovariance(const Geometry_ & geom,
   // Read dual resolution ensemble if needed
   const auto & dualResParams = params.dualResParams.value();
   const Geometry_ * dualResGeom = &geom;
-  std::vector<atlas::FieldSet> fsetDualResEns;
+  std::vector<oops::FieldSet3D> fsetDualResEns;
   if (dualResParams != boost::none) {
     const auto & dualResGeomConf = dualResParams->geometry.value();
     if (dualResGeomConf != boost::none) {
@@ -237,7 +237,7 @@ ErrorCovariance<MODEL>::ErrorCovariance(const Geometry_ & geom,
       // Scalar weight
       hybridScalarWeightSqrt_.push_back(std::sqrt(weightConf.getDouble("value", 1.0)));
       // File-base weight
-      atlas::FieldSet fsetWeight;
+      oops::FieldSet3D fsetWeight(xb[0].validTime(), eckit::mpi::comm());
       if (weightConf.has("file")) {
         // File-base weight
         readHybridWeight(*hybridGeom,
@@ -245,7 +245,7 @@ ErrorCovariance<MODEL>::ErrorCovariance(const Geometry_ & geom,
                          xb[0].validTime(),
                          weightConf.getSubConfiguration("file"),
                          fsetWeight);
-        util::sqrtFieldSet(fsetWeight);
+        fsetWeight.sqrt();
       }
       hybridFieldWeightSqrt_.push_back(fsetWeight);
 
@@ -253,7 +253,7 @@ ErrorCovariance<MODEL>::ErrorCovariance(const Geometry_ & geom,
       eckit::LocalConfiguration cmpConf = cmp.getSubConfiguration("covariance");
 
       // Initialize ensembles as vector of FieldSets
-      std::vector<atlas::FieldSet> fset4dCmpEns;
+      std::vector<oops::FieldSet3D> fset4dCmpEns;
       // Read ensemble
       eckit::LocalConfiguration cmpEnsembleConf
          = readEnsemble(*hybridGeom,
@@ -313,7 +313,7 @@ ErrorCovariance<MODEL>::ErrorCovariance(const Geometry_ & geom,
     // Set weights
     hybridScalarWeightSqrt_.push_back(1.0);
     // File-base weight
-    atlas::FieldSet fsetWeight;
+    oops::FieldSet3D fsetWeight(xb[0].validTime(), eckit::mpi::comm());
     hybridFieldWeightSqrt_.push_back(fsetWeight);
   }
 
@@ -363,12 +363,11 @@ void ErrorCovariance<MODEL>::randomize(Increment_ & dx3d) const {
   Increment4D_ dx(dx3d.geometry(), dx3d.variables(), {dx3d.validTime()});
 
   // Create FieldSet4D, set to zero
-  atlas::FieldSet fset = util::createFieldSet(hybridBlockChain_[0]->outerFunctionSpace(),
-                                              hybridBlockChain_[0]->outerVariables(),
-                                              0.0);
   oops::FieldSet4D fset4dSum(dx.times(), oops::mpi::myself(), eckit::mpi::comm());
   for (size_t jtime = 0; jtime < fset4dSum.size(); ++jtime) {
-    fset4dSum[jtime].fieldSet() = util::copyFieldSet(fset);
+    fset4dSum[jtime].init(hybridBlockChain_[0]->outerFunctionSpace(),
+                          hybridBlockChain_[0]->outerVariables(),
+                          0.0);
   }
 
   // Loop over components for the central block
@@ -395,7 +394,7 @@ void ErrorCovariance<MODEL>::randomize(Increment_ & dx3d) const {
 
   // ATLAS fieldset to Increment_
   for (int jtime = dx.first(); jtime <= dx.last(); ++jtime) {
-    util::copyFieldSet(fset4dSum[jtime].fieldSet(), dx[jtime].increment().fieldSet());
+    dx[jtime].increment().fieldSet() = util::copyFieldSet(fset4dSum[jtime].fieldSet());
     dx[jtime].increment().synchronizeFields();
   }
 
@@ -465,7 +464,7 @@ void ErrorCovariance<MODEL>::multiply(const Increment_ &dx3di, Increment_ &dx3do
 
   // ATLAS fieldset to Increment_
   for (int jtime = dxo.first(); jtime <= dxo.last(); ++jtime) {
-    util::copyFieldSet(fset4dSum[jtime].fieldSet(), dxo[jtime].increment().fieldSet());
+    dxo[jtime].increment().fieldSet() = util::copyFieldSet(fset4dSum[jtime].fieldSet());
     dxo[jtime].increment().synchronizeFields();
   }
 
@@ -535,7 +534,7 @@ void ErrorCovariance<MODEL>::multiplySqrt(const IncrCtlVec_ &dv,
 
   // ATLAS fieldset to Increment_
   for (int jtime = dx.first(); jtime <= dx.last(); ++jtime) {
-    util::copyFieldSet(fset4dSum[jtime].fieldSet(), dx[jtime].increment().fieldSet());
+    dx[jtime].increment().fieldSet() = util::copyFieldSet(fset4dSum[jtime].fieldSet());
     dx[jtime].increment().synchronizeFields();
   }
 

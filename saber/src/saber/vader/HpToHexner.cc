@@ -31,6 +31,7 @@
 #include "oops/util/Timer.h"
 
 #include "saber/blocks/SaberOuterBlockBase.h"
+#include "saber/oops/Utilities.h"
 #include "saber/vader/CovarianceStatisticsUtils.h"
 
 namespace saber {
@@ -49,9 +50,9 @@ HpToHexner::HpToHexner(const oops::GeometryData & outerGeometryData,
                        const Parameters_ & params,
                        const oops::FieldSet3D & xb,
                        const oops::FieldSet3D & fg)
-  : SaberOuterBlockBase(params),
+  : SaberOuterBlockBase(params, xb.validTime()),
     innerGeometryData_(outerGeometryData), innerVars_(outerVars),
-    activeVars_(params.activeVars.value().get_value_or(outerVars)),
+    activeVars_(getActiveVars(params, outerVars)),
     augmentedStateFieldSet_()
 {
   oops::Log::trace() << classname() << "::HpToHexner starting" << std::endl;
@@ -136,26 +137,34 @@ HpToHexner::~HpToHexner() {
 
 // -----------------------------------------------------------------------------
 
-void HpToHexner::multiply(atlas::FieldSet & fset) const {
+void HpToHexner::multiply(oops::FieldSet3D & fset) const {
   oops::Log::trace() << classname() << "::multiply starting" << std::endl;
-  mo::eval_hydrostatic_exner_levels_tl(fset, augmentedStateFieldSet_);
+  // Allocate output fields if they are not already present, e.g when randomizing.
+  const oops::patch::Variables outputVars({"hydrostatic_exner_levels"});
+  allocateFields(fset,
+                 outputVars,
+                 activeVars_,
+                 innerGeometryData_.functionSpace());
+
+  // Populate output fields.
+  mo::eval_hydrostatic_exner_levels_tl(fset.fieldSet(), augmentedStateFieldSet_);
   oops::Log::trace() << classname() << "::multiply done" << std::endl;
 }
 
 // -----------------------------------------------------------------------------
 
-void HpToHexner::multiplyAD(atlas::FieldSet & fset) const {
+void HpToHexner::multiplyAD(oops::FieldSet3D & fset) const {
   oops::Log::trace() << classname() << "::multiplyAD starting" << std::endl;
-  mo::eval_hydrostatic_exner_levels_ad(fset, augmentedStateFieldSet_);
+  mo::eval_hydrostatic_exner_levels_ad(fset.fieldSet(), augmentedStateFieldSet_);
   oops::Log::trace() << classname() << "::multiplyAD done" << std::endl;
 }
 
 // -----------------------------------------------------------------------------
 
-void HpToHexner::leftInverseMultiply(atlas::FieldSet & fset) const {
+void HpToHexner::leftInverseMultiply(oops::FieldSet3D & fset) const {
   oops::Log::trace() << classname() << "::leftInverseMultiply starting" << std::endl;
   // Retrieve hydrostatic pressure from hydrostatic Exner.
-  mo::eval_hydrostatic_exner_levels_tl_inv(fset, augmentedStateFieldSet_);
+  mo::eval_hydrostatic_exner_levels_tl_inv(fset.fieldSet(), augmentedStateFieldSet_);
   oops::Log::trace() << classname() << "::leftInverseMultiply done" << std::endl;
 }
 

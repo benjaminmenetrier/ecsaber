@@ -1,5 +1,5 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberParametricBlockChain.h.tmp.bak	2023-11-20 18:49:10.891352620 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberParametricBlockChain.h	2023-11-20 18:39:33.470418620 +0100
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberParametricBlockChain.h.tmp.bak	2023-12-03 13:05:34.168171869 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberParametricBlockChain.h	2023-12-03 11:26:43.577975821 +0100
 @@ -74,6 +74,8 @@
    size_t size4D_;
    oops::patch::Variables centralVars_;
@@ -10,7 +10,7 @@
  
  // -----------------------------------------------------------------------------
 @@ -90,9 +92,13 @@
-                        std::vector<atlas::FieldSet> & fsetDualResEns,
+                        std::vector<oops::FieldSet3D> & fsetDualResEns,
                         const eckit::LocalConfiguration & covarConf,
                         const eckit::Configuration & conf)
 -  : outerFunctionSpace_(geom.functionSpace()), outerVariables_(outerVars),
@@ -25,19 +25,25 @@
    oops::Log::trace() << "SaberParametricBlockChain ctor starting" << std::endl;
  
    // If needed create outer block chain
-@@ -110,9 +116,9 @@
- 
-   // Set outer variables and geometry data for central block
+@@ -112,7 +118,7 @@
    const oops::patch::Variables currentOuterVars = outerBlockChain_ ?
--                             outerBlockChain_->innerVars() : outerVariables_;
-+                               outerBlockChain_->innerVars() : outerVariables_;
+                              outerBlockChain_->innerVars() : outerVariables_;
    const oops::GeometryData & currentOuterGeom = outerBlockChain_ ?
 -                             outerBlockChain_->innerGeometryData() : geom.generic();
 +                             outerBlockChain_->innerGeometryData() : geomData_;
  
    SaberCentralBlockParametersWrapper saberCentralBlockParamsWrapper;
    saberCentralBlockParamsWrapper.deserialize(conf.getSubConfiguration("saber central block"));
-@@ -203,7 +209,7 @@
+@@ -167,7 +173,7 @@
+ 
+       for (size_t ie = 0; ie < nens; ++ie) {
+         // Read ensemble member
+-        oops::FieldSet3D fset(fset4dXb[0].validTime(), geom.getComm());
++        oops::FieldSet3D fset(fset4dXb[0].validTime(), eckit::mpi::comm());
+         readEnsembleMember(geom, outerVariables_, ensembleConf, ie, fset);
+ 
+         // Apply outer blocks inverse (all of them)
+@@ -198,7 +204,7 @@
      oops::Log::info() << "Info     : Dual resolution setup" << std::endl;
  
      // Dual resolution setup
@@ -46,7 +52,16 @@
  
      // Ensemble configuration
      eckit::LocalConfiguration dualResEnsembleConf
-@@ -257,7 +263,7 @@
+@@ -216,7 +222,7 @@
+ 
+       for (size_t ie = 0; ie < dualResNens; ++ie) {
+         // Read ensemble member
+-        oops::FieldSet3D fset(fset4dXb[0].validTime(), dualResGeom.getComm());
++        oops::FieldSet3D fset(fset4dXb[0].validTime(), eckit::mpi::comm());
+         readEnsembleMember(dualResGeom, outerVariables_, dualResEnsembleConf, ie, fset);
+ 
+         // Use FieldSet in the central block
+@@ -247,18 +253,18 @@
      const eckit::LocalConfiguration outputEnsembleConf(covarConf, "output ensemble");
  
      // Check whether geometry grid is similar to the last outer block inner geometry
@@ -55,35 +70,48 @@
        == util::getGridUid(currentOuterGeom.functionSpace()));
  
      // Get ensemble size
-@@ -291,28 +297,30 @@
+     size_t ensembleSize = ensembleConf.getInt("ensemble size");
+ 
+     // Estimate mean
+-    oops::FieldSet3D fsetMean(fset4dXb[0].validTime(), geom.getComm());
++    oops::FieldSet3D fsetMean(fset4dXb[0].validTime(), eckit::mpi::comm());
+     if (iterativeEnsembleLoading) {
+       for (size_t ie = 0; ie < ensembleSize; ++ie) {
+         // Read member
+-        oops::FieldSet3D fsetMem(fset4dXb[0].validTime(), geom.getComm());
++        oops::FieldSet3D fsetMem(fset4dXb[0].validTime(), eckit::mpi::comm());
+         readEnsembleMember(geom, activeVars, ensembleConf, ie, fsetMem);
+ 
+         // Update mean
+@@ -281,14 +287,16 @@
  
      for (size_t ie = 0; ie < ensembleSize; ++ie) {
        oops::Log::info() << "Info     : Write member " << ie << std::endl;
 +      // Create variables
-+      oops::Variables<MODEL> varsT(templatedVarsConf(activeVars));
++      oops::Variables<MODEL> activeVarsT(templatedVarsConf(activeVars));
  
        // Increment pointer
 -      oops::Increment<MODEL> dx(geom, activeVars, fset4dXb[0].validTime());
-+      oops::Increment<MODEL> dx(geom, varsT, fset4dXb[0].validTime());
++      oops::Increment<MODEL> dx(geom, activeVarsT, fset4dXb[0].validTime());
  
        // Get ensemble member
        if (iterativeEnsembleLoading) {
          // Read ensemble member
-         readEnsembleMember(geom, activeVars, fset4dXb[0].validTime(), ensembleConf, ie,
--                           dx.fieldSet());
-+                           dx.increment().fieldSet());
+-        oops::FieldSet3D fset(fset4dXb[0].validTime(), geom.getComm());
++        oops::FieldSet3D fset(fset4dXb[0].validTime(), eckit::mpi::comm());
+         readEnsembleMember(geom, activeVars, ensembleConf, ie, fset);
  
          // Remove mean
--        util::subtractFieldSets(dx.fieldSet(), fsetMean);
-+        util::subtractFieldSets(dx.increment().fieldSet(), fsetMean);
+@@ -298,14 +306,14 @@
+         if (outerBlockChain_) outerBlockChain_->leftInverseMultiply(fset);
  
-         // Apply outer blocks inverse
--        if (outerBlockChain_) outerBlockChain_->leftInverseMultiply(dx.fieldSet());
-+        if (outerBlockChain_) outerBlockChain_->leftInverseMultiply(dx.increment().fieldSet());
+         // Copy fieldSet
+-        dx.fieldSet().deepCopy(fset);
++        dx.increment().fieldSet() = fset.fieldSet();
        } else {
          // Copy member
--        dx.fieldSet() = fsetEns[ie];
-+        dx.increment().fieldSet() = fsetEns[ie];
+-        dx.fieldSet().deepCopy(fsetEns[ie]);
++        dx.increment().fieldSet() = fsetEns[ie].fieldSet();
        }
  
        // ATLAS fieldset to Increment_
