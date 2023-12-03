@@ -1,5 +1,5 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/test/CMakeLists.txt.tmp	2023-11-15 11:28:33.242170734 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/saber/test/CMakeLists.txt	2023-11-15 10:51:17.449576246 +0100
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/test/CMakeLists.txt.tmp.bak	2023-12-03 13:28:16.360100915 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/test/CMakeLists.txt	2023-12-03 13:29:42.360089944 +0100
 @@ -7,9 +7,6 @@
  # Tests activated
  message( STATUS "SABER tests activated:" )
@@ -10,34 +10,13 @@
  # Default SABER_TEST_TIER
  set( SABER_TEST_TIER 1 )
  
-@@ -65,6 +62,9 @@
- if( DEFINED ENV{SABER_TEST_FASTLAM} )
-     set( SABER_TEST_FASTLAM $ENV{SABER_TEST_FASTLAM} )
- endif()
-+if( DEFINED ENV{SABER_TEST_FASTLAM} )
-+    set( SABER_TEST_FASTLAM $ENV{SABER_TEST_FASTLAM} )
-+endif()
- if( gsibec_FOUND )
-     if( DEFINED ENV{SABER_TEST_GSI_GEOS} )
-         set( SABER_TEST_GSI_GEOS $ENV{SABER_TEST_GSI_GEOS} )
-@@ -135,7 +135,7 @@
- # Input data
- file( STRINGS testlist/saber_data.txt saber_data )
- 
--# Setup SABER directories and links
-+# Setup SABER directories and copy
- message( STATUS "Setup SABER directories and links" )
- file( REMOVE_RECURSE ${CMAKE_CURRENT_BINARY_DIR}/testdata )
- file( REMOVE_RECURSE ${CMAKE_CURRENT_BINARY_DIR}/testinput )
-@@ -147,10 +147,11 @@
-     # Make test-specific data directory
+@@ -147,9 +144,10 @@
      file( MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/testdata/${test} )
  
--    # Link to yaml file
+     # Link to yaml file
 -    execute_process( COMMAND ${CMAKE_COMMAND} -E create_symlink
 -                     ${CMAKE_CURRENT_SOURCE_DIR}/testinput/${test}.yaml
 -                     ${CMAKE_CURRENT_BINARY_DIR}/testinput/${test}.yaml )
-+    # Create specific yaml file
 +    execute_process(COMMAND ${Python3_EXECUTABLE}
 +                    ${CMAKE_CURRENT_SOURCE_DIR}/ecmwf_yaml_update.py
 +                    ${CMAKE_CURRENT_SOURCE_DIR}/testinput/${test}.yaml
@@ -45,7 +24,7 @@
  
      # Link to reference file
      if( EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/testref/${test}.ref )
-@@ -245,14 +246,44 @@
+@@ -232,14 +230,44 @@
                          list( TRANSFORM deps_list APPEND _${mpi}-${omp} )
                      endif()
  

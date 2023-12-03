@@ -1,5 +1,5 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/Utilities.h.tmp.bak	2023-11-20 18:49:11.379353345 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/Utilities.h	2023-11-20 18:39:33.470418620 +0100
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/Utilities.h.tmp.bak	2023-12-03 13:05:34.624171923 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/Utilities.h	2023-12-03 11:49:32.053511951 +0100
 @@ -18,12 +18,14 @@
  
  #include "eckit/config/Configuration.h"
@@ -25,9 +25,9 @@
  #include "saber/oops/ErrorCovarianceParameters.h"
 +#include "saber/oops/ECUtilities.h"
  
- namespace saber {
- 
-@@ -43,6 +46,11 @@
+ namespace oops {
+   class FieldSet3D;
+@@ -47,6 +50,11 @@
  
  // -----------------------------------------------------------------------------
  
@@ -39,7 +39,7 @@
  void setMPI(eckit::LocalConfiguration & conf,
              const int & mpi);
  
-@@ -50,7 +58,7 @@
+@@ -62,7 +70,7 @@
  
  template<typename MODEL>
  eckit::LocalConfiguration readEnsemble(const oops::Geometry<MODEL> & geom,
@@ -48,7 +48,7 @@
                                         const oops::State<MODEL> & xb,
                                         const oops::State<MODEL> & fg,
                                         const eckit::LocalConfiguration & inputConf,
-@@ -67,47 +75,22 @@
+@@ -79,47 +87,22 @@
    // Fill output configuration and set ensemble size
    size_t nens = 0;
    size_t ensembleFound = 0;
@@ -100,7 +100,7 @@
      ++ensembleFound;
    }
  
-@@ -117,42 +100,35 @@
+@@ -129,43 +112,36 @@
    // Check number of ensembles in yaml
    ASSERT(ensembleFound <= 1);
  
@@ -147,14 +147,15 @@
      }
  
      // Transform Increment into FieldSet
--    for (unsigned int ie = 0; ie < nens; ++ie) {
--      atlas::FieldSet fset = util::shareFields((*ensemble)[ie].fieldSet());
-+    for (size_t ie = 0; ie < nens; ++ie) {
-+      atlas::FieldSet fset = util::copyFieldSet((*ensemble)[ie].increment().fieldSet());
+     for (unsigned int ie = 0; ie < nens; ++ie) {
+-      oops::FieldSet3D fset(xb.validTime(), geom.getComm());
+-      fset.shallowCopy((*ensemble)[ie].fieldSet());
++      oops::FieldSet3D fset(xb.validTime(), eckit::mpi::comm());
++      fset.shallowCopy((*ensemble)[ie].increment().fieldSet());
        fset.name() = "ensemble member";
        fsetEns.push_back(fset);
      }
-@@ -177,14 +153,17 @@
+@@ -190,14 +166,17 @@
    // Local copy
    eckit::LocalConfiguration localConf(conf);
  
@@ -169,12 +170,12 @@
    dx.read(localConf);
  
    // Get FieldSet
--  fset = util::shareFields(dx.fieldSet());
-+  fset = util::shareFields(dx.increment().fieldSet());
+-  fset.shallowCopy(dx.fieldSet());
++  fset.shallowCopy(dx.increment().fieldSet());
  
    oops::Log::trace() << "readHybridWeight done" << std::endl;
  }
-@@ -205,54 +184,36 @@
+@@ -217,54 +196,36 @@
    // Fill FieldSet
    size_t ensembleFound = 0;
  
@@ -192,12 +193,12 @@
 -    // Read state
 -    oops::State<MODEL> xx(geom, states.getStateConfig(ie, myrank));
 +    // Read state as increment
-+    oops::Increment<MODEL> dx(geom, varsT, date);
++    oops::Increment<MODEL> dx(geom, varsT, fset.validTime());
 +    dx.read(membersConf[ie]);
  
      // Copy FieldSet
--    fset = util::copyFieldSet(xx.fieldSet());
-+    fset = util::copyFieldSet(dx.increment().fieldSet());
+-    fset.deepCopy(xx.fieldSet());
++    fset.deepCopy(dx.increment().fieldSet());
  
      ++ensembleFound;
    }
@@ -208,11 +209,11 @@
 -    ensemblePertParams.deserialize(conf.getSubConfiguration("ensemble pert"));
 -
 -    // Read Increment
--    oops::Increment<MODEL> dx(geom, vars, date);
+-    oops::Increment<MODEL> dx(geom, vars, fset.validTime());
 -    dx.read(ensemblePertParams.getIncrementParameters(ie));
 -
 -    // Get FieldSet
--    fset = util::copyFieldSet(dx.fieldSet());
+-    fset.deepCopy(dx.fieldSet());
 +    // Increment ensemble from difference of two states
 +    std::vector<eckit::LocalConfiguration> membersConf = conf.getSubConfigurations("ensemble");
  
@@ -233,15 +234,15 @@
 -    oops::State<MODEL> xxPairs(geom, ensemblePairsParams.getStateConfig(ie, myrank));
 -
 -    // Compute difference
--    oops::Increment<MODEL> dx(geom, vars, date);
+-    oops::Increment<MODEL> dx(geom, vars, fset.validTime());
 -    dx.diff(xxPairs, xxBase);
 +    // Read Increment
-+    oops::Increment<MODEL> dx(geom, varsT, date);
++    oops::Increment<MODEL> dx(geom, varsT, fset.validTime());
 +    dx.read(membersConf[ie]);
  
      // Get FieldSet
--    fset = util::copyFieldSet(dx.fieldSet());
-+    fset = util::copyFieldSet(dx.increment().fieldSet());
+-    fset.deepCopy(dx.fieldSet());
++    fset.deepCopy(dx.increment().fieldSet());
  
      ++ensembleFound;
    }

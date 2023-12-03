@@ -1,5 +1,5 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/Localization.h.tmp.bak	2023-11-20 18:49:11.351353303 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/Localization.h	2023-11-20 18:54:42.615831586 +0100
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/Localization.h.tmp.bak	2023-12-03 14:41:42.259980057 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/Localization.h	2023-12-03 14:35:12.891212631 +0100
 @@ -1,8 +1,6 @@
  /*
 - * (C) Copyright 2021 UCAR
@@ -72,7 +72,7 @@
                                    const eckit::Configuration & conf)
    : loc_()
  {
-@@ -63,17 +74,19 @@
+@@ -63,19 +74,17 @@
    util::DateTime dummyTime(1977, 5, 25, 0, 0, 0);
  
    // Initialize
@@ -86,19 +86,19 @@
  
    // Create dummy xb and fg
 -  const State_ xb_state(geom, incVars, dummyTime);
--  const oops::FieldSet3D xb(xb_state.fieldSet(), xb_state.validTime(), geom.getComm());
+-  oops::FieldSet3D xb(dummyTime, geom.getComm());
+-  xb.shallowCopy(xb_state.fieldSet());
 -  const State_ fg_state(geom, incVars, dummyTime);
--  const oops::FieldSet3D fg(fg_state.fieldSet(), fg_state.validTime(), geom.getComm());
-+  atlas::FieldSet fset = util::createFieldSet(geom.geometry().functionSpace(),
-+                                              incVars,
-+                                              0.0);
-+  oops::FieldSet3D fset3d(fset, dummyTime, eckit::mpi::comm());
+-  oops::FieldSet3D fg(dummyTime, geom.getComm());
+-  fg.shallowCopy(fg_state.fieldSet());
++  oops::FieldSet3D fset3d(dummyTime, eckit::mpi::comm());
++  fset3d.deepCopy(util::createFieldSet(geom.geometry().functionSpace(), incVars, 0.0));
 +  oops::FieldSet4D fset4dXb(fset3d);
 +  oops::FieldSet4D fset4dFg(fset3d);
  
-   std::vector<atlas::FieldSet> fsetEns;
+   std::vector<oops::FieldSet3D> fsetEns;
    // TODO(AS): revisit what configuration needs to be passed to SaberParametricBlockChain.
-@@ -94,7 +107,7 @@
+@@ -96,7 +105,7 @@
    covarConf.set("time covariance", "univariate");
    // Initialize localization blockchain
    loc_ = std::make_unique<SaberParametricBlockChain>(geom, geom,
@@ -107,7 +107,7 @@
                fsetEns, fsetEns, covarConf, conf);
  
    oops::Log::trace() << "Localization:Localization done" << std::endl;
-@@ -110,34 +123,49 @@
+@@ -112,35 +121,55 @@
  // -----------------------------------------------------------------------------
  
  template<typename MODEL>
@@ -118,14 +118,16 @@
  
 -  // SABER block chain randomization
 -  oops::FieldSet3D fset3d(dx.validTime(), dx.geometry().getComm());
--  oops::FieldSet4D fset4d(fset3d);
--  loc_->randomize(fset4d);
 +  // SABER block chain multiplication
-+  oops::FieldSet4D fset4d({dx.increment().fieldSet(), dx.validTime(), eckit::mpi::comm()});
++  oops::FieldSet3D fset3d(dx.validTime(), eckit::mpi::comm());
++  fset3d.deepCopy(dx.increment().fieldSet());
+   oops::FieldSet4D fset4d(fset3d);
+-  loc_->randomize(fset4d);
 +  loc_->multiply(fset4d);
  
    // ATLAS fieldset to Increment_
 -  dx.fromFieldSet(fset4d[0].fieldSet());
++  dx.increment().fieldSet() = util::copyFieldSet(fset4d[0].fieldSet());
 +  dx.increment().synchronizeFields();
  
 -  oops::Log::trace() << "Localization:randomize done" << std::endl;
@@ -142,7 +144,8 @@
 +  oops::Log::trace() << "Localization:multiplySqrt starting" << std::endl;
  
 -  // SABER block chain multiplication
--  oops::FieldSet4D fset4d({dx.fieldSet(), dx.validTime(), dx.geometry().getComm()});
+-  oops::FieldSet4D fset4d({dx.validTime(), dx.geometry().getComm()});
+-  fset4d[0].shallowCopy(dx.fieldSet());
 -  loc_->multiply(fset4d);
 +  // SABER block chain square-root
 +  oops::FieldSet3D fset3d(dx.validTime(), eckit::mpi::comm());
@@ -151,6 +154,7 @@
  
    // ATLAS fieldset to Increment_
 -  dx.synchronizeFields();
++  dx.increment().fieldSet() = util::copyFieldSet(fset4d[0].fieldSet());
 +  dx.increment().synchronizeFields();
  
 -  oops::Log::trace() << "Localization:multiply done" << std::endl;
@@ -165,7 +169,9 @@
 +  oops::Log::trace() << "Localization:multiplySqrtTrans starting" << std::endl;
 +
 +  // SABER block chain square-root adjoint
-+  oops::FieldSet4D fset4d({dx.increment().fieldSet(), dx.validTime(), eckit::mpi::comm()});
++  oops::FieldSet3D fset3d(dx.validTime(), eckit::mpi::comm());
++  fset3d.shallowCopy(dx.increment().fieldSet());
++  oops::FieldSet4D fset4d(fset3d);
 +  loc_->multiplySqrtAD(fset4d, dv.data(), 0);
 +
 +  oops::Log::trace() << "Localization:multiplySqrtTrans done" << std::endl;

@@ -1,5 +1,5 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ErrorCovariance.h.tmp	2023-11-21 11:47:11.138269408 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ErrorCovariance.h	2023-11-21 11:44:45.994037535 +0100
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ErrorCovariance.h.tmp	2023-12-03 14:59:38.322031634 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ErrorCovariance.h	2023-12-03 14:57:50.601827988 +0100
 @@ -13,20 +13,17 @@
  
  #include "atlas/field.h"
@@ -166,7 +166,25 @@
      }
  
      // Loop over components
-@@ -314,16 +331,42 @@
+@@ -220,7 +237,7 @@
+       // Scalar weight
+       hybridScalarWeightSqrt_.push_back(std::sqrt(weightConf.getDouble("value", 1.0)));
+       // File-base weight
+-      oops::FieldSet3D fsetWeight(xb[0].validTime(), geom.getComm());
++      oops::FieldSet3D fsetWeight(xb[0].validTime(), eckit::mpi::comm());
+       if (weightConf.has("file")) {
+         // File-base weight
+         readHybridWeight(*hybridGeom,
+@@ -296,7 +313,7 @@
+     // Set weights
+     hybridScalarWeightSqrt_.push_back(1.0);
+     // File-base weight
+-    oops::FieldSet3D fsetWeight(xb[0].validTime(), geom.getComm());
++    oops::FieldSet3D fsetWeight(xb[0].validTime(), eckit::mpi::comm());
+     hybridFieldWeightSqrt_.push_back(fsetWeight);
+   }
+ 
+@@ -314,13 +331,39 @@
  
  // -----------------------------------------------------------------------------
  
@@ -205,15 +223,12 @@
 +  Increment4D_ dx(dx3d.geometry(), dx3d.variables(), {dx3d.validTime()});
  
    // Create FieldSet4D, set to zero
-   atlas::FieldSet fset = util::createFieldSet(hybridBlockChain_[0]->outerFunctionSpace(),
-                                               hybridBlockChain_[0]->outerVariables(),
-                                               0.0);
 -  oops::FieldSet4D fset4dSum(dx.times(), dx.commTime(), dx.geometry().getComm());
 +  oops::FieldSet4D fset4dSum(dx.times(), oops::mpi::myself(), eckit::mpi::comm());
    for (size_t jtime = 0; jtime < fset4dSum.size(); ++jtime) {
-     fset4dSum[jtime].fieldSet() = util::copyFieldSet(fset);
-   }
-@@ -331,7 +374,7 @@
+     fset4dSum[jtime].init(hybridBlockChain_[0]->outerFunctionSpace(),
+                           hybridBlockChain_[0]->outerVariables(),
+@@ -330,7 +373,7 @@
    // Loop over components for the central block
    for (size_t jj = 0; jj < hybridBlockChain_.size(); ++jj) {
      // Randomize covariance
@@ -222,14 +237,14 @@
      hybridBlockChain_[jj]->randomize(fset4dCmp);
  
      // Weight square-root multiplication
-@@ -351,20 +394,28 @@
+@@ -350,20 +393,28 @@
    if (outerBlockChain_) outerBlockChain_->applyOuterBlocks(fset4dSum);
  
    // ATLAS fieldset to Increment_
 -  for (size_t jtime = 0; jtime < dx.size(); ++jtime) {
 -    dx[jtime].fromFieldSet(fset4dSum[jtime].fieldSet());
 +  for (int jtime = dx.first(); jtime <= dx.last(); ++jtime) {
-+    util::copyFieldSet(fset4dSum[jtime].fieldSet(), dx[jtime].increment().fieldSet());
++    dx[jtime].increment().fieldSet() = util::copyFieldSet(fset4dSum[jtime].fieldSet());
 +    dx[jtime].increment().synchronizeFields();
    }
  
@@ -258,14 +273,14 @@
  
    // Copy input
    dxo = dxi;
-@@ -413,26 +464,126 @@
+@@ -412,26 +463,126 @@
    if (outerBlockChain_) outerBlockChain_->applyOuterBlocks(fset4dSum);
  
    // ATLAS fieldset to Increment_
 -  for (size_t jtime = 0; jtime < dxo.size(); ++jtime) {
 -    dxo[jtime].fromFieldSet(fset4dSum[jtime].fieldSet());
 +  for (int jtime = dxo.first(); jtime <= dxo.last(); ++jtime) {
-+    util::copyFieldSet(fset4dSum[jtime].fieldSet(), dxo[jtime].increment().fieldSet());
++    dxo[jtime].increment().fieldSet() = util::copyFieldSet(fset4dSum[jtime].fieldSet());
 +    dxo[jtime].increment().synchronizeFields();
    }
  
@@ -341,7 +356,7 @@
 +
 +  // ATLAS fieldset to Increment_
 +  for (int jtime = dx.first(); jtime <= dx.last(); ++jtime) {
-+    util::copyFieldSet(fset4dSum[jtime].fieldSet(), dx[jtime].increment().fieldSet());
++    dx[jtime].increment().fieldSet() = util::copyFieldSet(fset4dSum[jtime].fieldSet());
 +    dx[jtime].increment().synchronizeFields();
 +  }
 +

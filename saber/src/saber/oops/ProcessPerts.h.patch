@@ -1,5 +1,5 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ProcessPerts.h.tmp.bak	2023-11-20 18:49:11.367353327 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ProcessPerts.h	2023-11-20 18:54:55.611849908 +0100
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ProcessPerts.h.tmp.bak	2023-12-03 14:41:42.271980079 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ProcessPerts.h	2023-12-03 13:52:13.795902006 +0100
 @@ -18,16 +18,14 @@
  #include "eckit/config/LocalConfiguration.h"
  #include "eckit/exception/Exceptions.h"
@@ -35,7 +35,7 @@
  #include "saber/oops/Utilities.h"
  
  namespace saber {
-@@ -51,90 +52,113 @@
+@@ -51,87 +52,107 @@
  // -----------------------------------------------------------------------------
  
  /// \brief Top-level options taken by the ProcessPerts application.
@@ -66,8 +66,7 @@
 +  oops::RequiredParameter<eckit::LocalConfiguration> background{"Background", this};
  
    oops::RequiredParameter<util::DateTime> date{"date", this};
--  oops::RequiredParameter<oops::patch::Variables> inputVariables{"input variables", this};
-+  oops::RequiredParameter<eckit::LocalConfiguration> inputVariables{"input variables", this};
+   oops::RequiredParameter<oops::patch::Variables> inputVariables{"input variables", this};
  
 -  oops::RequiredParameter<ErrorCovarianceParameters_>
 -    saberFilterCovarianceParams{"saber filter blocks", this};
@@ -181,20 +180,13 @@
 +    }
 +    const Model_ model(geom, modelConf);
  
--    // Setup background
+     // Setup background
 -    const State4D_ xx(geom, params.background, *commTime);
-+    // Setup background state
 +    const State4D_ xx(params.background, geom, model);
      oops::FieldSet4D fsetXb(xx);
      oops::FieldSet4D fsetFg(xx);
  
-+    // Setup variables
-+    const Variables_ statevars(params.inputVariables.value());
-+
-     // Setup time
-     const util::DateTime time = xx[0].validTime();
- 
-@@ -143,12 +167,13 @@
+@@ -143,12 +164,13 @@
  
      // List of output increments
      const auto & lowpassPerturbations = params.lowpassPerturbations.value();
@@ -203,38 +195,28 @@
 +    const auto & incrementsWriteParams =
 +      params.outputPerturbations.value();
  
--    oops::patch::Variables incVars = params.inputVariables;
-+    Variables_ incVarsT(params.inputVariables.value());
-+    oops::patch::Variables incVars(incVarsT.variables().variablesList());
+     oops::patch::Variables incVars = params.inputVariables;
++    Variables_ incVarsT(templatedVarsConf(incVars));
      // Initialize outer variables
 -    const std::vector<std::size_t> vlevs = geom.variableSizes(incVars);
 +    const std::vector<std::size_t> vlevs = geom.geometry().variableSizes(incVarsT.variables());
      for (std::size_t i = 0; i < vlevs.size() ; ++i) {
        incVars.addMetaData(incVars[i], "levels", vlevs[i]);
      }
-@@ -196,9 +221,10 @@
+@@ -196,9 +218,10 @@
      for (int jm = 0; jm < nincrements; ++jm) {
        //  Read ensemble member perturbation
-       atlas::FieldSet fsetI = fsetEnsI[jm];
+       oops::FieldSet3D fsetI(fsetEnsI[jm]);
 -      Increment_ dxI(geom, incVars, time);
 +      Increment_ dxI(geom, incVarsT, time);
        dxI.zero();
--      dxI.fromFieldSet(fsetI);
-+      dxI.increment().fieldSet() = fsetI;
+-      dxI.fromFieldSet(fsetI.fieldSet());
++      dxI.increment().fieldSet() = util::copyFieldSet(fsetI.fieldSet());
 +      dxI.increment().synchronizeFields();
  
        //  Copy perturbation
-       atlas::FieldSet fset;
-@@ -207,19 +233,20 @@
-       oops::Log::test() << "Norm of perturbation : member  " << jm+1
-                         << ": " << dxI.norm() << std::endl;
- 
--      oops::FieldSet4D fset4dDxI(oops::FieldSet3D{fsetI, time, geom.getComm()});
--      oops::FieldSet4D fset4dDx(oops::FieldSet3D{fset, time, geom.getComm()});
-+      oops::FieldSet4D fset4dDxI(oops::FieldSet3D{fsetI, time, eckit::mpi::comm()});
-+      oops::FieldSet4D fset4dDx(oops::FieldSet3D{fset, time, eckit::mpi::comm()});
- 
-       // Apply filter blocks
+       oops::FieldSet3D fset(fsetI);
+@@ -213,12 +236,13 @@
        saberFilterBlocks->filter(fset4dDx);
  
        if (lowpassPerturbations != boost::none) {
@@ -242,7 +224,7 @@
 +        Increment_ dxLowPass(geom, incVarsT, time);
          dxLowPass.zero();
 -        dxLowPass.fromFieldSet(fset4dDx[0].fieldSet());
-+        dxLowPass.increment().fieldSet() = fset4dDx[0].fieldSet();
++        dxLowPass.increment().fieldSet() = util::copyFieldSet(fset4dDx[0].fieldSet());
 +        dxLowPass.increment().synchronizeFields();
  
          auto lowpassPerturbationsUpdated(*lowpassPerturbations);
@@ -251,12 +233,12 @@
          dxLowPass.write(lowpassPerturbationsUpdated);
          oops::Log::test() << "Norm of low pass perturbation : member  " << jm+1
                            << ": " << dxLowPass.norm() << std::endl;
-@@ -230,10 +257,11 @@
+@@ -229,10 +253,11 @@
        fset4dDxI += fset4dDx;
  
        // Write high pass
 -      dxI.fromFieldSet(fset4dDxI[0].fieldSet());
-+      dxI.increment().fieldSet() = fset4dDxI[0].fieldSet();
++      dxI.increment().fieldSet() = util::copyFieldSet(fset4dDxI[0].fieldSet());
 +      dxI.increment().synchronizeFields();
  
        auto incrementsWriteParamsUpdated(incrementsWriteParams);
@@ -265,7 +247,7 @@
        dxI.write(incrementsWriteParamsUpdated);
  
        oops::Log::test() << "Norm of high pass perturbation : member  " << jm+1
-@@ -243,16 +271,6 @@
+@@ -242,16 +267,6 @@
      return 0;
    }
  // -----------------------------------------------------------------------------

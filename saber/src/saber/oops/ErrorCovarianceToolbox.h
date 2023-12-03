@@ -60,7 +60,7 @@ class ErrorCovarianceToolboxParameters :
   oops::Parameter<bool> parallel{"parallel subwindows", true, this};
 
   /// Outer variables parameters
-  oops::RequiredParameter<eckit::LocalConfiguration> incrementVars{"increment variables", this};
+  oops::OptionalParameter<oops::patch::Variables> incrementVars{"increment variables", this};
 
   /// Dirac location/variables parameters.
   oops::OptionalParameter<eckit::LocalConfiguration> dirac{"dirac", this};
@@ -83,12 +83,6 @@ class ErrorCovarianceToolboxParameters :
 };
 
 // -----------------------------------------------------------------------------
-
-/*! @brief Error covariance training application
-
- * Use input fields and ensemble data to perform the calibration of
- * a background error covariance matrix
- */
 
 template <typename MODEL>
 class ErrorCovarianceToolbox : public oops::Application {
@@ -155,7 +149,20 @@ class ErrorCovarianceToolbox : public oops::Application {
     const State4D_ xx(params.background, geom, model);
 
     // Setup variables
-    const Variables_ vars(params.incrementVars.value());
+    const std::vector<eckit::LocalConfiguration> stateConfs(params.background.value()
+      .getSubConfigurations("state"));
+    oops::patch::Variables tmpVars(stateConfs[0], "variables");
+    if (params.incrementVars.value() != boost::none) {
+      const auto & incrementVars = params.incrementVars.value().value();
+      if (incrementVars <= tmpVars) {
+        tmpVars.intersection(incrementVars);
+      } else {
+        throw eckit::UserError("Increment variables should be a subset of background variables",
+                               Here());
+      }
+    }
+    const oops::patch::Variables vars = tmpVars;
+    const Variables_ varsT(templatedVarsConf(vars));
 
     // Background error covariance parameters
     const eckit::LocalConfiguration & covarParams
@@ -165,7 +172,7 @@ class ErrorCovarianceToolbox : public oops::Application {
     const auto & diracParams = params.dirac.value();
     if (diracParams != boost::none) {
       // Setup Dirac field
-      Increment4D_ dxi(geom, vars, xx.times());
+      Increment4D_ dxi(geom, varsT, xx.times());
       dirac4D(*diracParams, dxi);
       oops::Log::test() << "Input Dirac increment:" << dxi << std::endl;
 
@@ -194,21 +201,21 @@ class ErrorCovarianceToolbox : public oops::Application {
 
       // Apply B matrix components recursively
       std::string id;
-      dirac(covarParams, testConf, id, geom, vars, xx, dxi);
+      dirac(covarParams, testConf, id, geom, varsT, xx, dxi);
     }
 
     const auto & randomizationSize = covarParams.getInt("randomization size", 0);
     if ((diracParams == boost::none) || (randomizationSize > 0)) {
       // Background error covariance training
       std::unique_ptr<CovarianceBase_> Bmat(CovarianceFactory_::create(
-                                            covarParams, geom, vars, xx[0]));
+                                            covarParams, geom, varsT, xx[0]));
 
       // Linearize
       const std::string covarianceModel(covarParams.getString("covariance"));
       Bmat->linearize(xx[0], geom);
 
       // Randomization
-      randomization(params, geom, vars, xx, Bmat, ntasks);
+      randomization(params, geom, varsT, xx, Bmat, ntasks);
     }
 
     return 0;
@@ -430,7 +437,7 @@ class ErrorCovarianceToolbox : public oops::Application {
           variance *= rk_norm;
         }
 
-        // Update parameters
+        // Update config
         auto outputVarianceUpdated = *outputVariance;
         setMPI(outputVarianceUpdated, ntasks);
 

@@ -23,6 +23,7 @@
 #include "oops/util/Timer.h"
 
 #include "saber/blocks/SaberOuterBlockBase.h"
+#include "saber/oops/Utilities.h"
 
 namespace saber {
 namespace vader {
@@ -39,7 +40,7 @@ AirTemperature::AirTemperature(const oops::GeometryData & outerGeometryData,
                                const Parameters_ & params,
                                const oops::FieldSet3D & xb,
                                const oops::FieldSet3D & fg)
-  : SaberOuterBlockBase(params),
+  : SaberOuterBlockBase(params, xb.validTime()),
     innerGeometryData_(outerGeometryData), innerVars_(outerVars), augmentedStateFieldSet_()
 {
   oops::Log::trace() << classname() << "::AirTemperature starting" << std::endl;
@@ -85,17 +86,25 @@ AirTemperature::~AirTemperature() {
 
 // -----------------------------------------------------------------------------
 
-void AirTemperature::multiply(atlas::FieldSet & fset) const {
+void AirTemperature::multiply(oops::FieldSet3D & fset) const {
   oops::Log::trace() << classname() << "::multiply starting" << std::endl;
-  mo::eval_air_temperature_tl(fset, augmentedStateFieldSet_);
+  // Allocate output fields if they are not already present, e.g when randomizing.
+  const oops::patch::Variables outputVars({"air_temperature"});
+  allocateFields(fset,
+                 outputVars,
+                 innerVars_,
+                 innerGeometryData_.functionSpace());
+
+  // Populate output fields.
+  mo::eval_air_temperature_tl(fset.fieldSet(), augmentedStateFieldSet_);
   oops::Log::trace() << classname() << "::multiply done" << std::endl;
 }
 
 // -----------------------------------------------------------------------------
 
-void AirTemperature::multiplyAD(atlas::FieldSet & fset) const {
+void AirTemperature::multiplyAD(oops::FieldSet3D & fset) const {
   oops::Log::trace() << classname() << "::multiplyAD starting" << std::endl;
-  mo::eval_air_temperature_ad(fset, augmentedStateFieldSet_);
+  mo::eval_air_temperature_ad(fset.fieldSet(), augmentedStateFieldSet_);
   oops::Log::trace() << classname() << "::multiplyAD done" << std::endl;
 }
 

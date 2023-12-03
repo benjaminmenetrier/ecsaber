@@ -64,7 +64,7 @@ class ProcessPertsParameters :
   oops::RequiredParameter<eckit::LocalConfiguration> background{"Background", this};
 
   oops::RequiredParameter<util::DateTime> date{"date", this};
-  oops::RequiredParameter<eckit::LocalConfiguration> inputVariables{"input variables", this};
+  oops::RequiredParameter<oops::patch::Variables> inputVariables{"input variables", this};
 
   /// Background error covariance model.
   oops::RequiredParameter<eckit::LocalConfiguration> filterCovarianceBlockConf{"saber filter blocks", this};
@@ -151,13 +151,10 @@ class ProcessPerts : public oops::Application {
     }
     const Model_ model(geom, modelConf);
 
-    // Setup background state
+    // Setup background
     const State4D_ xx(params.background, geom, model);
     oops::FieldSet4D fsetXb(xx);
     oops::FieldSet4D fsetFg(xx);
-
-    // Setup variables
-    const Variables_ statevars(params.inputVariables.value());
 
     // Setup time
     const util::DateTime time = xx[0].validTime();
@@ -170,16 +167,16 @@ class ProcessPerts : public oops::Application {
     const auto & incrementsWriteParams =
       params.outputPerturbations.value();
 
-    Variables_ incVarsT(params.inputVariables.value());
-    oops::patch::Variables incVars(incVarsT.variables().variablesList());
+    oops::patch::Variables incVars = params.inputVariables;
+    Variables_ incVarsT(templatedVarsConf(incVars));
     // Initialize outer variables
     const std::vector<std::size_t> vlevs = geom.geometry().variableSizes(incVarsT.variables());
     for (std::size_t i = 0; i < vlevs.size() ; ++i) {
       incVars.addMetaData(incVars[i], "levels", vlevs[i]);
     }
 
-    std::vector<atlas::FieldSet> fsetEns;
-    std::vector<atlas::FieldSet> dualResFsetEns;
+    std::vector<oops::FieldSet3D> fsetEns;
+    std::vector<oops::FieldSet3D> dualResFsetEns;
     eckit::LocalConfiguration covarConf;
     covarConf.set("iterative ensemble loading", false);
     covarConf.set("inverse test", false);
@@ -207,7 +204,7 @@ class ProcessPerts : public oops::Application {
 
     // Read input ensemble
     const bool iterativeEnsembleLoading = false;
-    std::vector<atlas::FieldSet> fsetEnsI;
+    std::vector<oops::FieldSet3D> fsetEnsI;
     eckit::LocalConfiguration ensembleConf(fullConfig);
     readEnsemble<MODEL>(geom,
                         incVars,
@@ -220,21 +217,20 @@ class ProcessPerts : public oops::Application {
     //  Loop over perturbations
     for (int jm = 0; jm < nincrements; ++jm) {
       //  Read ensemble member perturbation
-      atlas::FieldSet fsetI = fsetEnsI[jm];
+      oops::FieldSet3D fsetI(fsetEnsI[jm]);
       Increment_ dxI(geom, incVarsT, time);
       dxI.zero();
-      dxI.increment().fieldSet() = fsetI;
+      dxI.increment().fieldSet() = util::copyFieldSet(fsetI.fieldSet());
       dxI.increment().synchronizeFields();
 
       //  Copy perturbation
-      atlas::FieldSet fset;
-      util::copyFieldSet(fsetI, fset);
+      oops::FieldSet3D fset(fsetI);
 
       oops::Log::test() << "Norm of perturbation : member  " << jm+1
                         << ": " << dxI.norm() << std::endl;
 
-      oops::FieldSet4D fset4dDxI(oops::FieldSet3D{fsetI, time, eckit::mpi::comm()});
-      oops::FieldSet4D fset4dDx(oops::FieldSet3D{fset, time, eckit::mpi::comm()});
+      oops::FieldSet4D fset4dDxI(fsetI);
+      oops::FieldSet4D fset4dDx(fset);
 
       // Apply filter blocks
       saberFilterBlocks->filter(fset4dDx);
@@ -242,7 +238,7 @@ class ProcessPerts : public oops::Application {
       if (lowpassPerturbations != boost::none) {
         Increment_ dxLowPass(geom, incVarsT, time);
         dxLowPass.zero();
-        dxLowPass.increment().fieldSet() = fset4dDx[0].fieldSet();
+        dxLowPass.increment().fieldSet() = util::copyFieldSet(fset4dDx[0].fieldSet());
         dxLowPass.increment().synchronizeFields();
 
         auto lowpassPerturbationsUpdated(*lowpassPerturbations);
@@ -257,7 +253,7 @@ class ProcessPerts : public oops::Application {
       fset4dDxI += fset4dDx;
 
       // Write high pass
-      dxI.increment().fieldSet() = fset4dDxI[0].fieldSet();
+      dxI.increment().fieldSet() = util::copyFieldSet(fset4dDxI[0].fieldSet());
       dxI.increment().synchronizeFields();
 
       auto incrementsWriteParamsUpdated(incrementsWriteParams);

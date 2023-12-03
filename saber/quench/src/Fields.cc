@@ -52,7 +52,6 @@ Fields::Fields(const Geometry & geom, const Variables & vars,
 
   for (const auto & var : vars_.variablesList()) {
     // Create field
-
     atlas::Field field = geom_->functionSpace().createField<double>(
       atlas::option::name(var) | atlas::option::levels(geom_->levels(var)));
     fset_.add(field);
