@@ -44,17 +44,18 @@ namespace saber {
 
 class SaberCentralBlockBase : public util::Printable, private boost::noncopyable {
  public:
-  explicit SaberCentralBlockBase(const SaberBlockParametersBase & params)
-    : blockName_(params.saberBlockName) {}
+  explicit SaberCentralBlockBase(const SaberBlockParametersBase & params,
+                                 const util::DateTime & validTime)
+    : blockName_(params.saberBlockName), validTime_(validTime) {}
   virtual ~SaberCentralBlockBase() {}
 
   // Application methods
 
   // Block multiplication
-  virtual void randomize(atlas::FieldSet &) const = 0;
+  virtual void randomize(oops::FieldSet3D &) const = 0;
 
   // Block randomization
-  virtual void multiply(atlas::FieldSet &) const = 0;
+  virtual void multiply(oops::FieldSet3D &) const = 0;
 
   // Setup / calibration methods
 
@@ -64,11 +65,13 @@ class SaberCentralBlockBase : public util::Printable, private boost::noncopyable
       Here());}
 
   // Read model files
-  virtual std::vector<std::pair<eckit::LocalConfiguration, atlas::FieldSet>> fieldsToRead()
+  virtual std::vector<std::pair<std::string, eckit::LocalConfiguration>> getReadConfs() const
     {return {};}
+  virtual void setReadFields(const std::vector<oops::FieldSet3D> &) {}
+
 
   // Direct calibration
-  virtual void directCalibration(const std::vector<atlas::FieldSet> &)
+  virtual void directCalibration(const std::vector<oops::FieldSet3D> &)
     {throw eckit::NotImplemented("directCalibration not implemented yet for the block "
       + this->blockName(), Here());}
 
@@ -76,7 +79,7 @@ class SaberCentralBlockBase : public util::Printable, private boost::noncopyable
   virtual void iterativeCalibrationInit()
     {throw eckit::NotImplemented("iterativeCalibrationInit not implemented yet for the block "
       + this->blockName(), Here());}
-  virtual void iterativeCalibrationUpdate(const atlas::FieldSet &)
+  virtual void iterativeCalibrationUpdate(const oops::FieldSet3D &)
     {throw eckit::NotImplemented("iterativeCalibrationUpdate not implemented yet for the block "
       + this->blockName(), Here());}
   virtual void iterativeCalibrationFinal()
@@ -92,17 +95,17 @@ class SaberCentralBlockBase : public util::Printable, private boost::noncopyable
   virtual void write() const {}
 
   // Write model files
-  virtual std::vector<std::pair<eckit::LocalConfiguration, atlas::FieldSet>> fieldsToWrite() const
+  virtual std::vector<std::pair<eckit::LocalConfiguration, oops::FieldSet3D>> fieldsToWrite() const
      {return {};}
 
   // Square-root formulation
   virtual size_t ctlVecSize() const
     {throw eckit::NotImplemented("ctlVecSize not implemented yet for the block "
       + this->blockName(), Here());}
-  virtual void multiplySqrt(const atlas::Field &, atlas::FieldSet &, const size_t &) const
+  virtual void multiplySqrt(const atlas::Field &, oops::FieldSet3D &, const size_t &) const
     {throw eckit::NotImplemented("multiplySqrt not implemented yet for the block "
       + this->blockName(), Here());}
-  virtual void multiplySqrtAD(const atlas::FieldSet &, atlas::Field &, const size_t &) const
+  virtual void multiplySqrtAD(const oops::FieldSet3D &, atlas::Field &, const size_t &) const
     {throw eckit::NotImplemented("multiplySqrtAD not implemented yet for the block "
       + this->blockName(), Here());}
 
@@ -114,14 +117,12 @@ class SaberCentralBlockBase : public util::Printable, private boost::noncopyable
   // Read model fields
   template <typename MODEL>
   void read(const oops::Geometry<MODEL> &,
-            const oops::patch::Variables &,
-            const util::DateTime &);
+            const oops::patch::Variables &);
 
   // Write model fields
   template <typename MODEL>
   void write(const oops::Geometry<MODEL> &,
-             const oops::patch::Variables &,
-             const util::DateTime &) const;
+             const oops::patch::Variables &) const;
 
   // Adjoint test
   void adjointTest(const oops::GeometryData &,
@@ -135,6 +136,7 @@ class SaberCentralBlockBase : public util::Printable, private boost::noncopyable
 
  private:
   std::string blockName_;
+  const util::DateTime validTime_;
   virtual void print(std::ostream &) const = 0;
 };
 
@@ -218,22 +220,26 @@ class SaberCentralBlockMaker : public SaberCentralBlockFactory {
 
 template <typename MODEL>
 void SaberCentralBlockBase::read(const oops::Geometry<MODEL> & geom,
-                                 const oops::patch::Variables & vars,
-                                 const util::DateTime & date) {
+                                 const oops::patch::Variables & vars) {
   oops::Log::trace() << "SaberCentralBlockBase::read starting" << std::endl;
 
   // Read fieldsets as increments
-  for (auto & input : this->fieldsToRead()) {
+  std::vector<oops::FieldSet3D> fsetVec;
+  for (const auto & input : this->getReadConfs()) {
     // Create variables
     oops::Variables<MODEL> varsT(templatedVarsConf(vars));
 
     // Create increment
-    oops::Increment<MODEL> dx(geom, varsT, date);
-    dx.read(input.first);
-    oops::Log::test() << "Norm of input parameter " << input.second.name()
+    oops::Increment<MODEL> dx(geom, varsT, validTime_);
+    dx.read(input.second);
+    oops::Log::test() << "Norm of input parameter " << input.first
                       << ": " << dx.norm() << std::endl;
-    util::copyFieldSet(dx.increment().fieldSet(), input.second);
+    oops::FieldSet3D fset(validTime_, eckit::mpi::comm());
+    fset.deepCopy(dx.increment().fieldSet());
+    fsetVec.push_back(fset);
+    fsetVec.back().name() = input.first;
   }
+  this->setReadFields(fsetVec);
 
   oops::Log::trace() << "SaberCentralBlockBase::read done" << std::endl;
 }
@@ -242,23 +248,22 @@ void SaberCentralBlockBase::read(const oops::Geometry<MODEL> & geom,
 
 template <typename MODEL>
 void SaberCentralBlockBase::write(const oops::Geometry<MODEL> & geom,
-                                  const oops::patch::Variables & vars,
-                                  const util::DateTime & date) const {
+                                 const oops::patch::Variables & vars) const {
   oops::Log::trace() << "SaberCentralBlockBase::write starting" << std::endl;
 
   // Get vector of FieldSet/configuration pairs
-  std::vector<std::pair<eckit::LocalConfiguration, atlas::FieldSet>> outputs
+  std::vector<std::pair<eckit::LocalConfiguration, oops::FieldSet3D>> outputs
     = this->fieldsToWrite();
 
   // Create variables
   oops::Variables<MODEL> varsT(templatedVarsConf(vars));
 
   // Create increment
-  oops::Increment<MODEL> dx(geom, varsT, date);
+  oops::Increment<MODEL> dx(geom, varsT, validTime_);
 
   // Write fieldsets as increments
   for (const auto & output : outputs) {
-    dx.increment().fieldSet() = util::copyFieldSet(output.second);
+    dx.increment().fieldSet() = output.second.fieldSet();
     dx.increment().synchronizeFields();
     oops::Log::test() << "Norm of output parameter " << output.second.name()
                       << ": " << dx.norm() << std::endl;

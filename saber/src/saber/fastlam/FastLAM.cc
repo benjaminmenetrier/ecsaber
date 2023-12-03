@@ -19,8 +19,6 @@
 #include "eckit/exception/Exceptions.h"
 
 #include "oops/util/ConfigFunctions.h"
-#include "oops/util/FieldSetHelpers.h"
-#include "oops/util/FieldSetOperations.h"
 #include "oops/util/FloatCompare.h"
 #include "oops/util/Logger.h"
 #include "oops/util/missingValues.h"
@@ -42,7 +40,8 @@ FastLAM::FastLAM(const oops::GeometryData & gdata,
                  const Parameters_ & params,
                  const oops::FieldSet3D & xb,
                  const oops::FieldSet3D & fg) :
-    SaberCentralBlockBase(params),
+    SaberCentralBlockBase(params, xb.validTime()),
+    validTime_(xb.validTime()),
     gdata_(gdata),
     comm_(gdata_.comm()),
     activeVars_(activeVars),
@@ -52,9 +51,9 @@ FastLAM::FastLAM(const oops::GeometryData & gdata,
   oops::Log::trace() << classname() << "::FastLAM starting" << std::endl;
 
   // Check geometry fields
-  ASSERT(gdata_.fieldSet().has_field("index_i"));
-  ASSERT(gdata_.fieldSet().has_field("index_j"));
-  ASSERT(gdata_.fieldSet().has_field("area"));
+  ASSERT(gdata_.fieldSet().has("index_i"));
+  ASSERT(gdata_.fieldSet().has("index_j"));
+  ASSERT(gdata_.fieldSet().has("area"));
 
   // Ghost points
   const auto viewGhost0 = atlas::array::make_view<int, 1>(gdata_.functionSpace().ghost());
@@ -137,7 +136,7 @@ FastLAM::~FastLAM() {
 
 // -----------------------------------------------------------------------------
 
-void FastLAM::randomize(atlas::FieldSet & fset) const {
+void FastLAM::randomize(oops::FieldSet3D & fset) const {
   oops::Log::trace() << classname() << "::randomize starting" << std::endl;
   throw eckit::NotImplemented("randomize method not implemented yet", Here());
   oops::Log::trace() << classname() << "::randomize done" << std::endl;
@@ -145,20 +144,20 @@ void FastLAM::randomize(atlas::FieldSet & fset) const {
 
 // -----------------------------------------------------------------------------
 
-void FastLAM::multiply(atlas::FieldSet & fset) const {
+void FastLAM::multiply(oops::FieldSet3D & fset) const {
   oops::Log::trace() << classname() << "::multiply starting" << std::endl;
 
   // Ghost points
   const auto viewGhost0 = atlas::array::make_view<int, 1>(gdata_.functionSpace().ghost());
 
   // Save input FieldSet
-  atlas::FieldSet fsetIn = util::copyFieldSet(fset);
-  util::zeroFieldSet(fset);
+  oops::FieldSet3D fsetIn(fset);
+  fset.zero();
 
   // Loop over bins
   for (size_t jBin = 0; jBin < weight_.size(); ++jBin) {
     // Copy input FieldSet
-    atlas::FieldSet fsetBin = util::copyFieldSet(fsetIn);
+    oops::FieldSet3D fsetBin(fsetIn);
 
     if (params_.strategy.value() == "univariate") {
       // Univariate strategy
@@ -173,9 +172,9 @@ void FastLAM::multiply(atlas::FieldSet & fset) const {
         // Apply weight square-root and normalization
         atlas::Field fieldBin = fsetBin[var];
         auto viewBin = atlas::array::make_view<double, 2>(fieldBin);
-        const atlas::Field fieldWgtSqrt = weight_[jBin][groupName];
+        const atlas::Field fieldWgtSqrt = (*weight_[jBin])[groupName];
         const auto viewWgtSqrt = atlas::array::make_view<double, 2>(fieldWgtSqrt);
-        const atlas::Field fieldNorm = normalization_[jBin][groupName];
+        const atlas::Field fieldNorm = (*normalization_[jBin])[groupName];
         const auto viewNorm = atlas::array::make_view<double, 2>(fieldNorm);
         for (size_t jnode0 = 0; jnode0 < nodes0_; ++jnode0) {
           if (viewGhost0(jnode0) == 0) {
@@ -230,9 +229,9 @@ void FastLAM::multiply(atlas::FieldSet & fset) const {
         }
 
         // Apply weight square-root and normalization
-        const atlas::Field fieldWgtSqrt = weight_[jBin][groupName];
+        const atlas::Field fieldWgtSqrt = (*weight_[jBin])[groupName];
         const auto viewWgtSqrt = atlas::array::make_view<double, 2>(fieldWgtSqrt);
-        const atlas::Field fieldNorm = normalization_[jBin][groupName];
+        const atlas::Field fieldNorm = (*normalization_[jBin])[groupName];
         const auto viewNorm = atlas::array::make_view<double, 2>(fieldNorm);
         for (size_t jnode0 = 0; jnode0 < nodes0_; ++jnode0) {
           if (viewGhost0(jnode0) == 0) {
@@ -279,7 +278,7 @@ void FastLAM::multiply(atlas::FieldSet & fset) const {
     }
 
     // Add component
-    util::addFieldSets(fset, fsetBin);
+    fset += fsetBin;
   }
 
   oops::Log::trace() << classname() << "::multiply done" << std::endl;
@@ -287,14 +286,12 @@ void FastLAM::multiply(atlas::FieldSet & fset) const {
 
 // -----------------------------------------------------------------------------
 
-std::vector<std::pair<eckit::LocalConfiguration, atlas::FieldSet>> FastLAM::fieldsToRead() {
-  oops::Log::trace() << classname() << "::fieldsToRead starting" << std::endl;
+std::vector<std::pair<std::string, eckit::LocalConfiguration>> FastLAM::getReadConfs() const {
+  oops::Log::trace() << classname() << "::getReadConfs starting" << std::endl;
 
+  std::vector<std::pair<std::string, eckit::LocalConfiguration>> inputs;
   if (params_.inputModelFilesConf.value() != boost::none) {
     for (const auto & conf : *params_.inputModelFilesConf.value()) {
-      // Get file configuration
-      eckit::LocalConfiguration file = getFileConf(comm_, conf);
-
       // Get parameter
       const std::string param = conf.getString("parameter");
 
@@ -306,50 +303,215 @@ std::vector<std::pair<eckit::LocalConfiguration, atlas::FieldSet>> FastLAM::fiel
         // Specific case for weight
         nWeight = conf.getInt("number of components");
         for (size_t jBin = 0; jBin < nWeight; ++jBin) {
-          // Create FieldSet
-          atlas::FieldSet fset;
-          fset.name() = param + "_" + std::to_string(jBin);
+          // File name
+          const std::string fileName = param + "_" + std::to_string(jBin);
+
+          // Get file configuration
+          eckit::LocalConfiguration fileConf = getFileConf(comm_, conf);
 
           // Update configuration
-          eckit::LocalConfiguration fileCmp(file);
-          util::seekAndReplace(fileCmp, "%component%", jBin, 2);
+          util::seekAndReplace(fileConf, "%component%", jBin, 2);
 
           // Add pair
-          inputs_.push_back(std::make_pair(fileCmp, fset));
+          inputs.push_back(std::make_pair(fileName, fileConf));
         }
       } else if (param == "normalization") {
         // Specific case for normalization
         nNormalization = conf.getInt("number of components");
         for (size_t jBin = 0; jBin < nNormalization; ++jBin) {
-          // Create FieldSet
-          atlas::FieldSet fset;
-          fset.name() = param + "_" + std::to_string(jBin);
+          // File name
+          const std::string fileName = param + "_" + std::to_string(jBin);
+
+          // Get file configuration
+          eckit::LocalConfiguration fileConf = getFileConf(comm_, conf);
 
           // Update configuration
-          eckit::LocalConfiguration fileCmp(file);
-          util::seekAndReplace(fileCmp, "%component%", jBin, 2);
+          util::seekAndReplace(fileConf, "%component%", jBin, 2);
 
           // Add pair
-          inputs_.push_back(std::make_pair(fileCmp, fset));
+          inputs.push_back(std::make_pair(fileName, fileConf));
         }
       } else {
-        // Create FieldSet
-        atlas::FieldSet fset;
-        fset.name() = param;
+        // File name
+        const std::string fileName = param;
+
+        // Get file configuration
+        eckit::LocalConfiguration fileConf = getFileConf(comm_, conf);
 
         // Add pair
-        inputs_.push_back(std::make_pair(file, fset));
+        inputs.push_back(std::make_pair(fileName, fileConf));
       }
     }
   }
 
-  oops::Log::trace() << classname() << "::fieldsToRead done" << std::endl;
-  return inputs_;
+  oops::Log::trace() << classname() << "::getReadConfs done" << std::endl;
+  return inputs;
 }
 
 // -----------------------------------------------------------------------------
 
-void FastLAM::directCalibration(const std::vector<atlas::FieldSet> &) {
+void FastLAM::setReadFields(const std::vector<oops::FieldSet3D> & fsetVec) {
+  oops::Log::trace() << classname() << "::setReadFields starting" << std::endl;
+
+  // Get number of weight and normalization components from input files
+  size_t nWeight = 0;
+  size_t nLayers = 0;
+  for (size_t ji = 0; ji < fsetVec.size(); ++ji) {
+    for (size_t jBin = 0; jBin < 100; ++jBin) {
+      const std::string weightName = "weight_" + std::to_string(jBin);
+      if (fsetVec[ji].name() == weightName) {
+        ++nWeight;
+      }
+      const std::string normalizationName = "normalization_" + std::to_string(jBin);
+      if (fsetVec[ji].name() == normalizationName) {
+        ++nLayers;
+      }
+    }
+  }
+
+  if (nLayers > 0) {
+    // Check consistency
+    if (nWeight == 0) {
+      ASSERT(nLayers == 1);
+    } else {
+      ASSERT(nLayers == nWeight);
+    }
+
+    // Allocate data
+    weight_.resize(nLayers);
+    normalization_.resize(nLayers);
+    for (const auto & group : groups_) {
+      // Group properties
+      const std::string groupName = std::get<0>(group);
+      const size_t groupNz0 = std::get<1>(group);
+
+      // Create layers
+      Layers layers(params_, gdata_, groupName, nx0_, ny0_, groupNz0, nLayers);
+
+      // Save layers
+      data_.emplace(groupName, layers);
+    }
+
+    for (size_t ji = 0; ji < fsetVec.size(); ++ji) {
+      for (size_t jBin = 0; jBin < 100; ++jBin) {
+        // Get weight from input files
+        std::string weightName = "weight_" + std::to_string(jBin);
+        if (fsetVec[ji].name() == weightName) {
+          weight_[jBin].reset(new oops::FieldSet3D(validTime_, comm_));
+          for (const auto & group : groups_) {
+            // Group properties
+            const std::string groupName = std::get<0>(group);
+            const size_t groupNz0 = std::get<1>(group);
+            const std::string groupVarInModelFile = std::get<2>(group);
+
+            // Copy field
+            atlas::Field field = gdata_.functionSpace().createField<double>(
+              atlas::option::name(groupName) | atlas::option::levels(groupNz0));
+            auto view = atlas::array::make_view<double, 2>(field);
+            atlas::Field fieldInput = fsetVec[ji][groupVarInModelFile];
+            auto viewInput = atlas::array::make_view<double, 2>(fieldInput);
+            view.assign(viewInput);
+            weight_[jBin]->add(field);
+          }
+        }
+
+        // Get normalization components from input files
+        std::string normalizationName = "normalization_" + std::to_string(jBin);
+        if (fsetVec[ji].name() == normalizationName) {
+          normalization_[jBin].reset(new oops::FieldSet3D(validTime_, comm_));
+          for (const auto & group : groups_) {
+            // Group properties
+            const std::string groupName = std::get<0>(group);
+            const size_t groupNz0 = std::get<1>(group);
+            const std::string groupVarInModelFile = std::get<2>(group);
+
+            // Copy field
+            atlas::Field field = gdata_.functionSpace().createField<double>(
+              atlas::option::name(groupName) | atlas::option::levels(groupNz0));
+            auto view = atlas::array::make_view<double, 2>(field);
+            atlas::Field fieldInput = fsetVec[ji][groupVarInModelFile];
+            auto viewInput = atlas::array::make_view<double, 2>(fieldInput);
+            view.assign(viewInput);
+            normalization_[jBin]->add(field);
+          }
+        }
+      }
+    }
+
+    // Set weight to one if not present
+    if (nWeight == 0) {
+      weight_[0].reset(new oops::FieldSet3D(validTime_, comm_));
+      for (const auto & group : groups_) {
+        // Group properties
+        const std::string groupName = std::get<0>(group);
+        const size_t groupNz0 = std::get<1>(group);
+
+        // Copy field
+        atlas::Field field = gdata_.functionSpace().createField<double>(
+          atlas::option::name(groupName) | atlas::option::levels(groupNz0));
+        auto view = atlas::array::make_view<double, 2>(field);
+        view.assign(1.0);
+        weight_[0]->add(field);
+      }
+    }
+  }
+
+  for (size_t ji = 0; ji < fsetVec.size(); ++ji) {
+    // Get rh from input files
+    if (fsetVec[ji].name() == "rh") {
+      rh_.reset(new oops::FieldSet3D(validTime_, comm_));
+      for (const auto & group : groups_) {
+        // Group properties
+        const std::string groupName = std::get<0>(group);
+        const size_t groupNz0 = std::get<1>(group);
+        const std::string groupVarInModelFile = std::get<2>(group);
+
+        // Copy field
+        atlas::Field field = gdata_.functionSpace().createField<double>(
+          atlas::option::name(groupName) | atlas::option::levels(groupNz0));
+        auto view = atlas::array::make_view<double, 2>(field);
+        if (fsetVec[ji].has(groupVarInModelFile)) {
+          const atlas::Field fieldInput = fsetVec[ji][groupVarInModelFile];
+          const auto viewInput = atlas::array::make_view<double, 2>(fieldInput);
+          view.assign(viewInput);
+        } else {
+          throw eckit::Exception("missing " + groupVarInModelFile + " in model file", Here());
+        }
+        rh_->add(field);
+      }
+    }
+
+    // Get rv from input files
+    if (fsetVec[ji].name() == "rv") {
+      rv_.reset(new oops::FieldSet3D(validTime_, comm_));
+      for (const auto & group : groups_) {
+        // Group properties
+        const std::string groupName = std::get<0>(group);
+        const size_t groupNz0 = std::get<1>(group);
+        const std::string groupVarInModelFile = std::get<2>(group);
+
+        // Copy field
+        atlas::Field field = gdata_.functionSpace().createField<double>(
+          atlas::option::name(groupName) | atlas::option::levels(groupNz0));
+        auto view = atlas::array::make_view<double, 2>(field);
+        if (fsetVec[ji].has(groupVarInModelFile)) {
+          const atlas::Field fieldInput = fsetVec[ji][groupVarInModelFile];
+          const auto viewInput = atlas::array::make_view<double, 2>(fieldInput);
+          view.assign(viewInput);
+        } else {
+          throw eckit::Exception("missing " + groupVarInModelFile + " in model file", Here());
+        }
+        rv_->add(field);
+      }
+    }
+  }
+
+  oops::Log::trace() << classname() << "::setReadFields done" << std::endl;
+}
+
+// -----------------------------------------------------------------------------
+
+void FastLAM::directCalibration(const std::vector<oops::FieldSet3D> &) {
   oops::Log::trace() << classname() << "::calibration starting" << std::endl;
 
   // Get number of layers
@@ -370,6 +532,9 @@ void FastLAM::directCalibration(const std::vector<atlas::FieldSet> &) {
     // Save layers
     data_.emplace(groupName, layers);
   }
+  for (size_t jBin = 0; jBin < nLayers; ++jBin) {
+    normalization_[jBin].reset(new oops::FieldSet3D(validTime_, comm_));
+  }
 
   // Setup length-scales
   setupLengthScales();
@@ -386,7 +551,7 @@ void FastLAM::directCalibration(const std::vector<atlas::FieldSet> &) {
 
     for (size_t jBin = 0; jBin < weight_.size(); ++jBin) {
       // Setup vertical coordinate
-      data_[groupName][jBin].setupVerticalCoord(rv_[groupName], weight_[jBin][groupName]);
+      data_[groupName][jBin].setupVerticalCoord((*rv_)[groupName], (*weight_[jBin])[groupName]);
     }
 
     // Print bins
@@ -423,13 +588,13 @@ void FastLAM::directCalibration(const std::vector<atlas::FieldSet> &) {
 
       // Setup normalization
       data_[groupName][jBin].setupNormalization();
-      normalization_[jBin].add(data_[groupName][jBin].norm()[groupName]);
+      normalization_[jBin]->add(data_[groupName][jBin].norm()[groupName]);
     }
   }
 
   // Get square-root of weight
   for (size_t jBin = 0; jBin < weight_.size(); ++jBin) {
-    util::sqrtFieldSet(weight_[jBin]);
+    weight_[jBin]->sqrt();
   }
 
   oops::Log::trace() << classname() << "::calibration done" << std::endl;
@@ -439,102 +604,6 @@ void FastLAM::directCalibration(const std::vector<atlas::FieldSet> &) {
 
 void FastLAM::read() {
   oops::Log::trace() << classname() << "::read starting" << std::endl;
-
-  // Get number of weight and normalization components from input files
-  size_t nWeight = 0;
-  size_t nLayers = 0;
-  for (size_t ji = 0; ji < inputs_.size(); ++ji) {
-    for (size_t jBin = 0; jBin < 100; ++jBin) {
-      std::string weightName = "weight_" + std::to_string(jBin);
-      if (inputs_[ji].second.name() == weightName) {
-        ++nWeight;
-      }
-      std::string normalizationName = "normalization_" + std::to_string(jBin);
-      if (inputs_[ji].second.name() == normalizationName) {
-        ++nLayers;
-      }
-    }
-  }
-
-  // Check consistency
-  if (nWeight == 0) {
-    ASSERT(nLayers == 1);
-  } else {
-    ASSERT(nLayers == nWeight);
-  }
-
-  // Allocate data
-  weight_.resize(nLayers);
-  normalization_.resize(nLayers);
-  for (const auto & group : groups_) {
-    // Group properties
-    const std::string groupName = std::get<0>(group);
-    const size_t groupNz0 = std::get<1>(group);
-
-    // Create layers
-    Layers layers(params_, gdata_, groupName, nx0_, ny0_, groupNz0, nLayers);
-
-    // Save layers
-    data_.emplace(groupName, layers);
-  }
-
-  // Get weight and normalization components from input files
-  for (size_t ji = 0; ji < inputs_.size(); ++ji) {
-    for (size_t jBin = 0; jBin < 100; ++jBin) {
-      std::string weightName = "weight_" + std::to_string(jBin);
-      if (inputs_[ji].second.name() == weightName) {
-        for (const auto & group : groups_) {
-          // Group properties
-          const std::string groupName = std::get<0>(group);
-          const size_t groupNz0 = std::get<1>(group);
-          const std::string groupVarInModelFile = std::get<2>(group);
-
-          // Copy field
-          atlas::Field field = gdata_.functionSpace().createField<double>(
-            atlas::option::name(groupName) | atlas::option::levels(groupNz0));
-          auto view = atlas::array::make_view<double, 2>(field);
-          atlas::Field fieldInput = inputs_[ji].second[groupVarInModelFile];
-          auto viewInput = atlas::array::make_view<double, 2>(fieldInput);
-          view.assign(viewInput);
-          weight_[jBin].add(field);
-        }
-      }
-      std::string normalizationName = "normalization_" + std::to_string(jBin);
-      if (inputs_[ji].second.name() == normalizationName) {
-        for (const auto & group : groups_) {
-          // Group properties
-          const std::string groupName = std::get<0>(group);
-          const size_t groupNz0 = std::get<1>(group);
-          const std::string groupVarInModelFile = std::get<2>(group);
-
-          // Copy field
-          atlas::Field field = gdata_.functionSpace().createField<double>(
-            atlas::option::name(groupName) | atlas::option::levels(groupNz0));
-          auto view = atlas::array::make_view<double, 2>(field);
-          atlas::Field fieldInput = inputs_[ji].second[groupVarInModelFile];
-          auto viewInput = atlas::array::make_view<double, 2>(fieldInput);
-          view.assign(viewInput);
-          normalization_[jBin].add(field);
-        }
-      }
-    }
-  }
-
-  // Set weight to one if not present
-  if (nWeight == 0) {
-    for (const auto & group : groups_) {
-      // Group properties
-      const std::string groupName = std::get<0>(group);
-      const size_t groupNz0 = std::get<1>(group);
-
-      // Copy field
-      atlas::Field field = gdata_.functionSpace().createField<double>(
-        atlas::option::name(groupName) | atlas::option::levels(groupNz0));
-      auto view = atlas::array::make_view<double, 2>(field);
-      view.assign(1.0);
-      weight_[0].add(field);
-    }
-  }
 
   if (comm_.rank() == 0) {
     ASSERT(params_.dataFile.value() != boost::none);
@@ -618,7 +687,7 @@ void FastLAM::read() {
 
   // Get square-root of weight
   for (size_t jBin = 0; jBin < weight_.size(); ++jBin) {
-    util::sqrtFieldSet(weight_[jBin]);
+    weight_[jBin]->sqrt();
   }
 
   oops::Log::trace() << classname() << "::read done" << std::endl;
@@ -687,11 +756,11 @@ void FastLAM::write() const {
 
 // -----------------------------------------------------------------------------
 
-std::vector<std::pair<eckit::LocalConfiguration, atlas::FieldSet>> FastLAM::fieldsToWrite() const {
+std::vector<std::pair<eckit::LocalConfiguration, oops::FieldSet3D>> FastLAM::fieldsToWrite() const {
   oops::Log::trace() << classname() << "::fieldsToWrite starting" << std::endl;
 
   // Create vector of pairs
-  std::vector<std::pair<eckit::LocalConfiguration, atlas::FieldSet>> pairs;
+  std::vector<std::pair<eckit::LocalConfiguration, oops::FieldSet3D>> pairs;
 
   // Get vector of configurations
   std::vector<eckit::LocalConfiguration> outputModelFilesConf
@@ -708,8 +777,10 @@ std::vector<std::pair<eckit::LocalConfiguration, atlas::FieldSet>> FastLAM::fiel
     const std::string param = conf.getString("parameter");
 
     if (param == "index i") {
+      // Create FieldSet3D
+      oops::FieldSet3D fset(validTime_, comm_);
+
       // Copy field
-      atlas::FieldSet fset;
       atlas::Field fieldIndexI0 = gdata_.fieldSet()["index_i"];
       auto viewIndexI0 = atlas::array::make_view<int, 1>(fieldIndexI0);
       for (const auto & var : activeVars_.variables()) {
@@ -730,8 +801,10 @@ std::vector<std::pair<eckit::LocalConfiguration, atlas::FieldSet>> FastLAM::fiel
       pairs.push_back(std::make_pair(file, fset));
     }
     if (param == "index j") {
+      // Create FieldSet3D
+      oops::FieldSet3D fset(validTime_, comm_);
+
       // Copy field
-      atlas::FieldSet fset;
       atlas::Field fieldIndexJ0 = gdata_.fieldSet()["index_j"];
       auto viewIndexJ0 = atlas::array::make_view<int, 1>(fieldIndexJ0);
       for (const auto & var : activeVars_.variables()) {
@@ -752,8 +825,10 @@ std::vector<std::pair<eckit::LocalConfiguration, atlas::FieldSet>> FastLAM::fiel
       pairs.push_back(std::make_pair(file, fset));
     }
     if (param == "normalized horizontal length-scale") {
+      // Create FieldSet3D
+      oops::FieldSet3D fset(validTime_, comm_);
+
       // Copy fields
-      atlas::FieldSet fset;
       for (const auto & var : activeVars_.variables()) {
         // Default: missing value
         atlas::Field field = gdata_.functionSpace().createField<double>(
@@ -769,7 +844,7 @@ std::vector<std::pair<eckit::LocalConfiguration, atlas::FieldSet>> FastLAM::fiel
 
           // Copy field
           if (groupVarInModelFile == var) {
-            const atlas::Field fieldRh = rh_[groupName];
+            const atlas::Field fieldRh = (*rh_)[groupName];
             const auto viewRh = atlas::array::make_view<double, 2>(fieldRh);
             view.assign(viewRh);
           }
@@ -781,8 +856,10 @@ std::vector<std::pair<eckit::LocalConfiguration, atlas::FieldSet>> FastLAM::fiel
     }
     if (param == "weight") {
       for (size_t jBin = 0; jBin < weight_.size(); ++jBin) {
+        // Create FieldSet3D
+        oops::FieldSet3D fset(validTime_, comm_);
+
         // Copy fields
-        atlas::FieldSet fset;
         for (const auto & var : activeVars_.variables()) {
           // Default: missing value
           atlas::Field field = gdata_.functionSpace().createField<double>(
@@ -798,7 +875,7 @@ std::vector<std::pair<eckit::LocalConfiguration, atlas::FieldSet>> FastLAM::fiel
 
             // Copy field
             if (groupVarInModelFile == var) {
-              const atlas::Field fieldWgtSqrt = weight_[jBin][groupName];
+              const atlas::Field fieldWgtSqrt = (*weight_[jBin])[groupName];
               const auto viewWgtSqrt = atlas::array::make_view<double, 2>(fieldWgtSqrt);
               for (size_t jnode0 = 0; jnode0 < nodes0_; ++jnode0) {
                 if (viewGhost0(jnode0) == 0) {
@@ -821,8 +898,10 @@ std::vector<std::pair<eckit::LocalConfiguration, atlas::FieldSet>> FastLAM::fiel
     }
     if (param == "normalization") {
       for (size_t jBin = 0; jBin < weight_.size(); ++jBin) {
+        // Create FieldSet3D
+        oops::FieldSet3D fset(validTime_, comm_);
+
         // Copy fields
-        atlas::FieldSet fset;
         for (const auto & var : activeVars_.variables()) {
           // Default: missing value
           atlas::Field field = gdata_.functionSpace().createField<double>(
@@ -838,7 +917,7 @@ std::vector<std::pair<eckit::LocalConfiguration, atlas::FieldSet>> FastLAM::fiel
 
             // Copy field
             if (groupVarInModelFile == var) {
-              const atlas::Field fieldNorm = normalization_[jBin][groupName];
+              const atlas::Field fieldNorm = (*normalization_[jBin])[groupName];
               const auto viewNorm = atlas::array::make_view<double, 2>(fieldNorm);
               view.assign(viewNorm);
             }
@@ -855,8 +934,10 @@ std::vector<std::pair<eckit::LocalConfiguration, atlas::FieldSet>> FastLAM::fiel
     }
     if (param == "normalization accuracy") {
       for (size_t jBin = 0; jBin < weight_.size(); ++jBin) {
+        // Create FieldSet3D
+        oops::FieldSet3D fset(validTime_, comm_);
+
         // Copy fields
-        atlas::FieldSet fset;
         for (const auto & var : activeVars_.variables()) {
           // Default: missing value
           atlas::Field field = gdata_.functionSpace().createField<double>(
@@ -907,55 +988,10 @@ void FastLAM::setupLengthScales() {
   // Ghost points
   const auto viewGhost0 = atlas::array::make_view<int, 1>(gdata_.functionSpace().ghost());
 
-  // Get rh and rv from input files
-  for (size_t ji = 0; ji < inputs_.size(); ++ji) {
-    if (inputs_[ji].second.name() == "rh") {
-      for (const auto & group : groups_) {
-        // Group properties
-        const std::string groupName = std::get<0>(group);
-        const size_t groupNz0 = std::get<1>(group);
-        const std::string groupVarInModelFile = std::get<2>(group);
-
-        // Copy field
-        atlas::Field field = gdata_.functionSpace().createField<double>(
-          atlas::option::name(groupName) | atlas::option::levels(groupNz0));
-        auto view = atlas::array::make_view<double, 2>(field);
-        if (inputs_[ji].second.has_field(groupVarInModelFile)) {
-          const atlas::Field fieldInput = inputs_[ji].second[groupVarInModelFile];
-          const auto viewInput = atlas::array::make_view<double, 2>(fieldInput);
-          view.assign(viewInput);
-        } else {
-          throw eckit::Exception("missing " + groupVarInModelFile + " in model file", Here());
-        }
-        rh_.add(field);
-      }
-    }
-    if (inputs_[ji].second.name() == "rv") {
-      for (const auto & group : groups_) {
-        // Group properties
-        const std::string groupName = std::get<0>(group);
-        const size_t groupNz0 = std::get<1>(group);
-        const std::string groupVarInModelFile = std::get<2>(group);
-
-        // Copy field
-        atlas::Field field = gdata_.functionSpace().createField<double>(
-          atlas::option::name(groupName) | atlas::option::levels(groupNz0));
-        auto view = atlas::array::make_view<double, 2>(field);
-        if (inputs_[ji].second.has_field(groupVarInModelFile)) {
-          const atlas::Field fieldInput = inputs_[ji].second[groupVarInModelFile];
-          const auto viewInput = atlas::array::make_view<double, 2>(fieldInput);
-          view.assign(viewInput);
-        } else {
-          throw eckit::Exception("missing " + groupVarInModelFile + " in model file", Here());
-        }
-        rv_.add(field);
-      }
-    }
-  }
-
   // Get rh and rv from yaml
-  if (rh_.empty()) {
+  if (!rh_) {
     ASSERT(params_.rhFromYaml.value() != boost::none);
+    rh_.reset(new oops::FieldSet3D(validTime_, comm_));
     for (const auto & group : groups_) {
       // Group properties
       const std::string groupName = std::get<0>(group);
@@ -999,12 +1035,13 @@ void FastLAM::setupLengthScales() {
           }
         }
       }
-      rh_.add(fieldRh);
+      rh_->add(fieldRh);
     }
   }
 
-  if (rv_.empty()) {
+  if (!rv_) {
     ASSERT(params_.rvFromYaml.value() != boost::none);
+    rv_.reset(new oops::FieldSet3D(validTime_, comm_));
     for (const auto & group : groups_) {
       // Group properties
       const std::string groupName = std::get<0>(group);
@@ -1048,7 +1085,7 @@ void FastLAM::setupLengthScales() {
           }
         }
       }
-      rv_.add(fieldRv);
+      rv_->add(fieldRv);
     }
   }
 
@@ -1060,8 +1097,8 @@ void FastLAM::setupLengthScales() {
     const size_t groupNz0 = std::get<1>(group);
 
     // Get fields
-    atlas::Field fieldRh = rh_[groupName];
-    atlas::Field fieldRv = rv_[groupName];
+    atlas::Field fieldRh = (*rh_)[groupName];
+    atlas::Field fieldRv = (*rv_)[groupName];
     auto viewRh = atlas::array::make_view<double, 2>(fieldRh);
     auto viewRv = atlas::array::make_view<double, 2>(fieldRv);
 
@@ -1125,7 +1162,7 @@ void FastLAM::setupWeight() {
     const size_t groupNz0 = std::get<1>(group);
 
     // Normalize rh
-    atlas::Field fieldRh = rh_[groupName];
+    atlas::Field fieldRh = (*rh_)[groupName];
     auto viewRh = atlas::array::make_view<double, 2>(fieldRh);
     auto viewArea =
       atlas::array::make_view<double, 2>(gdata_.fieldSet()["area"]);
@@ -1140,9 +1177,8 @@ void FastLAM::setupWeight() {
 
   // Initialize weight
   for (size_t jBin = 0; jBin < weight_.size(); ++jBin) {
-    atlas::FieldSet fsetWeight = util::copyFieldSet(rh_);
-    util::zeroFieldSet(fsetWeight);
-    weight_[jBin] = fsetWeight;
+    weight_[jBin].reset(new oops::FieldSet3D(*rh_));
+    weight_[jBin]->zero();
   }
 
   for (const auto & group : groups_) {
@@ -1151,7 +1187,7 @@ void FastLAM::setupWeight() {
     const size_t groupNz0 = std::get<1>(group);
 
     // Get rh field general properties
-    atlas::Field fieldRh = rh_[groupName];
+    atlas::Field fieldRh = (*rh_)[groupName];
     auto viewRh = atlas::array::make_view<double, 2>(fieldRh);
     double minRh = std::numeric_limits<double>::max();
     double maxRh = std::numeric_limits<double>::min();
@@ -1180,7 +1216,7 @@ void FastLAM::setupWeight() {
             // Raw weight (difference-based)
             std::vector<double> weight(weight_.size());
             for (size_t jBin = 0; jBin < weight_.size(); ++jBin) {
-              atlas::Field fieldWgt = weight_[jBin][groupName];
+              atlas::Field fieldWgt = (*weight_[jBin])[groupName];
               auto viewWgt = atlas::array::make_view<double, 2>(fieldWgt);
               double diff = std::abs(viewRh(jnode0, k0)-data_[groupName][jBin].rh())/(maxRh-minRh);
               viewWgt(jnode0, k0) = std::exp(-4.6*diff);  // Factor 4.6 => minimum weight ~0.01
@@ -1189,12 +1225,12 @@ void FastLAM::setupWeight() {
             // Normalized weight
             double weightSum = 0.0;
             for (size_t jBin = 0; jBin < weight_.size(); ++jBin) {
-              atlas::Field fieldWgt = weight_[jBin][groupName];
+              atlas::Field fieldWgt = (*weight_[jBin])[groupName];
               const auto viewWgt = atlas::array::make_view<double, 2>(fieldWgt);
               weightSum += viewWgt(jnode0, k0);
             }
             for (size_t jBin = 0; jBin < weight_.size(); ++jBin) {
-              atlas::Field fieldWgt = weight_[jBin][groupName];
+              atlas::Field fieldWgt = (*weight_[jBin])[groupName];
               auto viewWgt = atlas::array::make_view<double, 2>(fieldWgt);
               viewWgt(jnode0, k0) = viewWgt(jnode0, k0)/weightSum;
             }
@@ -1206,7 +1242,7 @@ void FastLAM::setupWeight() {
       data_[groupName][0].rh() = 0.5*(minRh+maxRh);
 
       // Set weight to one
-      atlas::Field fieldWgt = weight_[0][groupName];
+      atlas::Field fieldWgt = (*weight_[0])[groupName];
       auto viewWgt = atlas::array::make_view<double, 2>(fieldWgt);
       viewWgt.assign(1.0);
     }

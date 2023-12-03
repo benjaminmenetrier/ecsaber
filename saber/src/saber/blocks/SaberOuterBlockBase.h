@@ -13,17 +13,17 @@
 #include <utility>
 #include <vector>
 
-#include "atlas/field.h"
-
 #include <boost/noncopyable.hpp>
 
 #include "eckit/exception/Exceptions.h"
 
+#include "oops/base/FieldSet3D.h"
 #include "oops/interface/Geometry.h"
 #include "oops/base/GeometryData.h"
 #include "oops/interface/Increment.h"
 #include "oops/base/Variables.h"
 #include "oops/util/AssociativeContainers.h"
+#include "oops/util/DateTime.h"
 #include "oops/util/FieldSetHelpers.h"
 #include "oops/util/Logger.h"
 #include "oops/util/parameters/OptionalParameter.h"
@@ -46,9 +46,10 @@ namespace saber {
 
 class SaberOuterBlockBase : public util::Printable, private boost::noncopyable {
  public:
-  explicit SaberOuterBlockBase(const SaberBlockParametersBase & params)
+  explicit SaberOuterBlockBase(const SaberBlockParametersBase & params,
+                               const util::DateTime & validTime)
     : blockName_(params.saberBlockName), skipInverse_(params.skipInverse),
-      filterMode_(params.filterMode) {}
+      filterMode_(params.filterMode), validTime_(validTime) {}
   virtual ~SaberOuterBlockBase() {}
 
   // Accessor
@@ -62,13 +63,13 @@ class SaberOuterBlockBase : public util::Printable, private boost::noncopyable {
   // Application methods
 
   // Block multiplication
-  virtual void multiply(atlas::FieldSet &) const = 0;
+  virtual void multiply(oops::FieldSet3D &) const = 0;
 
   // Block multiplication adjoint
-  virtual void multiplyAD(atlas::FieldSet &) const = 0;
+  virtual void multiplyAD(oops::FieldSet3D &) const = 0;
 
   // Block left inverse multiplication
-  virtual void leftInverseMultiply(atlas::FieldSet &) const
+  virtual void leftInverseMultiply(oops::FieldSet3D &) const
 
     {throw eckit::NotImplemented("leftInverseMultiply not implemented yet for the block "
       + blockName_, Here());}
@@ -80,11 +81,12 @@ class SaberOuterBlockBase : public util::Printable, private boost::noncopyable {
     {throw eckit::NotImplemented("read not implemented yet for the block " + this->blockName());}
 
   // Read model fields
-  virtual std::vector<std::pair<eckit::LocalConfiguration, atlas::FieldSet>> fieldsToRead()
+  virtual std::vector<std::pair<std::string, eckit::LocalConfiguration>> getReadConfs() const
     {return {};}
+  virtual void setReadFields(const std::vector<oops::FieldSet3D> &) {}
 
   // Direct calibration
-  virtual void directCalibration(const std::vector<atlas::FieldSet> &)
+  virtual void directCalibration(const std::vector<oops::FieldSet3D> &)
     {throw eckit::NotImplemented("directCalibration not implemented yet for the block "
       + this->blockName(), Here());}
 
@@ -92,7 +94,7 @@ class SaberOuterBlockBase : public util::Printable, private boost::noncopyable {
   virtual void iterativeCalibrationInit()
     {throw eckit::NotImplemented("iterativeCalibrationInit not implemented yet for the block "
       + this->blockName(), Here());}
-  virtual void iterativeCalibrationUpdate(const atlas::FieldSet &)
+  virtual void iterativeCalibrationUpdate(const oops::FieldSet3D &)
     {throw eckit::NotImplemented("iterativeCalibrationUpdate not implemented yet for the block "
       + this->blockName(), Here());}
   virtual void iterativeCalibrationFinal()
@@ -108,51 +110,54 @@ class SaberOuterBlockBase : public util::Printable, private boost::noncopyable {
   virtual void write() const {}
 
   // Write model fields
-  virtual std::vector<std::pair<eckit::LocalConfiguration, atlas::FieldSet>> fieldsToWrite() const
+  virtual std::vector<std::pair<eckit::LocalConfiguration, oops::FieldSet3D>> fieldsToWrite() const
      {return {};}
 
   // Generate inner FieldSet (for the inverse test)
-  virtual atlas::FieldSet generateInnerFieldSet(const oops::GeometryData & innerGeometryData,
-                                                const oops::patch::Variables & innerVars) const
-    {return util::createRandomFieldSet(innerGeometryData.comm(),
-                                       innerGeometryData.functionSpace(),
-                                       innerVars);}
+  virtual oops::FieldSet3D generateInnerFieldSet(const oops::GeometryData & innerGeometryData,
+                                                 const oops::patch::Variables & innerVars) const
+    {return oops::randomFieldSet3D(validTime_,
+                                   innerGeometryData.comm(),
+                                   innerGeometryData.functionSpace(),
+                                   innerVars);}
 
   // Generate outer FieldSet (for the inverse test)
-  virtual atlas::FieldSet generateOuterFieldSet(const oops::GeometryData & outerGeometryData,
-                                                const oops::patch::Variables & outerVars) const
-    {return util::createRandomFieldSet(outerGeometryData.comm(),
-                                       outerGeometryData.functionSpace(),
-                                       outerVars);}
+  virtual oops::FieldSet3D generateOuterFieldSet(const oops::GeometryData & outerGeometryData,
+                                                 const oops::patch::Variables & outerVars) const
+    {return oops::randomFieldSet3D(validTime_,
+                                   outerGeometryData.comm(),
+                                   outerGeometryData.functionSpace(),
+                                   outerVars);}
 
   // Compare FieldSets (for the inverse test)
-  virtual bool compareFieldSets(const atlas::FieldSet & fset1,
-                                const atlas::FieldSet & fset2,
+  virtual bool compareFieldSets(const oops::FieldSet3D & fset3D1,
+                                const oops::FieldSet3D & fset3D2,
                                 const double & tol) const
-    {return util::compareFieldSets(fset1, fset2, tol);}
+    {return fset3D1.compare_with(fset3D2, tol);}
 
   // Non-virtual methods
 
   // Return block name
-  std::string blockName() const {return blockName_;}
+  const std::string blockName() const {return blockName_;}
 
   // Return flag to skip inverse application
-  bool filterMode() const {return filterMode_;}
+  const bool skipInverse() const {return skipInverse_;}
 
   // Return flag to skip inverse application
-  bool skipInverse() const {return skipInverse_;}
+  const bool filterMode() const {return filterMode_;}
+
+  // Return date/time
+  const util::DateTime validTime() const {return validTime_;}
 
   // Read model fields
   template <typename MODEL>
   void read(const oops::Geometry<MODEL> &,
-            const oops::patch::Variables &,
-            const util::DateTime &);
+            const oops::patch::Variables &);
 
   // Write model fields
   template <typename MODEL>
   void write(const oops::Geometry<MODEL> &,
-             const oops::patch::Variables &,
-             const util::DateTime &) const;
+             const oops::patch::Variables &) const;
 
   // Adjoint test
   void adjointTest(const oops::GeometryData &,
@@ -172,9 +177,10 @@ class SaberOuterBlockBase : public util::Printable, private boost::noncopyable {
                    const double &) const;
 
  private:
-  std::string blockName_;
-  bool skipInverse_;
-  bool filterMode_;
+  const std::string blockName_;
+  const bool skipInverse_;
+  const bool filterMode_;
+  const util::DateTime validTime_;
   virtual void print(std::ostream &) const = 0;
 };
 
@@ -258,26 +264,26 @@ class SaberOuterBlockMaker : public SaberOuterBlockFactory {
 
 template <typename MODEL>
 void SaberOuterBlockBase::read(const oops::Geometry<MODEL> & geom,
-                               const oops::patch::Variables & vars,
-                               const util::DateTime & date) {
+                               const oops::patch::Variables & vars) {
   oops::Log::trace() << "SaberOuterBlockBase::read starting" << std::endl;
 
-  // Get vector of configuration/FieldSet pairs
-  std::vector<std::pair<eckit::LocalConfiguration, atlas::FieldSet>> inputs
-    = this->fieldsToRead();
-
   // Read fieldsets as increments
-  for (auto & input : inputs) {
+  std::vector<oops::FieldSet3D> fsetVec;
+  for (const auto & input : this->getReadConfs()) {
     // Create variables
     oops::Variables<MODEL> varsT(templatedVarsConf(vars));
 
     // Create increment
-    oops::Increment<MODEL> dx(geom, varsT, date);
-    dx.read(input.first);
-    oops::Log::test() << "Norm of input parameter " << input.second.name()
+    oops::Increment<MODEL> dx(geom, varsT, validTime_);
+    dx.read(input.second);
+    oops::Log::test() << "Norm of input parameter " << input.first
                       << ": " << dx.norm() << std::endl;
-    util::copyFieldSet(dx.increment().fieldSet(), input.second);
+    oops::FieldSet3D fset(validTime_, eckit::mpi::comm());
+    fset.deepCopy(dx.increment().fieldSet());
+    fsetVec.push_back(fset);
+    fsetVec.back().name() = input.first;
   }
+  this->setReadFields(fsetVec);
 
   oops::Log::trace() << "SaberOuterBlockBase::read done" << std::endl;
 }
@@ -286,23 +292,22 @@ void SaberOuterBlockBase::read(const oops::Geometry<MODEL> & geom,
 
 template <typename MODEL>
 void SaberOuterBlockBase::write(const oops::Geometry<MODEL> & geom,
-                                const oops::patch::Variables & vars,
-                                const util::DateTime & date) const {
+                                const oops::patch::Variables & vars) const {
   oops::Log::trace() << "SaberOuterBlockBase::write starting" << std::endl;
 
   // Get vector of configuration/FieldSet pairs
-  std::vector<std::pair<eckit::LocalConfiguration, atlas::FieldSet>> outputs
+  std::vector<std::pair<eckit::LocalConfiguration, oops::FieldSet3D>> outputs
     = this->fieldsToWrite();
 
   // Create variables
   oops::Variables<MODEL> varsT(templatedVarsConf(vars));
 
   // Create increment
-  oops::Increment<MODEL> dx(geom, varsT, date);
+  oops::Increment<MODEL> dx(geom, varsT, validTime_);
 
   // Loop and write
   for (const auto & output : outputs) {
-    dx.increment().fieldSet() = util::copyFieldSet(output.second);
+    dx.increment().fieldSet() = output.second.fieldSet();
     dx.increment().synchronizeFields();
     oops::Log::test() << "Norm of output parameter " << output.second.name()
                       << ": " << dx.norm() << std::endl;

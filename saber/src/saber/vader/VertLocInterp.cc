@@ -38,12 +38,16 @@ oops::patch::Variables createInnerVars(
 void verticalInterpolationFromFullLevels(const oops::patch::Variables & activeVars,
                                          const atlas::FieldSet & fsetIn,
                                          atlas::FieldSet & fsetOut) {
+  // winds are on half-levels
+  oops::patch::Variables windnames(std::vector<std::string>{"eastward_wind", "northward_wind"});
+
   // inner stagger is full-levels
   for (const std::string & v : activeVars.variables()) {
     auto fldInView = atlas::array::make_view<const double, 2>(fsetIn[v]);
     auto fldOutView = atlas::array::make_view<double, 2>(fsetOut[v]);
 
-    if ((v.find("_levels_minus_one")) != std::string::npos) {
+    if (((v.find("_levels_minus_one")) != std::string::npos) ||
+        windnames.has(v)) {
       for (atlas::idx_t jn = 0; jn < fldInView.shape()[0]; ++jn) {
         fldOutView(jn, 0) = fldInView(jn, 0);
         for (atlas::idx_t jl = 0; jl < fldInView.shape()[1]-1; ++jl) {
@@ -70,6 +74,9 @@ void verticalInterpolationFromFullLevels(const oops::patch::Variables & activeVa
 void mo_buggy_verticalInterpolationFromHalfLevels(const oops::patch::Variables & activeVars,
                                                   const atlas::FieldSet & fsetIn,
                                                   atlas::FieldSet & fsetOut) {
+  // winds are on half-levels
+  oops::patch::Variables windnames(std::vector<std::string>{"eastward_wind", "northward_wind"});
+
   // The Met Office bug unfortunately uses the interpolation weights needed for
   // going from full levels to half levels, when in fact we are wanting to interpolate
   // from half-levels.  This is not an issue if the vertical staggering is uniform.
@@ -78,7 +85,8 @@ void mo_buggy_verticalInterpolationFromHalfLevels(const oops::patch::Variables &
     auto fldInView = atlas::array::make_view<const double, 2>(fsetIn[v]);
     auto fldOutView = atlas::array::make_view<double, 2>(fsetOut[v]);
 
-    if ((v.find("_levels_minus_one")) != std::string::npos) {
+    if (((v.find("_levels_minus_one")) != std::string::npos) ||
+        windnames.has(v)) {
       fldOutView.assign(fldInView);
     } else if ((v.find("_levels")) != std::string::npos) {
       for (atlas::idx_t jn = 0; jn < fldInView.shape()[0]; ++jn) {
@@ -105,11 +113,15 @@ void mo_buggy_verticalInterpolationFromHalfLevels(const oops::patch::Variables &
 void verticalInterpolationFromFullLevelsAD(const oops::patch::Variables & activeVars,
                                            atlas::FieldSet & fsetIn,
                                            atlas::FieldSet & fsetOut) {
+  // winds are on half-levels
+  oops::patch::Variables windnames(std::vector<std::string>{"eastward_wind", "northward_wind"});
+
   for (const std::string & v : activeVars.variables()) {
     auto fldInView = atlas::array::make_view<double, 2>(fsetIn[v]);
     auto fldOutView = atlas::array::make_view<double, 2>(fsetOut[v]);
 
-    if ((v.find("_levels_minus_one")) != std::string::npos) {
+    if ((v.find("_levels_minus_one")) != std::string::npos ||
+        windnames.has(v)) {
       for (atlas::idx_t jn = 0; jn < fldInView.shape()[0]; ++jn) {
         for (atlas::idx_t jl = fldInView.shape()[1]-2; jl > -1; --jl) {
           fldInView(jn, jl+1) += 0.5 * fldOutView(jn, jl+1);
@@ -148,11 +160,15 @@ void verticalInterpolationFromFullLevelsAD(const oops::patch::Variables & active
 void mo_buggy_verticalInterpolationFromHalfLevelsAD(const oops::patch::Variables & activeVars,
                                                     atlas::FieldSet & fsetIn,
                                                     atlas::FieldSet & fsetOut) {
+  // winds are on half-levels
+  oops::patch::Variables windnames(std::vector<std::string>{"eastward_wind", "northward_wind"});
+
   for (const std::string & v : activeVars.variables()) {
     auto fldInView = atlas::array::make_view<double, 2>(fsetIn[v]);
     auto fldOutView = atlas::array::make_view<double, 2>(fsetOut[v]);
 
-    if ((v.find("_levels_minus_one")) != std::string::npos) {
+    if ((v.find("_levels_minus_one")) != std::string::npos ||
+        windnames.has(v)) {
       for (atlas::idx_t jn = 0; jn < fldInView.shape()[0]; ++jn) {
         for (atlas::idx_t jl = 0; jl < fldInView.shape()[1]; ++jl) {
           fldInView(jn, jl) += fldOutView(jn, jl);
@@ -203,7 +219,7 @@ VertLocInterp::VertLocInterp(const oops::GeometryData & outerGeometryData,
                              const Parameters_ & params,
                              const oops::FieldSet3D & xb,
                              const oops::FieldSet3D & fg)
-  : SaberOuterBlockBase(params),
+  : SaberOuterBlockBase(params, xb.validTime()),
     params_(params),
     outerGeometryData_(outerGeometryData),
     outerVars_(outerVars),
@@ -216,7 +232,7 @@ VertLocInterp::VertLocInterp(const oops::GeometryData & outerGeometryData,
 
 // -----------------------------------------------------------------------------
 
-void VertLocInterp::multiply(atlas::FieldSet & fset) const {
+void VertLocInterp::multiply(oops::FieldSet3D & fset) const {
   oops::Log::trace() << classname() << "::multiply starting " << std::endl;
 
   // Takes active fields in fset that are on
@@ -238,8 +254,8 @@ void VertLocInterp::multiply(atlas::FieldSet & fset) const {
 
   // Simple vertical interpolation
   params_.reproduceBugStaggerDefn ?
-    mo_buggy_verticalInterpolationFromHalfLevels(activeVars_, fset, fsetOut)
-    : verticalInterpolationFromFullLevels(activeVars_, fset, fsetOut);
+    mo_buggy_verticalInterpolationFromHalfLevels(activeVars_, fset.fieldSet(), fsetOut)
+    : verticalInterpolationFromFullLevels(activeVars_, fset.fieldSet(), fsetOut);
 
   for (auto & fld : fset) {
     if (!activeVars_.has(fld.name())) {
@@ -247,7 +263,7 @@ void VertLocInterp::multiply(atlas::FieldSet & fset) const {
     }
   }
 
-  fset = fsetOut;
+  fset.fieldSet() = fsetOut;
 
   oops::Log::trace() << classname() << "::multiply done"
                      << std::endl;
@@ -255,7 +271,7 @@ void VertLocInterp::multiply(atlas::FieldSet & fset) const {
 
 // -----------------------------------------------------------------------------
 
-void VertLocInterp::multiplyAD(atlas::FieldSet & fset) const {
+void VertLocInterp::multiplyAD(oops::FieldSet3D & fset) const {
   oops::Log::trace() << classname()
                      << "::multiplyAD starting" << std::endl;
 
@@ -277,8 +293,8 @@ void VertLocInterp::multiplyAD(atlas::FieldSet & fset) const {
 
   // Adjoint of simple vertical interpolation scheme
   params_.reproduceBugStaggerDefn ?
-    mo_buggy_verticalInterpolationFromHalfLevelsAD(activeVars_, fsetOut, fset)
-    : verticalInterpolationFromFullLevelsAD(activeVars_, fsetOut, fset);
+    mo_buggy_verticalInterpolationFromHalfLevelsAD(activeVars_, fsetOut, fset.fieldSet())
+    : verticalInterpolationFromFullLevelsAD(activeVars_, fsetOut, fset.fieldSet());
 
   // keep passive vars
   for (auto & fld : fset) {
@@ -287,7 +303,7 @@ void VertLocInterp::multiplyAD(atlas::FieldSet & fset) const {
     }
   }
 
-  fset = fsetOut;
+  fset.fieldSet() = fsetOut;
 
   oops::Log::trace() << classname()
                      << "::multiplyAD done" << std::endl;

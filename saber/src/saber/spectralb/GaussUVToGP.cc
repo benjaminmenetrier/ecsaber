@@ -209,22 +209,7 @@ void interpolateCSToGauss(const oops::GeometryData & outerGeometryData,
 
   const auto targetPartitioner = atlas::grid::Partitioner(targetFunctionspace.distribution());
 
-  atlas::FunctionSpace step1Functionspace;
-  try {
-    step1Functionspace = createPointCloud(targetGrid, srcPartitioner);
-  }  catch (const eckit::Exception &) {
-    oops::Log::error()
-            << "ERROR  : SABER block \"gauss winds to geostrophic pressure\" cannot be built"
-            << std::endl
-            << "ERROR  : with 2 or 3 MPI tasks on a " << targetGrid.name()
-            << " grid with a " << srcFunctionspace.mesh().grid().name() << " model grid."
-            << std::endl
-            << "ERROR  : Try one of the two possible solutions:" << std::endl
-            << "ERROR  :   1. Use 1, 4 or more MPI tasks" << std::endl
-            << "ERROR  :   2. Use a Gaussian (F) grid with less points" << std::endl;
-    throw(eckit::FunctionalityNotSupported(
-                "Block not implemented on 2 and 3 PEs with these grids.", Here()));
-  }
+  const auto step1Functionspace = createPointCloud(targetGrid, srcPartitioner);
 
   const auto step2Functionspace = createPointCloud(targetGrid, targetPartitioner);
 
@@ -487,7 +472,7 @@ GaussUVToGP::GaussUVToGP(const oops::GeometryData & outerGeometryData,
                const Parameters_ & params,
                const oops::FieldSet3D & xb,
                const oops::FieldSet3D & fg)
-  : SaberOuterBlockBase(params),
+  : SaberOuterBlockBase(params, xb.validTime()),
     params_(params),
     outerVars_(outerVars),
     innerVars_(createInnerVars(outerVars)),
@@ -506,7 +491,7 @@ GaussUVToGP::GaussUVToGP(const oops::GeometryData & outerGeometryData,
 
 // -----------------------------------------------------------------------------
 
-void GaussUVToGP::multiply(atlas::FieldSet & fset) const {
+void GaussUVToGP::multiply(oops::FieldSet3D & fset) const {
   oops::Log::trace() << classname() << "::multiply starting " << std::endl;
 
   atlas::Field gp = gaussFunctionSpace_.createField<double>(
@@ -516,7 +501,7 @@ void GaussUVToGP::multiply(atlas::FieldSet & fset) const {
   atlas::Field rhsvec = allocateRHSVec(gaussFunctionSpace_, gp.levels());
 
   populateRHSVec(augmentedState_["dry_air_density_levels_minus_one"],
-                 augmentedState_["coriolis"], fset, rhsvec);
+                 augmentedState_["coriolis"], fset.fieldSet(), rhsvec);
 
   atlas::FieldSet specfset = allocateSpectralVortDiv(specFunctionSpace_, rhsvec.levels());
   // calculate dir vorticity and divergence spectrally
@@ -550,7 +535,7 @@ void GaussUVToGP::multiply(atlas::FieldSet & fset) const {
 
 // -----------------------------------------------------------------------------
 
-void GaussUVToGP::multiplyAD(atlas::FieldSet & fset) const {
+void GaussUVToGP::multiplyAD(oops::FieldSet3D & fset) const {
   oops::Log::trace() << classname() << "::multiplyAD starting" << std::endl;
 
   atlas::FieldSet specfset =
@@ -595,12 +580,12 @@ void GaussUVToGP::multiplyAD(atlas::FieldSet & fset) const {
 
   populateRHSVecAdj(augmentedState_["dry_air_density_levels_minus_one"],
                     augmentedState_["coriolis"],
-                    fset, rhsvec);
+                    fset.fieldSet(), rhsvec);
 
   newFields.add(fset["eastward_wind"]);
   newFields.add(fset["northward_wind"]);
 
-  fset = newFields;
+  fset.fieldSet() = newFields;
 
   oops::Log::trace() << classname() << "::multiplyAD done" << std::endl;
 }

@@ -40,8 +40,8 @@ class SaberEnsembleBlockChain : public SaberBlockChainBase {
                           const oops::patch::Variables & outerVars,
                           const oops::FieldSet4D & fset4dXb,
                           const oops::FieldSet4D & fset4dFg,
-                          std::vector<atlas::FieldSet> & fsetEns,
-                          std::vector<atlas::FieldSet> & fsetDualResEns,
+                          std::vector<oops::FieldSet3D> & fsetEns,
+                          std::vector<oops::FieldSet3D> & fsetDualResEns,
                           const eckit::LocalConfiguration & covarConf,
                           const eckit::Configuration & conf);
   ~SaberEnsembleBlockChain() = default;
@@ -72,7 +72,7 @@ class SaberEnsembleBlockChain : public SaberBlockChainBase {
   /// @brief Localization block chain (optional).
   std::unique_ptr<SaberParametricBlockChain> locBlockChain_;
   /// @brief Ensemble used in the ensemble covariance.
-  std::vector<atlas::FieldSet> ensemble_;
+  std::vector<oops::FieldSet3D> ensemble_;
   /// @brief Control vector size.
   size_t ctlVecSize_;
   /// @brief Variables used in the ensemble covariance.
@@ -89,16 +89,16 @@ class SaberEnsembleBlockChain : public SaberBlockChainBase {
 
 template<typename MODEL>
 SaberEnsembleBlockChain::SaberEnsembleBlockChain(const oops::Geometry<MODEL> & geom,
-                       const oops::Geometry<MODEL> & dualResolutionGeom,
+                       const oops::Geometry<MODEL> & dualResGeom,
                        const oops::patch::Variables & outerVars,
                        const oops::FieldSet4D & fset4dXb,
                        const oops::FieldSet4D & fset4dFg,
                        // TODO(AS): remove as argument: this should be read inside the
                        // block.
-                       std::vector<atlas::FieldSet> & fsetEns,
+                       std::vector<oops::FieldSet3D> & fsetEns,
                        // TODO(AS): remove as argument: this is currently not used (and
                        // when used should be read inside the block.
-                       std::vector<atlas::FieldSet> & fsetDualResEns,
+                       std::vector<oops::FieldSet3D> & fsetDualResEns,
                        const eckit::LocalConfiguration & covarConf,
                        const eckit::Configuration & conf)
   : outerFunctionSpace_(geom.geometry().functionSpace()), outerVariables_(outerVars),
@@ -158,26 +158,21 @@ SaberEnsembleBlockChain::SaberEnsembleBlockChain(const oops::Geometry<MODEL> & g
   eckit::LocalConfiguration centralBlockConf = conf.getSubConfiguration("saber central block");
   const double inflationValue = centralBlockConf.getDouble("inflation value", 1);
   oops::Log::info() << "Info     : Read inflation field" << std::endl;
-  atlas::FieldSet inflationField;
+  oops::FieldSet3D inflationField(fset4dXb[0].validTime(), eckit::mpi::comm());
   // Read ATLAS inflation file
   if (centralBlockConf.has("inflation field.atlas file")) {
     eckit::LocalConfiguration inflationConf =
                               centralBlockConf.getSubConfiguration("inflation field.atlas file");
     // Read file
-    util::readFieldSet(currentOuterGeom.comm(),
-                       currentOuterGeom.functionSpace(),
-                       activeVars,
-                       inflationConf,
-                       inflationField);
+    inflationField.read(currentOuterGeom.functionSpace(),
+                        activeVars,
+                        inflationConf);
     // Set name
     inflationField.name() = "inflation";
 
     // Print FieldSet norm
     oops::Log::test() << "Norm of input parameter inflation: "
-                      << util::normFieldSet(inflationField,
-                                            activeVars.variables(),
-                                            currentOuterGeom.comm())
-                      << std::endl;
+                      << inflationField.norm(activeVars) << std::endl;
   }
   // Use model inflation file
   if (centralBlockConf.has("inflation field.model file")) {
@@ -186,14 +181,14 @@ SaberEnsembleBlockChain::SaberEnsembleBlockChain(const oops::Geometry<MODEL> & g
     // Copy file
     // Read fieldsets as increments
     // Create variables
-    oops::Variables<MODEL> varsT(templatedVarsConf(activeVars));
+    oops::Variables<MODEL> activeVarsT(templatedVarsConf(activeVars));
 
     // Create increment
-    oops::Increment<MODEL> dx(geom, varsT, fset4dXb[0].validTime());
+    oops::Increment<MODEL> dx(geom, activeVarsT, fset4dXb[0].validTime());
     dx.read(inflationConf);
     oops::Log::test() << "Norm of input parameter inflation"
                       << ": " << dx.norm() << std::endl;
-    util::copyFieldSet(dx.increment().fieldSet(), inflationField);
+    inflationField.deepCopy(dx.increment().fieldSet());
   }
 
   // Apply inflation on ensemble members
@@ -201,11 +196,11 @@ SaberEnsembleBlockChain::SaberEnsembleBlockChain(const oops::Geometry<MODEL> & g
   for (auto & fsetMem : fsetEns) {
     // Apply local inflation
     if (!inflationField.empty()) {
-      util::multiplyFieldSets(fsetMem, inflationField);
+      fsetMem *= inflationField;
     }
 
     // Apply global inflation
-    util::multiplyFieldSet(fsetMem, inflationValue);
+    fsetMem *= inflationValue;
   }
 
   // Ensemble transform
@@ -259,7 +254,7 @@ SaberEnsembleBlockChain::SaberEnsembleBlockChain(const oops::Geometry<MODEL> & g
   const auto & locConf = saberCentralBlockParams.localization.value();
   if (locConf != boost::none) {
     // Initialize localization blockchain
-    locBlockChain_ = std::make_unique<SaberParametricBlockChain>(geom, dualResolutionGeom,
+    locBlockChain_ = std::make_unique<SaberParametricBlockChain>(geom, dualResGeom,
       outerVars, fset4dXb, fset4dFg, fsetEns, fsetDualResEns, covarConfUpdated, *locConf);
   }
   // Direct calibration
@@ -291,15 +286,11 @@ SaberEnsembleBlockChain::SaberEnsembleBlockChain(const oops::Geometry<MODEL> & g
     // Create random FieldSets
     oops::FieldSet4D fset4d1(fset4dXb.validTimes(), fset4dXb.commTime(), currentOuterGeom.comm());
     for (size_t jtime = 0; jtime < fset4d1.size(); ++jtime) {
-      fset4d1[jtime].fieldSet() = util::createRandomFieldSet(currentOuterGeom.comm(),
-                                                             currentOuterGeom.functionSpace(),
-                                                             activeVars);
+      fset4d1[jtime].randomInit(currentOuterGeom.functionSpace(), activeVars);
     }
     oops::FieldSet4D fset4d2(fset4dXb.validTimes(), fset4dXb.commTime(), currentOuterGeom.comm());
     for (size_t jtime = 0; jtime < fset4d2.size(); ++jtime) {
-      fset4d2[jtime].fieldSet() = util::createRandomFieldSet(currentOuterGeom.comm(),
-                                                           currentOuterGeom.functionSpace(),
-                                                           activeVars);
+      fset4d2[jtime].randomInit(currentOuterGeom.functionSpace(), activeVars);
     }
 
     // Copy FieldSets
@@ -336,9 +327,7 @@ SaberEnsembleBlockChain::SaberEnsembleBlockChain(const oops::Geometry<MODEL> & g
     // Create FieldSet
     oops::FieldSet4D fset4d(fset4dXb.validTimes(), fset4dXb.commTime(), currentOuterGeom.comm());
     for (size_t jtime = 0; jtime < fset4d.size(); ++jtime) {
-      fset4d[jtime].fieldSet() = util::createRandomFieldSet(currentOuterGeom.comm(),
-                                                            outerFunctionSpace_,
-                                                            outerVariables_);
+      fset4d[jtime].randomInit(outerFunctionSpace_, outerVariables_);
     }
 
     // Copy FieldSet
