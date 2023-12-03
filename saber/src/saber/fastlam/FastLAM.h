@@ -19,6 +19,7 @@
 #include "eckit/mpi/Comm.h"
 
 #include "oops/base/GeometryData.h"
+#include "oops/util/DateTime.h"
 
 #include "saber/blocks/SaberBlockParametersBase.h"
 #include "saber/blocks/SaberCentralBlockBase.h"
@@ -59,19 +60,24 @@ class FastLAM : public SaberCentralBlockBase {
 
   virtual ~FastLAM();
 
-  void randomize(atlas::FieldSet &) const override;
-  void multiply(atlas::FieldSet &) const override;
+  void randomize(oops::FieldSet3D &) const override;
+  void multiply(oops::FieldSet3D &) const override;
 
-  std::vector<std::pair<eckit::LocalConfiguration, atlas::FieldSet>> fieldsToRead() override;
+  std::vector<std::pair<std::string, eckit::LocalConfiguration>> getReadConfs() const override;
+  void setReadFields(const std::vector<oops::FieldSet3D> &) override;
 
   void read() override;
 
-  void directCalibration(const std::vector<atlas::FieldSet> &) override;
+  void directCalibration(const std::vector<oops::FieldSet3D> &) override;
 
   void write() const override;
-  std::vector<std::pair<eckit::LocalConfiguration, atlas::FieldSet>> fieldsToWrite() const override;
+  std::vector<std::pair<eckit::LocalConfiguration, oops::FieldSet3D>> fieldsToWrite() const
+    override;
 
  private:
+  // Valid date/time
+  const util::DateTime validTime_;
+
   // Model grid geometry data
   const oops::GeometryData & gdata_;
 
@@ -91,13 +97,10 @@ class FastLAM : public SaberCentralBlockBase {
   ParametersBase_ params_;
 
   // Inputs
-  std::vector<std::pair<eckit::LocalConfiguration, atlas::FieldSet>> inputs_;
-  atlas::FieldSet rh_;
-  atlas::FieldSet rv_;
-
-  // Weight and normalization
-  std::vector<atlas::FieldSet> weight_;
-  std::vector<atlas::FieldSet> normalization_;
+  std::unique_ptr<oops::FieldSet3D> rh_;
+  std::unique_ptr<oops::FieldSet3D> rv_;
+  std::vector<std::unique_ptr<oops::FieldSet3D>> weight_;
+  std::vector<std::unique_ptr<oops::FieldSet3D>> normalization_;
 
   // Data
   std::unordered_map<std::string, Layers> data_;

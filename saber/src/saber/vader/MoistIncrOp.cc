@@ -35,6 +35,7 @@
 #include "oops/util/Timer.h"
 
 #include "saber/blocks/SaberOuterBlockBase.h"
+#include "saber/oops/Utilities.h"
 
 namespace saber {
 namespace vader {
@@ -51,7 +52,7 @@ MoistIncrOp::MoistIncrOp(const oops::GeometryData & outerGeometryData,
                          const Parameters_ & params,
                          const oops::FieldSet3D & xb,
                          const oops::FieldSet3D & fg)
-  : SaberOuterBlockBase(params),
+  : SaberOuterBlockBase(params, xb.validTime()),
     innerGeometryData_(outerGeometryData), innerVars_(outerVars), augmentedStateFieldSet_()
 {
   oops::Log::trace() << classname() << "::MoistIncrOp starting" << std::endl;
@@ -123,25 +124,35 @@ MoistIncrOp::~MoistIncrOp() {
 
 // -----------------------------------------------------------------------------
 
-void MoistIncrOp::multiply(atlas::FieldSet & fset) const {
+void MoistIncrOp::multiply(oops::FieldSet3D & fset) const {
   oops::Log::trace() << classname() << "::multiply starting" << std::endl;
-  mo::eval_moisture_incrementing_operator_tl(fset, augmentedStateFieldSet_);
+  // Allocate output fields if they are not already present, e.g when randomizing.
+  const oops::patch::Variables outputVars({"specific_humidity",
+                                    "mass_content_of_cloud_liquid_water_in_atmosphere_layer",
+                                    "mass_content_of_cloud_ice_in_atmosphere_layer"});
+  allocateFields(fset,
+                 outputVars,
+                 innerVars_,
+                 innerGeometryData_.functionSpace());
+
+  // Populate output fields.
+  mo::eval_moisture_incrementing_operator_tl(fset.fieldSet(), augmentedStateFieldSet_);
   oops::Log::trace() << classname() << "::multiply done" << std::endl;
 }
 
 // -----------------------------------------------------------------------------
 
-void MoistIncrOp::multiplyAD(atlas::FieldSet & fset) const {
+void MoistIncrOp::multiplyAD(oops::FieldSet3D & fset) const {
   oops::Log::trace() << classname() << "::multiplyAD starting" << std::endl;
-  mo::eval_moisture_incrementing_operator_ad(fset, augmentedStateFieldSet_);
+  mo::eval_moisture_incrementing_operator_ad(fset.fieldSet(), augmentedStateFieldSet_);
   oops::Log::trace() << classname() << "::multiplyAD done" << std::endl;
 }
 
 // -----------------------------------------------------------------------------
 
-void MoistIncrOp::leftInverseMultiply(atlas::FieldSet & fset) const {
+void MoistIncrOp::leftInverseMultiply(oops::FieldSet3D & fset) const {
   oops::Log::trace() << classname() << "::leftInverseMultiply starting" << std::endl;
-  mo::eval_total_water_tl(fset, augmentedStateFieldSet_);
+  mo::eval_total_water_tl(fset.fieldSet(), augmentedStateFieldSet_);
   oops::Log::trace() << classname() << "::leftInverseMultiply done" << std::endl;
 }
 

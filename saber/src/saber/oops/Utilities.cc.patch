@@ -1,6 +1,6 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/Utilities.cc.tmp	2023-11-10 16:12:30.592284103 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/Utilities.cc	2023-11-08 13:39:01.135441521 +0100
-@@ -15,7 +15,7 @@
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/Utilities.cc.tmp.bak	2023-12-03 09:31:42.137560786 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/Utilities.cc	2023-12-03 09:42:14.491049183 +0100
+@@ -17,7 +17,7 @@
  // -----------------------------------------------------------------------------
  
  oops::patch::Variables getActiveVars(const SaberBlockParametersBase & params,
@@ -9,7 +9,7 @@
    oops::Log::trace() << "getActiveVars starting" << std::endl;
    oops::patch::Variables activeVars;
    if (params.mandatoryActiveVars().size() == 0) {
-@@ -40,6 +40,22 @@
+@@ -41,6 +41,22 @@
  }
  
  // -----------------------------------------------------------------------------

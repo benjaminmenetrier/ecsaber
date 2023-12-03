@@ -51,7 +51,6 @@ class Variables : public util::Printable {
   explicit Variables(const std::vector<std::string> &, const std::string & conv = "");
   Variables(const std::vector<std::string> & vars, const std::vector<int> & channels);
   Variables(const eckit::Configuration &, const std::vector<std::string> & vars);
-  Variables(const std::vector<std::string> & vars, const eckit::Configuration &);
 
   Variables(const Variables &);
   Variables & operator+=(const Variables &);

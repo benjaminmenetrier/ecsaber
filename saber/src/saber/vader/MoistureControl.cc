@@ -34,6 +34,7 @@
 #include "oops/util/Timer.h"
 
 #include "saber/blocks/SaberOuterBlockBase.h"
+#include "saber/oops/Utilities.h"
 #include "saber/vader/CovarianceStatisticsUtils.h"
 #include "saber/vader/movader_covstats_interface.h"
 
@@ -52,7 +53,7 @@ MoistureControl::MoistureControl(const oops::GeometryData & outerGeometryData,
                                  const Parameters_ & params,
                                  const oops::FieldSet3D & xb,
                                  const oops::FieldSet3D & fg)
-  : SaberOuterBlockBase(params),
+  : SaberOuterBlockBase(params, xb.validTime()),
     innerGeometryData_(outerGeometryData), innerVars_(outerVars), augmentedStateFieldSet_()
 {
   oops::Log::trace() << classname() << "::MoistureControl starting" << std::endl;
@@ -138,25 +139,34 @@ MoistureControl::~MoistureControl() {
 
 // -----------------------------------------------------------------------------
 
-void MoistureControl::multiply(atlas::FieldSet & fset) const {
+void MoistureControl::multiply(oops::FieldSet3D & fset) const {
   oops::Log::trace() << classname() << "::multiply starting" << std::endl;
-  mo::eval_moisture_control_inv_tl(fset, augmentedStateFieldSet_);
+  // Allocate output fields if they are not already present, e.g when randomizing.
+  const oops::patch::Variables outputVars({"potential_temperature",
+                                    "qt"});
+  allocateFields(fset,
+                 outputVars,
+                 innerVars_,
+                 innerGeometryData_.functionSpace());
+
+  // Populate output fields.
+  mo::eval_moisture_control_inv_tl(fset.fieldSet(), augmentedStateFieldSet_);
   oops::Log::trace() << classname() << "::multiply done" << std::endl;
 }
 
 // -----------------------------------------------------------------------------
 
-void MoistureControl::multiplyAD(atlas::FieldSet & fset) const {
+void MoistureControl::multiplyAD(oops::FieldSet3D & fset) const {
   oops::Log::trace() << classname() << "::multiplyAD starting" << std::endl;
-  mo::eval_moisture_control_inv_ad(fset, augmentedStateFieldSet_);
+  mo::eval_moisture_control_inv_ad(fset.fieldSet(), augmentedStateFieldSet_);
   oops::Log::trace() << classname() << "::multiplyAD done" << std::endl;
 }
 
 // -----------------------------------------------------------------------------
 
-void MoistureControl::leftInverseMultiply(atlas::FieldSet & fset) const {
+void MoistureControl::leftInverseMultiply(oops::FieldSet3D & fset) const {
   oops::Log::trace() << classname() << "::leftInverseMultiply starting" << std::endl;
-  mo::eval_moisture_control_tl(fset, augmentedStateFieldSet_);
+  mo::eval_moisture_control_tl(fset.fieldSet(), augmentedStateFieldSet_);
   oops::Log::trace() << classname() << "::leftInverseMultiply done" << std::endl;
 }
 

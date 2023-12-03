@@ -37,6 +37,10 @@
 #include "saber/oops/ErrorCovarianceParameters.h"
 #include "saber/oops/ECUtilities.h"
 
+namespace oops {
+  class FieldSet3D;
+}
+
 namespace saber {
 
 // -----------------------------------------------------------------------------
@@ -56,6 +60,14 @@ void setMPI(eckit::LocalConfiguration & conf,
 
 // -----------------------------------------------------------------------------
 
+void allocateFields(oops::FieldSet3D & fset,
+                    const oops::patch::Variables & varsToAllocate,
+                    const oops::patch::Variables & varsWithLevels,
+                    const atlas::FunctionSpace & functionSpace,
+                    const bool haloExchange = true);
+
+// -----------------------------------------------------------------------------
+
 template<typename MODEL>
 eckit::LocalConfiguration readEnsemble(const oops::Geometry<MODEL> & geom,
                                        const oops::patch::Variables & vars,
@@ -63,7 +75,7 @@ eckit::LocalConfiguration readEnsemble(const oops::Geometry<MODEL> & geom,
                                        const oops::State<MODEL> & fg,
                                        const eckit::LocalConfiguration & inputConf,
                                        const bool & iterativeEnsembleLoading,
-                                       std::vector<atlas::FieldSet> & fsetEns) {
+                                       std::vector<oops::FieldSet3D> & fsetEns) {
   oops::Log::trace() << "readEnsemble starting" << std::endl;
 
   // Prepare ensemble configuration
@@ -127,8 +139,9 @@ eckit::LocalConfiguration readEnsemble(const oops::Geometry<MODEL> & geom,
     }
 
     // Transform Increment into FieldSet
-    for (size_t ie = 0; ie < nens; ++ie) {
-      atlas::FieldSet fset = util::copyFieldSet((*ensemble)[ie].increment().fieldSet());
+    for (unsigned int ie = 0; ie < nens; ++ie) {
+      oops::FieldSet3D fset(xb.validTime(), eckit::mpi::comm());
+      fset.shallowCopy((*ensemble)[ie].increment().fieldSet());
       fset.name() = "ensemble member";
       fsetEns.push_back(fset);
     }
@@ -145,7 +158,7 @@ void readHybridWeight(const oops::Geometry<MODEL> & geom,
                       const oops::patch::Variables & vars,
                       const util::DateTime & date,
                       const eckit::LocalConfiguration & conf,
-                      atlas::FieldSet & fset) {
+                      oops::FieldSet3D & fset) {
   oops::Log::trace() << "readHybridWeight starting" << std::endl;
 
   oops::Log::info() << "Info     : Read hybrid weight" << std::endl;
@@ -163,7 +176,7 @@ void readHybridWeight(const oops::Geometry<MODEL> & geom,
   dx.read(localConf);
 
   // Get FieldSet
-  fset = util::shareFields(dx.increment().fieldSet());
+  fset.shallowCopy(dx.increment().fieldSet());
 
   oops::Log::trace() << "readHybridWeight done" << std::endl;
 }
@@ -173,10 +186,9 @@ void readHybridWeight(const oops::Geometry<MODEL> & geom,
 template<typename MODEL>
 void readEnsembleMember(const oops::Geometry<MODEL> & geom,
                         const oops::patch::Variables & vars,
-                        const util::DateTime & date,
                         const eckit::LocalConfiguration & conf,
                         const size_t & ie,
-                        atlas::FieldSet & fset) {
+                        oops::FieldSet3D & fset) {
   oops::Log::trace() << "readEnsembleMember starting" << std::endl;
 
   oops::Log::info() << "Info     : Read ensemble member " << ie << std::endl;
@@ -192,11 +204,11 @@ void readEnsembleMember(const oops::Geometry<MODEL> & geom,
     oops::Variables<MODEL> varsT(templatedVarsConf(vars));
 
     // Read state as increment
-    oops::Increment<MODEL> dx(geom, varsT, date);
+    oops::Increment<MODEL> dx(geom, varsT, fset.validTime());
     dx.read(membersConf[ie]);
 
     // Copy FieldSet
-    fset = util::copyFieldSet(dx.increment().fieldSet());
+    fset.deepCopy(dx.increment().fieldSet());
 
     ++ensembleFound;
   }
@@ -209,11 +221,11 @@ void readEnsembleMember(const oops::Geometry<MODEL> & geom,
     oops::Variables<MODEL> varsT(templatedVarsConf(vars));
 
     // Read Increment
-    oops::Increment<MODEL> dx(geom, varsT, date);
+    oops::Increment<MODEL> dx(geom, varsT, fset.validTime());
     dx.read(membersConf[ie]);
 
     // Get FieldSet
-    fset = util::copyFieldSet(dx.increment().fieldSet());
+    fset.deepCopy(dx.increment().fieldSet());
 
     ++ensembleFound;
   }
