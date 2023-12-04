@@ -60,7 +60,7 @@ class ErrorCovarianceToolboxParameters :
   oops::Parameter<bool> parallel{"parallel subwindows", true, this};
 
   /// Outer variables parameters
-  oops::OptionalParameter<oops::patch::Variables> incrementVars{"increment variables", this};
+  oops::OptionalParameter<eckit::LocalConfiguration> incrementVars{"increment variables", this};
 
   /// Dirac location/variables parameters.
   oops::OptionalParameter<eckit::LocalConfiguration> dirac{"dirac", this};
@@ -151,11 +151,13 @@ class ErrorCovarianceToolbox : public oops::Application {
     // Setup variables
     const std::vector<eckit::LocalConfiguration> stateConfs(params.background.value()
       .getSubConfigurations("state"));
-    oops::patch::Variables tmpVars(stateConfs[0], "variables");
+    const Variables_ tmpVarsT(stateConfs[0]);
+    oops::patch::Variables tmpVars(tmpVarsT.variables().variablesList());
     if (params.incrementVars.value() != boost::none) {
-      const auto & incrementVars = params.incrementVars.value().value();
-      if (incrementVars <= tmpVars) {
-        tmpVars.intersection(incrementVars);
+      const Variables_ incVarsT(*params.incrementVars.value());
+      const oops::patch::Variables incVars(incVarsT.variables().variablesList());
+      if (incVars <= tmpVars) {
+        tmpVars.intersection(incVars);
       } else {
         throw eckit::UserError("Increment variables should be a subset of background variables",
                                Here());

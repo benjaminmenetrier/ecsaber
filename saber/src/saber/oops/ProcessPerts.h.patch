@@ -1,5 +1,5 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ProcessPerts.h.tmp.bak	2023-12-03 14:41:42.271980079 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ProcessPerts.h	2023-12-03 13:52:13.795902006 +0100
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ProcessPerts.h.tmp.bak	2023-12-04 08:58:13.817298705 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ProcessPerts.h	2023-12-04 08:42:57.405988680 +0100
 @@ -18,16 +18,14 @@
  #include "eckit/config/LocalConfiguration.h"
  #include "eckit/exception/Exceptions.h"
@@ -66,7 +66,8 @@
 +  oops::RequiredParameter<eckit::LocalConfiguration> background{"Background", this};
  
    oops::RequiredParameter<util::DateTime> date{"date", this};
-   oops::RequiredParameter<oops::patch::Variables> inputVariables{"input variables", this};
+-  oops::RequiredParameter<oops::patch::Variables> inputVariables{"input variables", this};
++  oops::RequiredParameter<eckit::LocalConfiguration> inputVariables{"input variables", this};
  
 -  oops::RequiredParameter<ErrorCovarianceParameters_>
 -    saberFilterCovarianceParams{"saber filter blocks", this};
@@ -195,8 +196,9 @@
 +    const auto & incrementsWriteParams =
 +      params.outputPerturbations.value();
  
-     oops::patch::Variables incVars = params.inputVariables;
-+    Variables_ incVarsT(templatedVarsConf(incVars));
+-    oops::patch::Variables incVars = params.inputVariables;
++    const Variables_ incVarsT(params.inputVariables);
++    oops::patch::Variables incVars(incVarsT.variables().variablesList());
      // Initialize outer variables
 -    const std::vector<std::size_t> vlevs = geom.variableSizes(incVars);
 +    const std::vector<std::size_t> vlevs = geom.geometry().variableSizes(incVarsT.variables());
