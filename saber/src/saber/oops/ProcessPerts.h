@@ -64,7 +64,7 @@ class ProcessPertsParameters :
   oops::RequiredParameter<eckit::LocalConfiguration> background{"Background", this};
 
   oops::RequiredParameter<util::DateTime> date{"date", this};
-  oops::RequiredParameter<oops::patch::Variables> inputVariables{"input variables", this};
+  oops::RequiredParameter<eckit::LocalConfiguration> inputVariables{"input variables", this};
 
   /// Background error covariance model.
   oops::RequiredParameter<eckit::LocalConfiguration> filterCovarianceBlockConf{"saber filter blocks", this};
@@ -167,8 +167,8 @@ class ProcessPerts : public oops::Application {
     const auto & incrementsWriteParams =
       params.outputPerturbations.value();
 
-    oops::patch::Variables incVars = params.inputVariables;
-    Variables_ incVarsT(templatedVarsConf(incVars));
+    const Variables_ incVarsT(params.inputVariables);
+    oops::patch::Variables incVars(incVarsT.variables().variablesList());
     // Initialize outer variables
     const std::vector<std::size_t> vlevs = geom.geometry().variableSizes(incVarsT.variables());
     for (std::size_t i = 0; i < vlevs.size() ; ++i) {
