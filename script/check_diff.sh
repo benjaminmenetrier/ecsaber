@@ -44,7 +44,7 @@ if test -f "${dstPath}.patch"; then
     rm -f ${dstPath}.tmp ${dstPath}.tmp.bak
   else
     echo "--  - Update needed for: ${dstPath}"
-    echo "echo \"meld ${dstPath}.tmp ${dstPath} ${dstPath}.tmp.bak ? [type y]\"; read doMeld; if test \"${doMeld}\" = \"y\"; then meld ${dstPath}.tmp ${dstPath} ${dstPath}.tmp.bak; fi; diff -u ${dstPath}.tmp.bak ${dstPath} > ${dstPath}.patch; rm -f ${dstPath}.tmp ${dstPath}.tmp.bak" >> ${commandPath}
+    echo "echo \"meld ${dstPath}.tmp ${dstPath} ${dstPath}.tmp.bak ? [type y]\"; read doMeld; if test \"\${doMeld}\" = \"y\"; then meld ${dstPath}.tmp ${dstPath} ${dstPath}.tmp.bak; fi; diff -u ${dstPath}.tmp.bak ${dstPath} > ${dstPath}.patch; rm -f ${dstPath}.tmp ${dstPath}.tmp.bak" >> ${commandPath}
     echo "" >> ${commandPath}
  fi
 else
@@ -58,7 +58,7 @@ else
     else
       echo "--  - New patch needed for: "${dstPath}
       rm -f ${dstPath}.patch
-      echo "echo \"meld ${dstPath}.tmp ${dstPath} ? [type y]\"; read doMeld; if test \"${doMeld}\" = \"y\"; then meld ${dstPath}.tmp ${dstPath}; fi; diff -u ${dstPath}.tmp ${dstPath} > ${dstPath}.patch; patchLength=\`cat ${dstPath}.patch | wc -l\`; if test "\$\{patchLength\}" = "0"; then rm -f ${dstPath}.patch;fi;rm -f ${dstPath}.tmp" >> ${commandPath}
+      echo "echo \"meld ${dstPath}.tmp ${dstPath} ? [type y]\"; read doMeld; if test \"\${doMeld}\" = \"y\"; then meld ${dstPath}.tmp ${dstPath}; fi; diff -u ${dstPath}.tmp ${dstPath} > ${dstPath}.patch; patchLength=\`cat ${dstPath}.patch | wc -l\`; if test "\$\{patchLength\}" = "0"; then rm -f ${dstPath}.patch;fi;rm -f ${dstPath}.tmp" >> ${commandPath}
       echo "" >> ${commandPath}
     fi
   else
