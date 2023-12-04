@@ -1,5 +1,5 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ErrorCovarianceToolbox.h.tmp.bak	2023-12-03 14:41:42.331980196 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ErrorCovarianceToolbox.h	2023-12-03 14:28:44.446407494 +0100
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ErrorCovarianceToolbox.h.tmp.bak	2023-12-04 08:58:13.905300363 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ErrorCovarianceToolbox.h	2023-12-04 08:43:03.793976016 +0100
 @@ -1,38 +1,30 @@
  /*
 - * (C) Copyright 2021-2023 UCAR
@@ -48,7 +48,7 @@
  #include "oops/util/DateTime.h"
  #include "oops/util/FieldSetHelpers.h"
  #include "oops/util/Logger.h"
-@@ -41,29 +33,28 @@
+@@ -41,35 +33,34 @@
  #include "oops/util/parameters/Parameters.h"
  #include "oops/util/parameters/RequiredParameter.h"
  
@@ -87,6 +87,13 @@
  
    /// Geometry parameters.
    oops::Parameter<bool> parallel{"parallel subwindows", true, this};
+ 
+   /// Outer variables parameters
+-  oops::OptionalParameter<oops::patch::Variables> incrementVars{"increment variables", this};
++  oops::OptionalParameter<eckit::LocalConfiguration> incrementVars{"increment variables", this};
+ 
+   /// Dirac location/variables parameters.
+   oops::OptionalParameter<eckit::LocalConfiguration> dirac{"dirac", this};
 @@ -93,69 +84,36 @@
  
  // -----------------------------------------------------------------------------
@@ -176,7 +183,7 @@
  
      // Get number of MPI tasks and OpenMP threads
      size_t ntasks = commSpace->size();
-@@ -173,14 +131,27 @@
+@@ -173,38 +131,51 @@
      util::seekAndReplace(fullConfigUpdated, "_OMP_", std::to_string(nthreads));
      params.deserialize(fullConfigUpdated);
  
@@ -204,11 +211,19 @@
 -    oops::patch::Variables tmpVars = xx.variables();
 +    const std::vector<eckit::LocalConfiguration> stateConfs(params.background.value()
 +      .getSubConfigurations("state"));
-+    oops::patch::Variables tmpVars(stateConfs[0], "variables");
++    const Variables_ tmpVarsT(stateConfs[0]);
++    oops::patch::Variables tmpVars(tmpVarsT.variables().variablesList());
      if (params.incrementVars.value() != boost::none) {
-       const auto & incrementVars = params.incrementVars.value().value();
-       if (incrementVars <= tmpVars) {
-@@ -191,20 +162,18 @@
+-      const auto & incrementVars = params.incrementVars.value().value();
+-      if (incrementVars <= tmpVars) {
+-        tmpVars.intersection(incrementVars);
++      const Variables_ incVarsT(*params.incrementVars.value());
++      const oops::patch::Variables incVars(incVarsT.variables().variablesList());
++      if (incVars <= tmpVars) {
++        tmpVars.intersection(incVars);
+       } else {
+         throw eckit::UserError("Increment variables should be a subset of background variables",
+                                Here());
        }
      }
      const oops::patch::Variables vars = tmpVars;
@@ -234,7 +249,7 @@
        oops::Log::test() << "Input Dirac increment:" << dxi << std::endl;
  
        // Test configuration
-@@ -219,39 +188,49 @@
+@@ -219,39 +190,49 @@
          testConf.set("diagnostic points", *diagnostic);
        }
  
@@ -302,7 +317,7 @@
   private:
    std::string appname() const override {
      return "oops::ErrorCovarianceToolbox<" + MODEL::name() + ">";
-@@ -265,15 +244,15 @@
+@@ -265,15 +246,15 @@
  
      // Create diagnostic field
      Increment4D_ diagPoints(data);
@@ -325,7 +340,7 @@
      }
  
      oops::Log::trace() << appname() << "::print_value_at_position done" << std::endl;
-@@ -284,7 +263,7 @@
+@@ -284,7 +265,7 @@
               const eckit::LocalConfiguration & testConf,
               std::string & id,
               const Geometry_ & geom,
@@ -334,7 +349,7 @@
               const State4D_ & xx,
               const Increment4D_ & dxi) const {
      // Define output increment
-@@ -292,10 +271,24 @@
+@@ -292,10 +273,24 @@
  
      // Covariance
      std::unique_ptr<CovarianceBase_> Bmat(CovarianceFactory_::create(
@@ -361,7 +376,7 @@
  
      // Update ID
      if (id != "") id.append("_");
-@@ -324,17 +317,13 @@
+@@ -324,17 +319,13 @@
      oops::Log::test() << "Covariance(" << id << ") * Increment:" << dxo << std::endl;
  
      // Look for hybrid or ensemble covariance models
@@ -385,7 +400,7 @@
      }
      if (covarianceModel == "ensemble" && covarConf.has("localization")) {
        // Localization configuration
-@@ -348,7 +337,7 @@
+@@ -348,7 +339,7 @@
        Localization_ Lmat(geom, vars, locConfig);
  
        // Apply localization
@@ -394,7 +409,7 @@
  
        // Update ID
        std::string idL(id);
-@@ -375,9 +364,9 @@
+@@ -375,9 +366,9 @@
      }
    }
  // -----------------------------------------------------------------------------
@@ -406,7 +421,7 @@
                       const State4D_ & xx,
                       const std::unique_ptr<CovarianceBase_> & Bmat,
                       const size_t & ntasks) const {
-@@ -387,9 +376,9 @@
+@@ -387,9 +378,9 @@
        oops::Log::info() << "Info     : -----------------------" << std::endl;
  
        // Create increments
@@ -419,7 +434,7 @@
  
        // Initialize variance
        variance.zero();
-@@ -405,7 +394,7 @@
+@@ -405,7 +396,7 @@
        for (size_t jm = 0; jm < Bmat->randomizationSize(); ++jm) {
          // Generate member
          oops::Log::info() << "Info     : Member " << jm << std::endl;
@@ -428,7 +443,7 @@
  
          if ((outputPerturbations != boost::none) || (outputStates != boost::none)) {
            // Save member
-@@ -414,7 +403,9 @@
+@@ -414,7 +405,9 @@
  
          // Square perturbation
          dxsq = dx;
@@ -439,7 +454,7 @@
  
          // Update variance
          variance += dxsq;
-@@ -430,8 +421,8 @@
+@@ -430,8 +423,8 @@
  
            if (outputPerturbations != boost::none) {
              // Update config
@@ -450,7 +465,7 @@
              setMPI(outputPerturbationsUpdated, ntasks);
  
              // Write perturbation
-@@ -440,8 +431,8 @@
+@@ -440,8 +433,8 @@
  
            if (outputStates != boost::none) {
              // Update config
