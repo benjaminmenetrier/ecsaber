@@ -7,11 +7,13 @@
 
 #include "oops/runs/Run.h"
 #include "saber/oops/ProcessPerts.h"
+#include "src/instantiateQuenchMatrices.h"
 //  #include "src/Logbook.h"  // TODO(Benjamin): only for latest OOPS versions
 #include "src/Traits.h"
 
 int main(int argc,  char ** argv) {
   oops::Run run(argc, argv);
+  quench::instantiateQuenchMatrices();
   saber::ProcessPerts<quench::Traits> processperts;
 //  quench::Logbook::start();  // TODO(Benjamin): only for latest OOPS versions
   run.execute(processperts);

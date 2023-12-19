@@ -20,6 +20,7 @@ namespace saber {
 template <typename MODEL> void instantiateCovarFactory() {
   oops::instantiateCovarFactory<MODEL>();
   static oops::CovarMaker<MODEL, ErrorCovariance<MODEL> > makerSABER_("SABER");
+  static oops::Covar4DMaker<MODEL, ErrorCovariance4D<MODEL> > makerSABER4D_("SABER");
   instantiateLocalizationFactory<MODEL>();
   instantiateBlockChainFactory<MODEL>();
 }

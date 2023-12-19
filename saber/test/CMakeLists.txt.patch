@@ -1,5 +1,5 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/test/CMakeLists.txt.tmp.bak	2023-12-03 13:28:16.360100915 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/saber/test/CMakeLists.txt	2023-12-03 13:29:42.360089944 +0100
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/test/CMakeLists.txt.tmp.bak	2023-12-15 13:25:29.735305237 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/test/CMakeLists.txt	2023-12-15 13:54:18.176377850 +0100
 @@ -7,9 +7,6 @@
  # Tests activated
  message( STATUS "SABER tests activated:" )

@@ -41,8 +41,6 @@ class ModelData : public  util::Printable,
 
  private:
   void print(std::ostream &) const override;
-
-//  std::unique_ptr<ModelData_> modeldata_;  // pointer to the ModelData implementation
 };
 
 // -----------------------------------------------------------------------------
@@ -52,7 +50,6 @@ ModelData<MODEL>::ModelData(const Geometry_ & geometry)
 {
   Log::trace() << "ModelData<MODEL>::ModelData starting" << std::endl;
   util::Timer timer(classname(), "ModelData");
-//  modeldata_.reset(new ModelData_(geometry.geometry()));
   Log::trace() << "ModelData<MODEL>::ModelData done" << std::endl;
 }
 
@@ -62,7 +59,6 @@ template<typename MODEL>
 ModelData<MODEL>::~ModelData() {
   Log::trace() << "ModelData<MODEL>::~ModelData starting" << std::endl;
   util::Timer timer(classname(), "~ModelData");
-//  modeldata_.reset();
   Log::trace() << "ModelData<MODEL>::~ModelData done" << std::endl;
 }
 
@@ -85,7 +81,6 @@ template<typename MODEL>
 void ModelData<MODEL>::print(std::ostream & os) const {
   Log::trace() << "ModelData<MODEL>::print starting" << std::endl;
   util::Timer timer(classname(), "print");
-//  os << *modeldata_;
   Log::trace() << "ModelData<MODEL>::print done" << std::endl;
 }
 

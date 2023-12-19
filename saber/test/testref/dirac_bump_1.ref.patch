@@ -1,6 +1,6 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/test/testref/dirac_bump_1.ref.tmp	2023-11-15 11:20:44.798974589 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/saber/test/testref/dirac_bump_1.ref	2023-11-07 15:34:43.601507311 +0100
-@@ -40,7 +40,7 @@
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/test/testref/dirac_bump_1.ref.tmp	2023-12-18 18:17:50.058175772 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/test/testref/dirac_bump_1.ref	2023-12-18 13:01:12.325768170 +0100
+@@ -58,7 +58,7 @@
            nc2 =      250
            Independent levels:  1[2]
  Adjoint test for block BUMP_VerticalBalance passed
@@ -9,7 +9,7 @@
  Adjoint test for block StdDev passed
         Independent levels:  1[2]
            Subset Sc0 size:              762
-@@ -61,7 +61,7 @@
+@@ -79,7 +79,7 @@
               Level   2 ~> 100.0%
               Level   1 ~>  0.100E+01 vert. coord.
               Level   2 ~>  0.200E+01 vert. coord.
@@ -18,18 +18,29 @@
  Adjoint test for block BUMP_StdDev passed
         Independent levels:  1[2]
            Subset Sc0 size:              762
-@@ -100,8 +100,8 @@
+@@ -118,8 +118,8 @@
    - vert_coord: [1.0000000000000000e+00,2.0000000000000000e+00]
    Mask size: 100%
  Fields:
 -  eastward_wind: 4.6279789413894318e-01
 -  northward_wind: 1.2282258734663955e-01
-+  eastward_wind: 7.6472603742531686e-01
++  eastward_wind: 7.6472603742531664e-01
 +  northward_wind: 2.4511251487936986e-01
+ Valid time:2010-01-01T18:00:00Z
+ Quench geometry grid:
+ - name: L40x21
+@@ -136,8 +136,8 @@
+   - vert_coord: [1.0000000000000000e+00,2.0000000000000000e+00]
+   Mask size: 100%
+ Fields:
+-  eastward_wind: 9.1226562295384284e-02
+-  northward_wind: 7.7785064897270773e-02
++  eastward_wind: 1.7250853691787324e-01
++  northward_wind: 1.4108323025141317e-01
         Independent levels:  1[2]
            Subset Sc0 size:              762
            Min. / max. longitudes: -171.0 /   180.0
-@@ -125,7 +125,7 @@
+@@ -161,7 +161,7 @@
            nc2 =      250
            Independent levels:  1[2]
  Adjoint test for block BUMP_VerticalBalance passed
@@ -38,7 +49,7 @@
  Adjoint test for block StdDev passed
         Independent levels:  1[2]
            Subset Sc0 size:              762
-@@ -146,7 +146,7 @@
+@@ -182,7 +182,7 @@
               Level   2 ~> 100.0%
               Level   1 ~>  0.100E+01 vert. coord.
               Level   2 ~>  0.200E+01 vert. coord.
@@ -47,14 +58,55 @@
  Adjoint test for block BUMP_StdDev passed
         Independent levels:  1[2]
            Subset Sc0 size:              762
-@@ -204,8 +204,8 @@
+@@ -212,8 +212,8 @@
+   - vert_coord: [1.0000000000000000e+00,2.0000000000000000e+00]
+   Mask size: 100%
+ Fields:
+-  eastward_wind: 9.4326766281929146e-14
+-  northward_wind: 3.3389718418878846e-14
++  eastward_wind: 9.4326766281929108e-14
++  northward_wind: 3.3389718418878827e-14
+ Valid time:2010-01-01T18:00:00Z
+ Quench geometry grid:
+ - name: L40x21
+@@ -230,8 +230,8 @@
+   - vert_coord: [1.0000000000000000e+00,2.0000000000000000e+00]
+   Mask size: 100%
+ Fields:
+-  eastward_wind: 9.4326766281929095e-14
+-  northward_wind: 3.3389718418878815e-14
++  eastward_wind: 9.4326766281929108e-14
++  northward_wind: 3.3389718418878827e-14
+        Independent levels:  1[2]
+           Subset Sc0 size:              762
+           Min. / max. longitudes: -171.0 /   180.0
+@@ -258,8 +258,8 @@
    - vert_coord: [1.0000000000000000e+00,2.0000000000000000e+00]
    Mask size: 100%
  Fields:
 -  eastward_wind: 6.2995593942433925e-01
 -  northward_wind: 2.5165114702606473e-01
-+  eastward_wind: 1.5294520748506084e+00
++  eastward_wind: 1.5294520748506082e+00
 +  northward_wind: 4.9022502975873966e-01
+ Valid time:2010-01-01T18:00:00Z
+ Quench geometry grid:
+ - name: L40x21
+@@ -276,8 +276,8 @@
+   - vert_coord: [1.0000000000000000e+00,2.0000000000000000e+00]
+   Mask size: 100%
+ Fields:
+-  eastward_wind: 1.7541938751614833e-01
+-  northward_wind: 1.8006830761370743e-01
++  eastward_wind: 3.4501707383574709e-01
++  northward_wind: 2.8216646050282640e-01
         Independent levels:  1[2]
            Subset Sc0 size:              762
            Min. / max. longitudes: -171.0 /   180.0
+@@ -325,5 +325,5 @@
+   - vert_coord: [1.0000000000000000e+00,2.0000000000000000e+00]
+   Mask size: 100%
+ Fields:
+-  eastward_wind: 2.2533507386711489e+00
+-  northward_wind: 2.2533507386711489e+00
++  eastward_wind: 2.2533507386711493e+00
++  northward_wind: 2.2533507386711493e+00

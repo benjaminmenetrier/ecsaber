@@ -1,0 +1,57 @@
+--- /home/benjaminm/code/oops-bundle/ecsaber/oops-patch/src/oops/base/FieldSets.h.tmp.bak	2023-12-19 10:23:49.152555379 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/oops-patch/src/oops/base/FieldSets.h	2023-12-18 21:50:50.606449182 +0100
+@@ -11,9 +11,11 @@
+ #include <string>
+ #include <vector>
+ 
++#include "oops/assimilation/State4D.h"
+ #include "oops/base/DataSetBase.h"
+ #include "oops/base/FieldSet3D.h"
+-#include "oops/base/IncrementSet.h"
++#include "oops/base/Ensemble.h"
++#include "oops/base/EnsemblesCollection.h"
+ 
+ namespace oops {
+ 
+@@ -22,9 +24,9 @@
+   typedef DataSetBase<FieldSet3D, atlas::FunctionSpace> Base_;
+ 
+  public:
+-  /// @brief Creates a FieldSets from the IncrementSet. On creation fieldsets are
+-  ///        shared between Increment::fieldSet() and fieldsets in FieldSet4D.
+-  template<typename MODEL> FieldSets(const IncrementSet<MODEL> &);
++  /// @brief Creates a FieldSets from the Ensemble.
++  template<typename MODEL> FieldSets(const State4D<MODEL> &,
++                                     const std::vector<int> &);
+ 
+   FieldSets(const std::vector<util::DateTime> &, const eckit::mpi::Comm &,
+                      const std::vector<int> &, const eckit::mpi::Comm &);
+@@ -40,12 +42,22 @@
+ // -----------------------------------------------------------------------------
+ 
+ template<typename MODEL>
+-FieldSets::FieldSets(const IncrementSet<MODEL> & inc4dens)
+-  : Base_(inc4dens.times(), inc4dens.commTime(), inc4dens.members(), inc4dens.commEns()) {
+-  for (size_t jj = 0; jj < inc4dens.size(); ++jj) {
+-    this->dataset().emplace_back(std::make_unique<FieldSet3D>(inc4dens[jj].validTime(),
+-                                                inc4dens.geometry().getComm()));
+-    this->dataset()[jj]->shallowCopy(inc4dens[jj].fieldSet());
++FieldSets::FieldSets(const State4D<MODEL> & xb, const std::vector<int> & ensmems)
++  : Base_(xb.times(), eckit::mpi::self(), ensmems, eckit::mpi::self()) {
++  for (size_t jj = 0; jj < ensmems.size(); ++jj) {
++    for (unsigned jsub = 0; jsub < xb.times().size(); ++jsub) {
++      this->dataset().emplace_back(std::make_unique<FieldSet3D>(xb[jsub].validTime(),
++                                                  eckit::mpi::comm()));
++    }
++  }
++  for (unsigned jsub = 0; jsub < xb.times().size(); ++jsub) {
++    std::shared_ptr<Ensemble<MODEL>> ensemble =
++      EnsemblesCollection<MODEL>::getInstance()[xb[jsub].validTime()];
++    ASSERT(ensemble->size() == ensmems.size());
++    for (size_t jj = 0; jj < ensemble->size(); ++jj) {
++      size_t index = jj*xb.times().size()+jsub;
++      this->dataset()[index]->shallowCopy((*ensemble)[jj].increment().fieldSet());
++    }
+   }
+ }
+ 

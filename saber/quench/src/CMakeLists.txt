@@ -8,11 +8,15 @@ Fields.h
 Geometry.cc
 Geometry.h
 Gom.h
+HorizScaleDecomposition.h
+HybridWeight.cc
+HybridWeight.h
 Increment.cc
 Increment.h
 IncrEnsCtlVec.h
 IncrModCtlVec.cc
 IncrModCtlVec.h
+instantiateQuenchMatrices.h
 Interpolator.h
 LocalizationMatrix.h
 Locations.h
@@ -30,6 +34,7 @@ ObsVec.h
 State.cc
 State.h
 Tlm.h
+Traits.h
 Variables.h
 
 )

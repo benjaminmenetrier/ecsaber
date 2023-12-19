@@ -34,6 +34,14 @@ if test "${srcExt}" = "h" -o "${srcExt}" = "cc"; then
   sed -i -e s/"^Variables"/"patch::Variables"/g ${dstPath}.tmp
 fi
 
+# Check patch size
+if test -f "${dstPath}.patch"; then
+  patchLength=`cat ${dstPath}.patch | wc -l`
+  if test "${patchLength}" = "0"; then
+    rm -f ${dstPath}.patch
+  fi
+fi
+
 if test -f "${dstPath}.patch"; then
   # Apply residual patch
   cp -f ${dstPath}.tmp ${dstPath}.tmp.bak

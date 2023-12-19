@@ -86,13 +86,13 @@ class ErrorCovarianceToolboxParameters :
 
 template <typename MODEL>
 class ErrorCovarianceToolbox : public oops::Application {
-  using CovarianceFactory_ = oops::CovarianceFactory<MODEL>;
+  using Covariance4DFactory_ = oops::Covariance4DFactory<MODEL>;
   using Geometry_ = oops::Geometry<MODEL>;
   using Increment_ = oops::Increment<MODEL>;
   using Increment4D_ = oops::Increment4D<MODEL>;
   using Localization_ = oops::Localization<MODEL>;
   using Model_ = oops::Model<MODEL>;
-  using CovarianceBase_ = oops::ModelSpaceCovarianceBase<MODEL>;
+  using Covariance4DBase_ = oops::ModelSpaceCovariance4DBase<MODEL>;
   using State_ = oops::State<MODEL>;
   using State4D_ = oops::State4D<MODEL>;
   using Variables_ = oops::Variables<MODEL>;
@@ -209,8 +209,8 @@ class ErrorCovarianceToolbox : public oops::Application {
     const auto & randomizationSize = covarParams.getInt("randomization size", 0);
     if ((diracParams == boost::none) || (randomizationSize > 0)) {
       // Background error covariance training
-      std::unique_ptr<CovarianceBase_> Bmat(CovarianceFactory_::create(
-                                            covarParams, geom, varsT, xx[0]));
+      std::unique_ptr<Covariance4DBase_> Bmat(Covariance4DFactory_::create(
+                                              covarParams, geom, varsT, xx));
 
       // Linearize
       eckit::LocalConfiguration linConf;
@@ -224,7 +224,7 @@ class ErrorCovarianceToolbox : public oops::Application {
       } else {
         linConf = covarParams;
       }
-      Bmat->linearize(xx[0], geom, linConf);
+      Bmat->linearize(xx, geom, linConf);
 
       // Randomization
       randomization(params, geom, varsT, xx, Bmat, ntasks);
@@ -272,12 +272,12 @@ class ErrorCovarianceToolbox : public oops::Application {
     Increment4D_ dxo(dxi, false);
 
     // Covariance
-    std::unique_ptr<CovarianceBase_> Bmat(CovarianceFactory_::create(
-                                          covarConf, geom, vars, xx[0]));
+    std::unique_ptr<Covariance4DBase_> Bmat(Covariance4DFactory_::create(
+                                            covarConf, geom, vars, xx));
 
     // Linearize
     eckit::LocalConfiguration linConf;
-    const std::string covarianceModel(covarConf.getString("covariance"));
+    const std::string covarianceModel = covarConf.getString("covariance");
     if (covarianceModel == "hybrid") {
       eckit::LocalConfiguration jbConf;
       jbConf.set("Covariance", covarConf);
@@ -287,10 +287,10 @@ class ErrorCovarianceToolbox : public oops::Application {
     } else {
       linConf = covarConf;
     }
-    Bmat->linearize(xx[0], geom, linConf);
+    Bmat->linearize(xx, geom, linConf);
 
     // Multiply
-    Bmat->multiply(dxi[0], dxo[0]);
+    Bmat->multiply(dxi, dxo);
 
     // Update ID
     if (id != "") id.append("_");
@@ -327,6 +327,34 @@ class ErrorCovarianceToolbox : public oops::Application {
       std::string ensembleID = "hybrid2";
       dirac(ensembleConfig, testConf, ensembleID, geom, vars, xx, dxi);
     }
+    if (covarianceModel == "SABER") {
+      const std::string saberCentralBlockName =
+        covarConf.getString("saber central block.saber block name");
+      if (saberCentralBlockName == "Hybrid") {
+        // Check for outer blocks (can't pass the correct geometry/variables in that case)
+        if (!covarConf.has("saber outer blocks")) {
+          std::vector<eckit::LocalConfiguration> confs;
+          covarConf.get("saber central block.components", confs);
+          size_t componentIndex(1);
+          for (const auto & conf : confs) {
+            std::string idC(id + std::to_string(componentIndex));
+            eckit::LocalConfiguration componentConfig(conf, "covariance");
+            componentConfig.set("covariance model", "SABER");
+            if (covarConf.has("adjoint test")) {
+              componentConfig.set("adjoint test", covarConf.getBool("adjoint test"));
+            }
+            if (covarConf.has("inverse test")) {
+              componentConfig.set("inverse test", covarConf.getBool("inverse test"));
+            }
+            if (covarConf.has("square-root test")) {
+              componentConfig.set("square-root test", covarConf.getBool("square-root test"));
+            }
+            dirac(componentConfig, testConf, idC, geom, vars, xx, dxi);
+            ++componentIndex;
+          }
+        }
+      }
+    }
     if (covarianceModel == "ensemble" && covarConf.has("localization")) {
       // Localization configuration
       eckit::LocalConfiguration locConfig(covarConf.getSubConfiguration("localization"));
@@ -339,7 +367,15 @@ class ErrorCovarianceToolbox : public oops::Application {
       Localization_ Lmat(geom, vars, locConfig);
 
       // Apply localization
-      Lmat.multiply(dxo[0]);
+      Increment_ dxTmp(dxo[0]);
+      for (size_t jsub = 1; jsub < dxo.times().size(); ++jsub) {
+        dxTmp.axpy(1.0, dxo[jsub], false);
+      }
+      Lmat.multiply(dxTmp);
+      for (size_t jsub = 0; jsub < dxo.times().size(); ++jsub) {
+        dxo[jsub].zero();
+        dxo[jsub].axpy(1.0, dxTmp, false);
+      }
 
       // Update ID
       std::string idL(id);
@@ -370,7 +406,7 @@ class ErrorCovarianceToolbox : public oops::Application {
                      const Geometry_ & geom,
                      const Variables_ & vars,
                      const State4D_ & xx,
-                     const std::unique_ptr<CovarianceBase_> & Bmat,
+                     const std::unique_ptr<Covariance4DBase_> & Bmat,
                      const size_t & ntasks) const {
     if (Bmat->randomizationSize() > 0) {
       oops::Log::info() << "Info     : " << std::endl;
@@ -396,7 +432,7 @@ class ErrorCovarianceToolbox : public oops::Application {
       for (size_t jm = 0; jm < Bmat->randomizationSize(); ++jm) {
         // Generate member
         oops::Log::info() << "Info     : Member " << jm << std::endl;
-        Bmat->randomize(dx[0]);
+        Bmat->randomize(dx);
 
         if ((outputPerturbations != boost::none) || (outputStates != boost::none)) {
           // Save member

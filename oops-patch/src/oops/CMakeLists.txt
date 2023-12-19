@@ -6,6 +6,8 @@ base/FieldSet3D.cc
 base/FieldSet3D.h
 base/FieldSet4D.cc
 base/FieldSet4D.h
+base/FieldSets.cc
+base/FieldSets.h
 base/GeometryData.cc
 base/GeometryData.h
 base/ModelSpaceCovarianceParametersBase.h
@@ -101,7 +103,7 @@ endforeach()
 
 # Check update summary
 if( EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/update_summary.txt")
-    message( FATAL_ERROR "Merge required in ${CMAKE_CURRENT_SOURCE_DIR}/update_summary.txt" )
+    message( FATAL_ERROR "Merge required:\n bash ${CMAKE_CURRENT_SOURCE_DIR}/update_summary.txt" )
 endif()
 
 list( APPEND oops_ecmwf_src_files

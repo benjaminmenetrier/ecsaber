@@ -10,17 +10,15 @@
 #include <string>
 #include <vector>
 
-#include "oops/base/DataSetBase.h"
 #include "oops/base/FieldSet3D.h"
+#include "oops/base/FieldSets.h"
 #include "oops/assimilation/Increment4D.h"
 #include "oops/assimilation/State4D.h"
 
 namespace oops {
 
 // -----------------------------------------------------------------------------
-class FieldSet4D : public DataSetBase<FieldSet3D, atlas::FunctionSpace> {
-  typedef DataSetBase<FieldSet3D, atlas::FunctionSpace> Base_;
-
+class FieldSet4D : public FieldSets {
  public:
   /// @brief Creates a FieldSet4D for specified times with specified time
   ///        communicator. Data are allocated in the ctor, all fieldsets are
@@ -37,6 +35,10 @@ class FieldSet4D : public DataSetBase<FieldSet3D, atlas::FunctionSpace> {
   ///        shared between Increment::fieldSet() and fieldsets in FieldSet4D.
   template<typename MODEL> FieldSet4D(const Increment4D<MODEL> &);
 
+  /// @brief Initialize with a deep copy of \p iens ensemble member of \p other,
+  ///        consistency check for valid time
+  void deepCopy(const FieldSets & other, const size_t iens);
+
   void zero();
   FieldSet4D & operator+=(const FieldSet4D & other);
   FieldSet4D & operator*=(const FieldSet4D & other);
@@ -45,7 +47,11 @@ class FieldSet4D : public DataSetBase<FieldSet3D, atlas::FunctionSpace> {
   FieldSet4D & operator*=(const double zz);
   /// @brief Computes dot product of this FieldSet4D with the \p other FieldSet4D
   ///        only for specified variables \p vars.
-  double dot_product_with(const FieldSet4D &, const patch::Variables & vars) const;
+  double dot_product_with(const FieldSet4D & other, const patch::Variables & vars) const;
+  /// @brief Computes dot product of this FieldSet4D with the \p iens member
+  ///        of the \p other FieldSets only for specified variables \p vars.
+  double dot_product_with(const FieldSets & other, const size_t iens,
+                          const patch::Variables & vars) const;
   double norm() const;
 
  private:
@@ -61,8 +67,8 @@ FieldSet4D copyFieldSet4D(const FieldSet4D & other,
 
 template<typename MODEL>
 FieldSet4D::FieldSet4D(const State4D<MODEL> & state4d)
-  : Base_(state4d.times(), oops::mpi::myself(), {0}, oops::mpi::myself()) {
-  for (size_t jj = 0; jj < state4d.statesNumber(); ++jj) {
+  : FieldSets(state4d.times(), eckit::mpi::self(), {0}, eckit::mpi::self()) {
+  for (size_t jj = 0; jj < state4d.times().size(); ++jj) {
     this->dataset().emplace_back(new FieldSet3D(state4d[jj].validTime(),
                                                 eckit::mpi::comm()));
     this->dataset()[jj]->shallowCopy(state4d[jj].state().fieldSet());
@@ -73,8 +79,8 @@ FieldSet4D::FieldSet4D(const State4D<MODEL> & state4d)
 
 template<typename MODEL>
 FieldSet4D::FieldSet4D(const Increment4D<MODEL> & inc4d)
-  : Base_(inc4d.times(), oops::mpi::myself(), {0}, oops::mpi::myself()) {
-  for (size_t jj = inc4d.first(); jj <= inc4d.last(); ++jj) {
+  : FieldSets(inc4d.times(), eckit::mpi::self(), {0}, eckit::mpi::self()) {
+  for (size_t jj = 0; jj < inc4d.times().size(); ++jj) {
     this->dataset().emplace_back(new FieldSet3D(inc4d[jj].validTime(),
                                                 eckit::mpi::comm()));
     this->dataset()[jj]->shallowCopy(inc4d[jj].increment().fieldSet());

@@ -7,6 +7,7 @@ import os
 import yaml
 import copy
 import sys
+import collections.abc
 
 # Correct date formatting
 def correct_date(d):
@@ -78,23 +79,39 @@ def expand_ensemble_template(d):
                 else:
                     zpad = 0
                 if "start" in v:
-                    index = v["start"]
+                    start = v["start"]
                 else:
-                    index = 1
+                    start = 1
                 if "except" in v:
                     excpt = v["except"]
                 else:
                     excpt = []
-                ensemble = []
-                member = 1
-                while member <= members:
-                    if not index in excpt:
-                        state = copy.deepcopy(template)
-                        state = find_and_replace(state, pattern, str(index).zfill(zpad))
-                        ensemble.append(state)
-                        member += 1
-                    index += 1
-                newd["members"] = ensemble
+                is4D = ("states" in template)
+                if is4D:
+                    n4D = len(template["states"])
+                    newd["members"] = []
+                else:
+                    n4D = 1
+                i4D = 0
+                while i4D < n4D:
+                    ensemble = []
+                    index = start
+                    member = 0
+                    while member < members:
+                        if not index in excpt:
+                            if is4D:
+                                state = copy.deepcopy(template["states"][i4D])
+                            else:
+                                state = copy.deepcopy(template)
+                            state = find_and_replace(state, pattern, str(index).zfill(zpad))
+                            ensemble.append(state)
+                            member += 1
+                        index += 1
+                    if is4D:
+                        newd["members"].append(ensemble)
+                    else:
+                        newd["members"] = ensemble
+                    i4D += 1
             else:
                 newd[k] = expand_ensemble_template(v)
     elif isinstance(d, list):
@@ -111,11 +128,22 @@ def add_ensemble_variables(config):
     if "ensemble" in config:
         covariance = config["ensemble"]
         ensemble = covariance["members"]
-        covariance["state"] = ensemble
-        covariance["date"] = date
-        covariance["variables"] = ensemble[0]["variables"]
+        is4D = isinstance(ensemble[0], collections.abc.Sequence)
         covariance.pop("members")
-        covariance["members"] = len(ensemble)
+        if is4D:
+            n4D = len(ensemble)
+            config["ensemble"] = []
+            for i4D in range(0, n4D):
+                conf3D = {}
+                conf3D["state"] = ensemble[i4D]
+                conf3D["variables"] = ensemble[0][0]["variables"]
+                conf3D["members"] = len(ensemble[0])
+                config["ensemble"].append(conf3D)
+        else:
+            covariance["state"] = ensemble
+            covariance["date"] = date
+            covariance["variables"] = ensemble[0]["variables"]
+            covariance["members"] = len(ensemble)
 
     if "ensemble pert" in config:
         covariance = config["ensemble pert"]
@@ -149,11 +177,23 @@ def add_ensemble_variables(config):
 
     if "members" in config:
         ensemble = config["members"]
-        config["state"] = ensemble
-        config["date"] = date
-        config["variables"] = variables
+        config["ensemble"] = []
+        is4D = isinstance(ensemble[0], collections.abc.Sequence)
         config.pop("members")
-        config["members"] = len(ensemble)
+        if is4D:
+            n4D = len(ensemble)
+            for i4D in range(0, n4D):
+                conf3D = {}
+                conf3D["state"] = ensemble[i4D]
+                conf3D["variables"] = variables
+                conf3D["members"] = len(ensemble[0])
+                config["ensemble"].append(conf3D)
+        else:
+            conf3D = {}
+            conf3D["state"] = ensemble
+            conf3D["variables"] = variables
+            conf3D["members"] = len(ensemble)
+            config["ensemble"].append(conf3D)
 
     return config
 
@@ -220,7 +260,7 @@ if "background error" in config:
             for component in config["Covariance"]["saber central block"]["components"]:
                 component["covariance"] = add_ensemble_variables(component["covariance"])
 
-    # OOPS hybrid caes
+    # OOPS hybrid case
     if config["Covariance"]["covariance"] == "hybrid":
         # Check whether all components are hybrid
         components = config["Covariance"]["components"]
@@ -238,16 +278,35 @@ if "background error" in config:
             config["Covariance"]["saber central block"] = centralBlock
             for component in components:
                 component["covariance"] = add_ensemble_variables(component["covariance"])
+            adjTest = False
+            sqrtTest = False
+            for component in components:
+                if "adjoint test" in component["covariance"]:
+                    adjTest = adjTest or component["covariance"]["adjoint test"]
+                    component["covariance"].pop("adjoint test")
+                if "square-root test" in component["covariance"]:
+                    sqrtTest = sqrtTest or component["covariance"]["square-root test"]
+                    component["covariance"].pop("square-root test")
+                if "square-root tolerance" in component["covariance"]:
+                    component["covariance"]["saber central block"]["square-root tolerance"] = component["covariance"]["square-root tolerance"]
+                    component["covariance"].pop("square-root tolerance")
+            config["Covariance"]["adjoint test"] = adjTest
+            config["Covariance"]["square-root test"] = sqrtTest
+
         else:
             # Update static_covariance
             covariance = components[0]["covariance"]
+            static_weight = components[0]["weight"]["value"]
             if covariance["covariance model"] == "SABER":
                 config["Covariance"]["static_covariance"] = covariance
             covariance = add_ensemble_variables(covariance)
+            config["Covariance"]["static_weight"] = {}
+            config["Covariance"]["static_weight"]["matrix"] = "hybrid_weight"
+            config["Covariance"]["static_weight"]["weight"] = static_weight            
 
             # Update ensemble
             covariance = components[1]["covariance"]
-            weight = components[1]["weight"]["value"]
+            ensemble_weight = components[1]["weight"]["value"]
             if covariance["covariance model"] == "ensemble":
                 if "localization" in covariance:
                     covariance["localization"]["localization"] = covariance["localization"]["localization method"]
@@ -255,7 +314,9 @@ if "background error" in config:
                     covariance["localization"]["variables"] = variables
                 covariance = add_ensemble_variables(covariance)
                 config["Covariance"]["ensemble_covariance"] = covariance
-                config["Covariance"]["ensemble_weight"] = weight
+                config["Covariance"]["ensemble_weight"] = {}
+                config["Covariance"]["ensemble_weight"]["matrix"] = "hybrid_weight"
+                config["Covariance"]["ensemble_weight"]["weight"] = ensemble_weight
 
             # Update covariance model
             config["Covariance"]["static_covariance"]["covariance"] = config["Covariance"]["static_covariance"]["covariance model"]

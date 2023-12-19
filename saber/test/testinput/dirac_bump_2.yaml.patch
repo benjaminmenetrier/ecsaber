@@ -1,0 +1,15 @@
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/test/testinput/dirac_bump_2.yaml.tmp.bak	2023-12-19 10:32:26.492736482 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/test/testinput/dirac_bump_2.yaml	2023-12-19 09:23:46.927029824 +0100
+@@ -159,12 +159,6 @@
+                 read local nicas: true
+     weight:
+       value: 0.5
+-  linear variable change:
+-    variables:
+-    - eastward_wind
+-    - northward_wind
+-    atlas file:
+-      filepath: testdata/randomization_bump_nicas_L10L2/_MPI_-_OMP__member_000003 # Does not make sense scientifically, just for technical testing
+ dirac:
+ - lon:
+   - 0.0

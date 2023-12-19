@@ -10,7 +10,7 @@
 #include "src/Covariance.h"
 #include "src/Geometry.h"
 #include "src/Gom.h"
-#include "src/HorizScaleDecomposition.h"
+#include "HorizScaleDecomposition.h"
 #include "src/Increment.h"
 #include "src/IncrEnsCtlVec.h"
 #include "src/IncrModCtlVec.h"

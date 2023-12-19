@@ -20,6 +20,7 @@
 #include "oops/assimilation/Increment4D.h"
 #include "oops/assimilation/State4D.h"
 #include "oops/base/ModelSpaceCovarianceBase.h"
+#include "oops/base/ModelSpaceCovariance4DBase.h"
 #include "oops/interface/Geometry.h"
 #include "oops/interface/Increment.h"
 #include "oops/interface/State.h"
@@ -50,33 +51,33 @@ inline std::string parametricIfNotEnsemble(const std::string & blockName) {
 // -----------------------------------------------------------------------------
 
 template <typename MODEL>
-class ErrorCovariance : public oops::ModelSpaceCovarianceBase<MODEL> {
+class ErrorCovariance4D : public oops::ModelSpaceCovariance4DBase<MODEL> {
   using Geometry_ = oops::Geometry<MODEL>;
-  using Increment_ = oops::Increment<MODEL>;
   using Increment4D_ = oops::Increment4D<MODEL>;
   using IncrCtlVec_ = oops::IncrCtlVec<MODEL>;
   using IncrEnsCtlVec_ = oops::IncrEnsCtlVec<MODEL>;
   using IncrModCtlVec_ = oops::IncrModCtlVec<MODEL>;
-  using State_ = oops::State<MODEL>;
   using State4D_ = oops::State4D<MODEL>;
   using Variables_ = oops::Variables<MODEL>;
 
  public:
   typedef ErrorCovarianceParameters<MODEL> Parameters_;
 
-  static const std::string classname() {return "saber::ErrorCovariance";}
+  static const std::string classname() {return "saber::ErrorCovariance4D";}
 
-  ErrorCovariance(const Geometry_ &, const Variables_ &, const eckit::Configuration &,
-                  const State_ &);
-  ~ErrorCovariance();
+  ErrorCovariance4D(const Geometry_ &, const Variables_ &, const eckit::Configuration &,
+                    const State4D_ &);
+  ~ErrorCovariance4D();
 
   // Methods
-  void linearize(const State_ &, const Geometry_ &, const eckit::Configuration &) override;
-  void multiply(const Increment_ &, Increment_ &) const override;
-  void inverseMultiply(const Increment_ &, Increment_ &) const override;
-  void multiplySqrt(const IncrCtlVec_ &, Increment_ &) const override;
-  void multiplySqrtTrans(const Increment_ &, IncrCtlVec_ &) const override;
-  void randomize(Increment_ &) const override;
+  void advectedLinearize(const State4D_ &,const Geometry_ &,
+                         const eckit::Configuration &) override;
+  void advectedMultiply(const Increment4D_ &, Increment4D_ &) const override;
+  void advectedInverseMultiply(const Increment4D_ &, Increment4D_ &) const override;
+  void advectedMultiplySqrt(const IncrCtlVec_ &, Increment4D_ &) const override;
+  void advectedMultiplySqrtTrans(const Increment4D_ &, IncrCtlVec_ &) const override;
+  void randomize(Increment4D_ &) const override;
+  const oops::ModelSpaceCovarianceBase<MODEL> &covar() const { return *static_; }
 
   // Control Vector
   IncrModCtlVec_ *newIncrModCtlVec() const override {
@@ -85,13 +86,10 @@ class ErrorCovariance : public oops::ModelSpaceCovarianceBase<MODEL> {
   IncrEnsCtlVec_ *newIncrEnsCtlVec() const override {
     return new IncrEnsCtlVec_();
   }
-
- private:
-  ErrorCovariance(const ErrorCovariance&);
-  ErrorCovariance& operator=(const ErrorCovariance&);
-
+  
   size_t ctlVecSize() const;
 
+ private:
   void print(std::ostream &) const;
 
   /// Chain of outer blocks applied to all components of hybrid covariances.
@@ -105,22 +103,23 @@ class ErrorCovariance : public oops::ModelSpaceCovarianceBase<MODEL> {
   /// Vector of field weights for hybrid B components (one element, empty
   /// fieldset for non-hybrid case).
   std::vector<oops::FieldSet3D> hybridFieldWeightSqrt_;
+  /// Dummy static covariance
+  std::unique_ptr<oops::ModelSpaceCovarianceBase<MODEL>> static_;
 };
 
 // -----------------------------------------------------------------------------
 
 template<typename MODEL>
-ErrorCovariance<MODEL>::ErrorCovariance(const Geometry_ & geom,
-                                        const Variables_ & incVars,
-                                        const eckit::Configuration & config,
-                                        const State_ & xb3D)
-  : oops::ModelSpaceCovarianceBase<MODEL>(config)
+ErrorCovariance4D<MODEL>::ErrorCovariance4D(const Geometry_ & geom,
+                                            const Variables_ & incVars,
+                                            const eckit::Configuration & config,
+                                            const State4D_ & xb)
+  : oops::ModelSpaceCovariance4DBase<MODEL>::ModelSpaceCovariance4DBase(geom, config),
+    static_() 
 {
-  oops::Log::trace() << "ErrorCovariance::ErrorCovariance starting" << std::endl;
+  oops::Log::trace() << "ErrorCovariance4D::ErrorCovariance4D starting" << std::endl;
 
   // JEDI compatibility
-  State4D_ xb;
-  xb.push_back(xb3D);
   State4D_ fg(xb);
   Parameters_ params;
   params.validateAndDeserialize(config);
@@ -156,21 +155,21 @@ ErrorCovariance<MODEL>::ErrorCovariance(const Geometry_ & geom,
   // Iterative ensemble loading flag
   const bool iterativeEnsembleLoading = params.iterativeEnsembleLoading.value();
 
-  // Initialize ensembles as vector of FieldSets
-  std::vector<oops::FieldSet3D> fsetEns;
   // Read ensemble (for non-iterative ensemble loading)
-  eckit::LocalConfiguration ensembleConf = readEnsemble(geom,
-                                                        outerVars,
-                                                        xb[0],
-                                                        fg[0],
-                                                        params.toConfiguration(),
-                                                        iterativeEnsembleLoading,
-                                                        fsetEns);
+  eckit::LocalConfiguration ensembleConf;
+  oops::FieldSets fsetEns = readEnsemble(geom,
+                                         outerVars,
+                                         xb,
+                                         fg,
+                                         params.toConfiguration(),
+                                         iterativeEnsembleLoading,
+                                         ensembleConf);
+
   covarConf.set("ensemble configuration", ensembleConf);
   // Read dual resolution ensemble if needed
   const auto & dualResParams = params.dualResParams.value();
   const Geometry_ * dualResGeom = &geom;
-  std::vector<oops::FieldSet3D> fsetDualResEns;
+  std::unique_ptr<oops::FieldSets> fsetDualResEns;
   if (dualResParams != boost::none) {
     const auto & dualResGeomConf = dualResParams->geometry.value();
     if (dualResGeomConf != boost::none) {
@@ -178,20 +177,25 @@ ErrorCovariance<MODEL>::ErrorCovariance(const Geometry_ & geom,
       dualResGeom = new Geometry_(*dualResGeomConf);
     }
     // Background and first guess at dual resolution geometry
-    oops::State<MODEL> xbDualRes(*dualResGeom, xb[0]);
-    oops::State<MODEL> fgDualRes(*dualResGeom, fg[0]);
+    const State4D_ xbDualRes(*dualResGeom, xb);
+    const State4D_ fgDualRes(*dualResGeom, fg);
     // Read dual resolution ensemble
-    eckit::LocalConfiguration dualResEnsembleConf
-      = readEnsemble(*dualResGeom,
+    eckit::LocalConfiguration dualResEnsembleConf;
+    fsetDualResEns = std::make_unique<oops::FieldSets>(readEnsemble(*dualResGeom,
                      outerVars,
                      xbDualRes,
                      fgDualRes,
                      dualResParams->toConfiguration(),
                      iterativeEnsembleLoading,
-                     fsetDualResEns);
-
+                     dualResEnsembleConf));
     // Add dual resolution ensemble configuration
     covarConf.set("dual resolution ensemble configuration", dualResEnsembleConf);
+  }
+  if (!fsetDualResEns) {
+    std::vector<util::DateTime> dates;
+    std::vector<int> ensmems;
+    fsetDualResEns = std::make_unique<oops::FieldSets>(dates,
+                                      eckit::mpi::self(), ensmems, eckit::mpi::comm());
   }
 
   // Add ensemble output
@@ -252,17 +256,16 @@ ErrorCovariance<MODEL>::ErrorCovariance(const Geometry_ & geom,
       // Set covariance
       eckit::LocalConfiguration cmpConf = cmp.getSubConfiguration("covariance");
 
-      // Initialize ensembles as vector of FieldSets
-      std::vector<oops::FieldSet3D> fset4dCmpEns;
       // Read ensemble
-      eckit::LocalConfiguration cmpEnsembleConf
+      eckit::LocalConfiguration cmpEnsembleConf;
+      oops::FieldSets fset4dCmpEns
          = readEnsemble(*hybridGeom,
                         cmpOuterVars,
-                        xb[0],
-                        fg[0],
+                        xb,
+                        fg,
                         cmpConf,
                         params.iterativeEnsembleLoading.value(),
-                        fset4dCmpEns);
+                        cmpEnsembleConf);
 
       // Create internal configuration
       eckit::LocalConfiguration cmpCovarConf;
@@ -290,7 +293,7 @@ ErrorCovariance<MODEL>::ErrorCovariance(const Geometry_ & geom,
           fset4dXb,
           fset4dFg,
           fset4dCmpEns,
-          fsetDualResEns,
+          *fsetDualResEns,
           cmpCovarConf,
           cmpConf));
     }
@@ -306,7 +309,7 @@ ErrorCovariance<MODEL>::ErrorCovariance(const Geometry_ & geom,
         fset4dXb,
         fset4dFg,
         fsetEns,
-        fsetDualResEns,
+        *fsetDualResEns,
         covarConf,
         params.toConfiguration()));
 
@@ -317,51 +320,48 @@ ErrorCovariance<MODEL>::ErrorCovariance(const Geometry_ & geom,
     hybridFieldWeightSqrt_.push_back(fsetWeight);
   }
 
-  oops::Log::trace() << "ErrorCovariance::ErrorCovariance done" << std::endl;
+  oops::Log::trace() << "ErrorCovariance4D::ErrorCovariance4D done" << std::endl;
 }
 
 // -----------------------------------------------------------------------------
 
 template<typename MODEL>
-ErrorCovariance<MODEL>::~ErrorCovariance() {
-  oops::Log::trace() << "ErrorCovariance<MODEL>::~ErrorCovariance starting" << std::endl;
-  util::Timer timer(classname(), "~ErrorCovariance");
-  oops::Log::trace() << "ErrorCovariance<MODEL>::~ErrorCovariance done" << std::endl;
+ErrorCovariance4D<MODEL>::~ErrorCovariance4D() {
+  oops::Log::trace() << "ErrorCovariance4D<MODEL>::~ErrorCovariance4D starting" << std::endl;
+  util::Timer timer(classname(), "~ErrorCovariance4D");
+  oops::Log::trace() << "ErrorCovariance4D<MODEL>::~ErrorCovariance4D done" << std::endl;
 }
 
 // -----------------------------------------------------------------------------
 
 template <typename MODEL>
-void ErrorCovariance<MODEL>::linearize(const State_ &,
-                                       const Geometry_ &,
-                                       const eckit::Configuration &) {
-  oops::Log::trace() << "ErrorCovariance linearized." << std::endl;
+void ErrorCovariance4D<MODEL>::advectedLinearize(const State4D_ &,
+                                                 const Geometry_ &,
+                                                 const eckit::Configuration &) {
+  oops::Log::trace() << "ErrorCovariance4D advectedLinearize." << std::endl;
 }
 
 // -----------------------------------------------------------------------------
 
 template<typename MODEL>
-size_t ErrorCovariance<MODEL>::ctlVecSize() const {
-  oops::Log::trace() << "ErrorCovariance<MODEL>::ctlVecSize starting" << std::endl;
+size_t ErrorCovariance4D<MODEL>::ctlVecSize() const {
+  oops::Log::trace() << "ErrorCovariance4D<MODEL>::ctlVecSize starting" << std::endl;
 
   size_t ctlVecSize = 0;
   for (size_t jj = 0; jj < hybridBlockChain_.size(); ++jj) {
     // Add component
     ctlVecSize += hybridBlockChain_[jj]->ctlVecSize();
   }
-  oops::Log::trace() << "ErrorCovariance<MODEL>::ctlVecSize done" << std::endl;
+  oops::Log::trace() << "ErrorCovariance4D<MODEL>::ctlVecSize done" << std::endl;
   return ctlVecSize;
 }
 
 // -----------------------------------------------------------------------------
 
 template<typename MODEL>
-void ErrorCovariance<MODEL>::randomize(Increment_ & dx3d) const {
-  oops::Log::trace() << "ErrorCovariance<MODEL>::randomize starting" << std::endl;
+void ErrorCovariance4D<MODEL>::randomize(Increment4D_ & dx) const {
+  oops::Log::trace() << "ErrorCovariance4D<MODEL>::randomize starting" << std::endl;
   util::Timer timer(classname(), "randomize");
-
-  // JEDI compatibility
-  Increment4D_ dx(dx3d.geometry(), dx3d.variables(), {dx3d.validTime()});
 
   // Create FieldSet4D, set to zero
   oops::FieldSet4D fset4dSum(dx.times(), oops::mpi::myself(), eckit::mpi::comm());
@@ -399,23 +399,16 @@ void ErrorCovariance<MODEL>::randomize(Increment_ & dx3d) const {
     dx[jtime].increment().synchronizeFields();
   }
 
-  // JEDI compatibility
-  dx3d = dx[0];
-
-  oops::Log::trace() << "ErrorCovariance<MODEL>::doRandomize done" << std::endl;
+  oops::Log::trace() << "ErrorCovariance4D<MODEL>::randomize done" << std::endl;
 }
 
 // -----------------------------------------------------------------------------
 
 template <typename MODEL>
-void ErrorCovariance<MODEL>::multiply(const Increment_ &dx3di, Increment_ &dx3do) const {
-  oops::Log::trace() << "ErrorCovariance<MODEL>::multiply starting" << std::endl;
-  util::Timer timer(classname(), "multiply");
-
-  // JEDI compatibility
-  Increment4D_ dxi(dx3di.geometry(), dx3di.variables(), {dx3di.validTime()});
-  Increment4D_ dxo(dx3do.geometry(), dx3do.variables(), {dx3do.validTime()});
-  dxi[0] = dx3di;
+void ErrorCovariance4D<MODEL>::advectedMultiply(const Increment4D_ &dxi,
+                                                Increment4D_ &dxo) const {
+  oops::Log::trace() << "ErrorCovariance4D<MODEL>::advectedMultiply starting" << std::endl;
+  util::Timer timer(classname(), "advectedMultiply");
 
   // Copy input
   dxo = dxi;
@@ -463,42 +456,37 @@ void ErrorCovariance<MODEL>::multiply(const Increment_ &dx3di, Increment_ &dx3do
   // Apply outer blocks forward
   if (outerBlockChain_) outerBlockChain_->applyOuterBlocks(fset4dSum);
 
-  // ATLAS fieldset to Increment_
+  // ATLAS fieldset to Increment4D_
   for (int jtime = dxo.first(); jtime <= dxo.last(); ++jtime) {
     dxo[jtime].increment().fieldSet() = util::copyFieldSet(fset4dSum[jtime].fieldSet());
     dxo[jtime].increment().synchronizeFields();
   }
 
-  // JEDI compatibility
-  dx3do = dxo[0];
-
-  oops::Log::trace() << "ErrorCovariance<MODEL>::doMultiply done" << std::endl;
+  oops::Log::trace() << "ErrorCovariance4D<MODEL>::advectedMultiply done" << std::endl;
 }
 
 // -----------------------------------------------------------------------------
 
 template <typename MODEL>
-void ErrorCovariance<MODEL>::inverseMultiply(const Increment_ &dxi, Increment_ &dxo) const {
-  oops::Log::trace() << "ErrorCovariance<MODEL>::inverseMultiply starting" << std::endl;
-  util::Timer timer(classname(), "inverseMultiply");
+void ErrorCovariance4D<MODEL>::advectedInverseMultiply(const Increment4D_ &dxi,
+                                                       Increment4D_ &dxo) const {
+  oops::Log::trace() << "ErrorCovariance4D<MODEL>::advectedInverseMultiply starting" << std::endl;
+  util::Timer timer(classname(), "advectedInverseMultiply");
 
   // Iterative inverse
-  oops::IdentityMatrix<Increment_> Id;
+  oops::IdentityMatrix<Increment4D_> Id;
   dxo.zero();
   GMRESR(dxo, dxi, *this, Id, 10, 1.0e-3);
 
-  oops::Log::trace() << "ErrorCovariance<MODEL>::inverseMultiply done" << std::endl;
+  oops::Log::trace() << "ErrorCovariance4D<MODEL>::advectedInverseMultiply done" << std::endl;
 }
 
 // -----------------------------------------------------------------------------
 
 template <typename MODEL>
-void ErrorCovariance<MODEL>::multiplySqrt(const IncrCtlVec_ &dv,
-                                          Increment_ &dx3d) const {
-  oops::Log::trace() << "ErrorCovariance<MODEL>::multiplySqrt starting" << std::endl;
-
-  // JEDI compatibility
-  Increment4D_ dx(dx3d.geometry(), dx3d.variables(), {dx3d.validTime()});
+void ErrorCovariance4D<MODEL>::advectedMultiplySqrt(const IncrCtlVec_ &dv,
+                                                    Increment4D_ &dx) const {
+  oops::Log::trace() << "ErrorCovariance4D<MODEL>::advectedMultiplySqrt starting" << std::endl;
 
   // Loop over components for the central block
   size_t offset = 0;
@@ -533,28 +521,21 @@ void ErrorCovariance<MODEL>::multiplySqrt(const IncrCtlVec_ &dv,
   // Apply outer blocks forward
   if (outerBlockChain_) outerBlockChain_->applyOuterBlocks(fset4dSum);
 
-  // ATLAS fieldset to Increment_
+  // ATLAS fieldset to Increment4D_
   for (int jtime = dx.first(); jtime <= dx.last(); ++jtime) {
     dx[jtime].increment().fieldSet() = util::copyFieldSet(fset4dSum[jtime].fieldSet());
     dx[jtime].increment().synchronizeFields();
   }
 
-  // JEDI compatibility
-  dx3d = dx[0];
-
-  oops::Log::trace() << "ErrorCovariance<MODEL>::multiplySqrt done" << std::endl;
+  oops::Log::trace() << "ErrorCovariance4D<MODEL>::advectedMultiplySqrt done" << std::endl;
 }
 
 // -----------------------------------------------------------------------------
 
 template <typename MODEL>
-void ErrorCovariance<MODEL>::multiplySqrtTrans(const Increment_ &dx3d,
-                                               IncrCtlVec_ &dv) const {
-  oops::Log::trace() << "ErrorCovariance<MODEL>::multiplySqrtTrans starting" << std::endl;
-
-  // JEDI compatibility
-  Increment4D_ dx(dx3d.geometry(), dx3d.variables(), {dx3d.validTime()});
-  dx[0] = dx3d;
+void ErrorCovariance4D<MODEL>::advectedMultiplySqrtTrans(const Increment4D_ &dx,
+                                                         IncrCtlVec_ &dv) const {
+  oops::Log::trace() << "ErrorCovariance4D<MODEL>::advectedMultiplySqrtTrans starting" << std::endl;
 
   // Create input FieldSet
   oops::FieldSet4D fset4dInit(dx);
@@ -582,6 +563,198 @@ void ErrorCovariance<MODEL>::multiplySqrtTrans(const Increment_ &dx3d,
     hybridBlockChain_[jj]->multiplySqrtAD(fset4dCmp, dv.modCtlVec().genCtlVec().data(), offset);
     offset += hybridBlockChain_[jj]->ctlVecSize();
   }
+
+  oops::Log::trace() << "ErrorCovariance4D<MODEL>::advectedMultiplySqrtTrans done" << std::endl;
+}
+
+// -----------------------------------------------------------------------------
+
+template<typename MODEL>
+void ErrorCovariance4D<MODEL>::print(std::ostream & os) const {
+  oops::Log::trace() << "ErrorCovariance4D<MODEL>::print starting" << std::endl;
+  util::Timer timer(classname(), "print");
+  os << "ErrorCovariance4D<MODEL>::print not implemented";
+  oops::Log::trace() << "ErrorCovariance4D<MODEL>::print done" << std::endl;
+}
+
+// -----------------------------------------------------------------------------
+// ErrorCovariance as a subcase of ErrorCovariance4D
+// -----------------------------------------------------------------------------
+template <typename MODEL>
+class ErrorCovariance : public oops::ModelSpaceCovarianceBase<MODEL> {
+  using Geometry_ = oops::Geometry<MODEL>;
+  using Increment_ = oops::Increment<MODEL>;
+  using Increment4D_ = oops::Increment4D<MODEL>;
+  using IncrCtlVec_ = oops::IncrCtlVec<MODEL>;
+  using IncrEnsCtlVec_ = oops::IncrEnsCtlVec<MODEL>;
+  using IncrModCtlVec_ = oops::IncrModCtlVec<MODEL>;
+  using State_ = oops::State<MODEL>;
+  using State4D_ = oops::State4D<MODEL>;
+  using Variables_ = oops::Variables<MODEL>;
+
+ public:
+  typedef ErrorCovarianceParameters<MODEL> Parameters_;
+
+  static const std::string classname() {return "saber::ErrorCovariance";}
+
+  ErrorCovariance(const Geometry_ &, const Variables_ &, const eckit::Configuration &,
+                  const State_ &);
+  ~ErrorCovariance();
+
+  // Methods
+  void linearize(const State_ &, const Geometry_ &, const eckit::Configuration &) override;
+  void multiply(const Increment_ &, Increment_ &) const override;
+  void inverseMultiply(const Increment_ &, Increment_ &) const override;
+  void multiplySqrt(const IncrCtlVec_ &, Increment_ &) const override;
+  void multiplySqrtTrans(const Increment_ &, IncrCtlVec_ &) const override;
+  void randomize(Increment_ &) const override;
+
+  // Control Vector
+  IncrModCtlVec_ *newIncrModCtlVec() const override {
+    return new IncrModCtlVec_(Bmat4D_->ctlVecSize());
+  }
+  IncrEnsCtlVec_ *newIncrEnsCtlVec() const override {
+    return new IncrEnsCtlVec_();
+  }
+
+ private:
+  void print(std::ostream &) const;
+
+  /// ErrorCovariance 4D
+  std::unique_ptr<ErrorCovariance4D<MODEL>> Bmat4D_;
+};
+
+// -----------------------------------------------------------------------------
+
+template<typename MODEL>
+ErrorCovariance<MODEL>::ErrorCovariance(const Geometry_ & geom,
+                                        const Variables_ & incVars,
+                                        const eckit::Configuration & config,
+                                        const State_ & xb3D)
+{
+  oops::Log::trace() << "ErrorCovariance::ErrorCovariance starting" << std::endl;
+
+  // 4D compatibility
+  State4D_ xb;
+  xb.push_back(xb3D);
+
+  // ErrorCovariance4D setup
+  Bmat4D_.reset(new ErrorCovariance4D(geom, incVars, config, xb));
+
+  oops::Log::trace() << "ErrorCovariance::ErrorCovariance done" << std::endl;
+}
+
+// -----------------------------------------------------------------------------
+
+template<typename MODEL>
+ErrorCovariance<MODEL>::~ErrorCovariance() {
+  oops::Log::trace() << "ErrorCovariance<MODEL>::~ErrorCovariance starting" << std::endl;
+  util::Timer timer(classname(), "~ErrorCovariance");
+  oops::Log::trace() << "ErrorCovariance<MODEL>::~ErrorCovariance done" << std::endl;
+}
+
+// -----------------------------------------------------------------------------
+
+template <typename MODEL>
+void ErrorCovariance<MODEL>::linearize(const State_ &,
+                                       const Geometry_ &,
+                                       const eckit::Configuration &) {
+  oops::Log::trace() << "ErrorCovariance linearized." << std::endl;
+}
+
+// -----------------------------------------------------------------------------
+
+template<typename MODEL>
+void ErrorCovariance<MODEL>::randomize(Increment_ & dx3d) const {
+  oops::Log::trace() << "ErrorCovariance<MODEL>::randomize starting" << std::endl;
+  util::Timer timer(classname(), "randomize");
+
+  // 4D compatibility
+  Increment4D_ dx(dx3d.geometry(), dx3d.variables(), {dx3d.validTime()});
+
+  // ErrorCovariance4D randomize
+  Bmat4D_->randomize(dx);
+
+  // 4D compatibility
+  dx3d = dx[0];
+
+  oops::Log::trace() << "ErrorCovariance<MODEL>::randomize done" << std::endl;
+}
+
+// -----------------------------------------------------------------------------
+
+template <typename MODEL>
+void ErrorCovariance<MODEL>::multiply(const Increment_ &dx3di, Increment_ &dx3do) const {
+  oops::Log::trace() << "ErrorCovariance<MODEL>::multiply starting" << std::endl;
+  util::Timer timer(classname(), "multiply");
+
+  // 4D compatibility
+  Increment4D_ dxi(dx3di.geometry(), dx3di.variables(), {dx3di.validTime()});
+  Increment4D_ dxo(dx3do.geometry(), dx3do.variables(), {dx3do.validTime()});
+  dxi[0] = dx3di;
+
+  // ErrorCovariance4D multiply
+  Bmat4D_->advectedMultiply(dxi, dxo);
+
+  // 4D compatibility
+  dx3do = dxo[0];
+
+  oops::Log::trace() << "ErrorCovariance<MODEL>::multiply done" << std::endl;
+}
+
+// -----------------------------------------------------------------------------
+
+template <typename MODEL>
+void ErrorCovariance<MODEL>::inverseMultiply(const Increment_ &dx3di, Increment_ &dx3do) const {
+  oops::Log::trace() << "ErrorCovariance<MODEL>::inverseMultiply starting" << std::endl;
+  util::Timer timer(classname(), "inverseMultiply");
+
+  // 4D compatibility
+  Increment4D_ dxi(dx3di.geometry(), dx3di.variables(), {dx3di.validTime()});
+  Increment4D_ dxo(dx3do.geometry(), dx3do.variables(), {dx3do.validTime()});
+  dxi[0] = dx3di;
+
+  // ErrorCovariance4D inverse multiply
+  Bmat4D_->advectedInverseMultiply(dxi, dxo);
+
+  // 4D compatibility
+  dx3do = dxo[0];
+
+  oops::Log::trace() << "ErrorCovariance<MODEL>::inverseMultiply done" << std::endl;
+}
+
+// -----------------------------------------------------------------------------
+
+template <typename MODEL>
+void ErrorCovariance<MODEL>::multiplySqrt(const IncrCtlVec_ &dv,
+                                          Increment_ &dx3d) const {
+  oops::Log::trace() << "ErrorCovariance<MODEL>::multiplySqrt starting" << std::endl;
+
+  // 4D compatibility
+  Increment4D_ dx(dx3d.geometry(), dx3d.variables(), {dx3d.validTime()});
+
+  // ErrorCovariance4D square-root multiply
+  Bmat4D_->advectedMultiplySqrt(dv, dx);
+
+  // 4D compatibility
+  dx3d = dx[0];
+
+  oops::Log::trace() << "ErrorCovariance<MODEL>::multiplySqrt done" << std::endl;
+}
+
+// -----------------------------------------------------------------------------
+
+template <typename MODEL>
+void ErrorCovariance<MODEL>::multiplySqrtTrans(const Increment_ &dx3d,
+                                               IncrCtlVec_ &dv) const {
+  oops::Log::trace() << "ErrorCovariance<MODEL>::multiplySqrtTrans starting" << std::endl;
+
+  // 4D compatibility
+  Increment4D_ dx(dx3d.geometry(), dx3d.variables(), {dx3d.validTime()});
+  dx[0] = dx3d;
+
+  // ErrorCovariance4D transposed square-root multiply
+  Bmat4D_->advectedMultiplySqrtTrans(dx, dv);
 
   oops::Log::trace() << "ErrorCovariance<MODEL>::multiplySqrtTrans done" << std::endl;
 }
