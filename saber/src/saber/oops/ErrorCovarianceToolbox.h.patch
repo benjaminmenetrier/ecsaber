@@ -1,5 +1,5 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ErrorCovarianceToolbox.h.tmp.bak	2023-12-19 11:14:30.773314982 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ErrorCovarianceToolbox.h	2023-12-19 11:15:12.765354168 +0100
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ErrorCovarianceToolbox.h.tmp.bak	2023-12-19 12:21:38.177289646 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ErrorCovarianceToolbox.h	2023-12-19 12:19:33.157262886 +0100
 @@ -1,38 +1,30 @@
  /*
 - * (C) Copyright 2021-2023 UCAR
@@ -401,6 +401,15 @@
      }
      if (covarianceModel == "SABER") {
        const std::string saberCentralBlockName =
+@@ -351,7 +339,7 @@
+           for (const auto & conf : confs) {
+             std::string idC(id + std::to_string(componentIndex));
+             eckit::LocalConfiguration componentConfig(conf, "covariance");
+-            componentConfig.set("covariance model", "SABER");
++            componentConfig.set("covariance", "SABER");
+             if (covarConf.has("adjoint test")) {
+               componentConfig.set("adjoint test", covarConf.getBool("adjoint test"));
+             }
 @@ -379,7 +367,15 @@
        Localization_ Lmat(geom, vars, locConfig);
  

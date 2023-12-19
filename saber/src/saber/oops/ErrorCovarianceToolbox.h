@@ -339,7 +339,7 @@ class ErrorCovarianceToolbox : public oops::Application {
           for (const auto & conf : confs) {
             std::string idC(id + std::to_string(componentIndex));
             eckit::LocalConfiguration componentConfig(conf, "covariance");
-            componentConfig.set("covariance model", "SABER");
+            componentConfig.set("covariance", "SABER");
             if (covarConf.has("adjoint test")) {
               componentConfig.set("adjoint test", covarConf.getBool("adjoint test"));
             }
