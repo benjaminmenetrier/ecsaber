@@ -582,6 +582,7 @@ void ErrorCovariance4D<MODEL>::print(std::ostream & os) const {
 // -----------------------------------------------------------------------------
 template <typename MODEL>
 class ErrorCovariance : public oops::ModelSpaceCovarianceBase<MODEL> {
+  using ErrorCovariance4D_ = ErrorCovariance4D<MODEL>;
   using Geometry_ = oops::Geometry<MODEL>;
   using Increment_ = oops::Increment<MODEL>;
   using Increment4D_ = oops::Increment4D<MODEL>;
@@ -621,7 +622,7 @@ class ErrorCovariance : public oops::ModelSpaceCovarianceBase<MODEL> {
   void print(std::ostream &) const;
 
   /// ErrorCovariance 4D
-  std::unique_ptr<ErrorCovariance4D<MODEL>> Bmat4D_;
+  std::unique_ptr<ErrorCovariance4D_> Bmat4D_;
 };
 
 // -----------------------------------------------------------------------------
@@ -639,7 +640,7 @@ ErrorCovariance<MODEL>::ErrorCovariance(const Geometry_ & geom,
   xb.push_back(xb3D);
 
   // ErrorCovariance4D setup
-  Bmat4D_.reset(new ErrorCovariance4D(geom, incVars, config, xb));
+  Bmat4D_.reset(new ErrorCovariance4D_(geom, incVars, config, xb));
 
   oops::Log::trace() << "ErrorCovariance::ErrorCovariance done" << std::endl;
 }

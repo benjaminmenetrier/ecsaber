@@ -334,7 +334,6 @@ SaberParametricBlockChain::SaberParametricBlockChain(const oops::Geometry<MODEL>
   }
 
   // Adjoint test
-std::cout << "TOTO 2 " << covarConf.getBool("adjoint test") << std::endl;
   if (covarConf.getBool("adjoint test")) {
     // Get tolerance
     const double localAdjointTolerance =

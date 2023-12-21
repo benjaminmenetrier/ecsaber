@@ -1,5 +1,5 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberParametricBlockChain.h.tmp.bak	2023-12-19 10:24:18.976545618 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberParametricBlockChain.h	2023-12-19 08:47:11.895583896 +0100
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberParametricBlockChain.h.tmp.bak	2023-12-21 09:51:27.005717249 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberParametricBlockChain.h	2023-12-21 09:42:12.257543545 +0100
 @@ -75,6 +75,8 @@
    size_t size4D_;
    oops::patch::Variables centralVars_;
@@ -120,11 +120,3 @@
  
        if (useModelWriter) {
          // Use model writer
-@@ -326,6 +334,7 @@
-   }
- 
-   // Adjoint test
-+std::cout << "TOTO 2 " << covarConf.getBool("adjoint test") << std::endl;
-   if (covarConf.getBool("adjoint test")) {
-     // Get tolerance
-     const double localAdjointTolerance =
