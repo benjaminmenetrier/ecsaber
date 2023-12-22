@@ -28,7 +28,7 @@ check_diff_recursively( saber-import.cmake.in "${CMAKE_CURRENT_SOURCE_DIR}/updat
 
 # Check update summary
 if( EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/update_summary.txt")
-    message( FATAL_ERROR "Merge required in ${CMAKE_CURRENT_SOURCE_DIR}/update_summary.txt" )
+    message( FATAL_ERROR "Merge required:\n bash ${CMAKE_CURRENT_SOURCE_DIR}/update_summary.txt" )
 endif()
 
 option(OPENMP "Build saber with OpenMP support" ON)

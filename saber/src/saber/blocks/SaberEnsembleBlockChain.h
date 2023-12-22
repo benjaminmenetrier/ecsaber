@@ -16,6 +16,7 @@
 #include "eckit/exception/Exceptions.h"
 
 #include "oops/base/FieldSet4D.h"
+#include "oops/base/FieldSets.h"
 #include "oops/interface/Geometry.h"
 #include "oops/interface/Increment.h"
 #include "oops/interface/ModelData.h"
@@ -40,8 +41,8 @@ class SaberEnsembleBlockChain : public SaberBlockChainBase {
                           const oops::patch::Variables & outerVars,
                           const oops::FieldSet4D & fset4dXb,
                           const oops::FieldSet4D & fset4dFg,
-                          std::vector<oops::FieldSet3D> & fsetEns,
-                          std::vector<oops::FieldSet3D> & fsetDualResEns,
+                          oops::FieldSets & fsetEns,
+                          oops::FieldSets & fsetDualResEns,
                           const eckit::LocalConfiguration & covarConf,
                           const eckit::Configuration & conf);
   ~SaberEnsembleBlockChain() = default;
@@ -72,15 +73,12 @@ class SaberEnsembleBlockChain : public SaberBlockChainBase {
   /// @brief Localization block chain (optional).
   std::unique_ptr<SaberParametricBlockChain> locBlockChain_;
   /// @brief Ensemble used in the ensemble covariance.
-  std::vector<oops::FieldSet3D> ensemble_;
+  oops::FieldSets ensemble_;
   /// @brief Control vector size.
   size_t ctlVecSize_;
-  /// @brief Variables used in the ensemble covariance.
+  /// @brief patch::Variables used in the ensemble covariance.
   /// TODO(AS): check whether this is needed or can be inferred from ensemble.
   oops::patch::Variables vars_;
-  /// @brief Geometry communicator.
-  /// TODO(AS): this can be removed once FieldSet4D/FieldSet3D are used.
-  const eckit::mpi::Comm & comm_;
   int seed_ = 7;  // For reproducibility
   const oops::GeometryData geomData_;
 };
@@ -95,24 +93,23 @@ SaberEnsembleBlockChain::SaberEnsembleBlockChain(const oops::Geometry<MODEL> & g
                        const oops::FieldSet4D & fset4dFg,
                        // TODO(AS): remove as argument: this should be read inside the
                        // block.
-                       std::vector<oops::FieldSet3D> & fsetEns,
+                       oops::FieldSets & fsetEns,
                        // TODO(AS): remove as argument: this is currently not used (and
                        // when used should be read inside the block.
-                       std::vector<oops::FieldSet3D> & fsetDualResEns,
+                       oops::FieldSets & fsetDualResEns,
                        const eckit::LocalConfiguration & covarConf,
                        const eckit::Configuration & conf)
   : outerFunctionSpace_(geom.geometry().functionSpace()), outerVariables_(outerVars),
-    ctlVecSize_(0), comm_(eckit::mpi::comm()),
+    ensemble_(fsetEns), ctlVecSize_(0),
     geomData_(geom.geometry().functionSpace(), geom.geometry().fields(),
     geom.geometry().levelsAreTopDown(), eckit::mpi::comm()) {
   oops::Log::trace() << "SaberEnsembleBlockChain ctor starting" << std::endl;
 
   // Check that there is an ensemble of at least 2 members.
-  if (fsetEns.size() < 2) {
+  if (ensemble_.ens_size() < 2) {
     throw eckit::BadParameter("Ensemble for SaberEnsembleBlockChain has to have at least"
                               " two members.", Here());
   }
-
   // Create outer blocks if needed
   if (conf.has("saber outer blocks")) {
     std::vector<SaberOuterBlockParametersWrapper> cmpOuterBlocksParams;
@@ -122,7 +119,7 @@ SaberEnsembleBlockChain::SaberEnsembleBlockChain(const oops::Geometry<MODEL> & g
       cmpOuterBlocksParams.push_back(cmpOuterBlockParamsWrapper);
     }
     outerBlockChain_ = std::make_unique<SaberOuterBlockChain>(geom, outerVars,
-                          fset4dXb, fset4dFg, fsetEns, covarConf,
+                          fset4dXb, fset4dFg, ensemble_, covarConf,
                           cmpOuterBlocksParams);
   }
 
@@ -193,15 +190,12 @@ SaberEnsembleBlockChain::SaberEnsembleBlockChain(const oops::Geometry<MODEL> & g
 
   // Apply inflation on ensemble members
   oops::Log::info() << "Info     : Apply inflation on ensemble members" << std::endl;
-  for (auto & fsetMem : fsetEns) {
-    // Apply local inflation
-    if (!inflationField.empty()) {
-      fsetMem *= inflationField;
-    }
-
-    // Apply global inflation
-    fsetMem *= inflationValue;
+  // Apply local inflation
+  if (!inflationField.empty()) {
+    ensemble_ *= inflationField;
   }
+  // Apply global inflation
+  ensemble_ *= inflationValue;
 
   // Ensemble transform
   // For ensemble transform and localization set ensemble size to zero (BUMP needs that)
@@ -224,14 +218,16 @@ SaberEnsembleBlockChain::SaberEnsembleBlockChain(const oops::Geometry<MODEL> & g
     }
     std::unique_ptr<SaberOuterBlockChain> ensTransBlockChain =
            std::make_unique<SaberOuterBlockChain>(geom,
-             outerVars, fset4dXb, fset4dFg, fsetEns,
+             outerVars, fset4dXb, fset4dFg, ensemble_,
              covarConfUpdated, ensTransOuterBlocksParams);
 
     // Left inverse of ensemble transform on ensemble members
     oops::Log::info() << "Info     : Left inverse of ensemble transform on ensemble members"
                       << std::endl;
-    for (auto & fsetMem : fsetEns) {
-      ensTransBlockChain->leftInverseMultiply(fsetMem);
+    for (size_t itime = 0; itime < ensemble_.local_time_size(); ++itime) {
+      for (size_t iens = 0; iens < ensemble_.local_ens_size(); ++iens) {
+        ensTransBlockChain->leftInverseMultiply(ensemble_(itime, iens));
+      }
     }
 
     // Add ensemble transform blocks to outer blocks
@@ -255,23 +251,18 @@ SaberEnsembleBlockChain::SaberEnsembleBlockChain(const oops::Geometry<MODEL> & g
   if (locConf != boost::none) {
     // Initialize localization blockchain
     locBlockChain_ = std::make_unique<SaberParametricBlockChain>(geom, dualResGeom,
-      outerVars, fset4dXb, fset4dFg, fsetEns, fsetDualResEns, covarConfUpdated, *locConf);
+      outerVars, fset4dXb, fset4dFg, ensemble_, fsetDualResEns, covarConfUpdated, *locConf);
   }
   // Direct calibration
   oops::Log::info() << "Info     : Direct calibration" << std::endl;
 
-  // Initialize ensemble
-  for (const auto & fsetMem : fsetEns) {
-    ensemble_.push_back(fsetMem);
-  }
-
   // Get control vector size
   if (locBlockChain_) {
     // With localization
-    ctlVecSize_ = ensemble_.size()*locBlockChain_->ctlVecSize();
+    ctlVecSize_ = ensemble_.ens_size()*locBlockChain_->ctlVecSize();
   } else {
     // Without localization
-    ctlVecSize_ = ensemble_.size();
+    ctlVecSize_ = ensemble_.ens_size();
   }
 
   // Adjoint test
@@ -284,15 +275,14 @@ SaberEnsembleBlockChain::SaberEnsembleBlockChain(const oops::Geometry<MODEL> & g
       covarConf.getDouble("adjoint tolerance"));
 
     // Create random FieldSets
-    oops::FieldSet4D fset4d1(fset4dXb.validTimes(), fset4dXb.commTime(), currentOuterGeom.comm());
+    oops::FieldSet4D fset4d1(fset4dXb.times(), fset4dXb.commTime(), currentOuterGeom.comm());
     for (size_t jtime = 0; jtime < fset4d1.size(); ++jtime) {
       fset4d1[jtime].randomInit(currentOuterGeom.functionSpace(), activeVars);
     }
-    oops::FieldSet4D fset4d2(fset4dXb.validTimes(), fset4dXb.commTime(), currentOuterGeom.comm());
+    oops::FieldSet4D fset4d2(fset4dXb.times(), fset4dXb.commTime(), currentOuterGeom.comm());
     for (size_t jtime = 0; jtime < fset4d2.size(); ++jtime) {
       fset4d2[jtime].randomInit(currentOuterGeom.functionSpace(), activeVars);
     }
-
     // Copy FieldSets
     const oops::FieldSet4D fset4d1Save = oops::copyFieldSet4D(fset4d1);
     const oops::FieldSet4D fset4d2Save = oops::copyFieldSet4D(fset4d2);
@@ -325,7 +315,7 @@ SaberEnsembleBlockChain::SaberEnsembleBlockChain(const oops::Geometry<MODEL> & g
       covarConf.getDouble("square-root tolerance"));
 
     // Create FieldSet
-    oops::FieldSet4D fset4d(fset4dXb.validTimes(), fset4dXb.commTime(), currentOuterGeom.comm());
+    oops::FieldSet4D fset4d(fset4dXb.times(), fset4dXb.commTime(), currentOuterGeom.comm());
     for (size_t jtime = 0; jtime < fset4d.size(); ++jtime) {
       fset4d[jtime].randomInit(outerFunctionSpace_, outerVariables_);
     }
@@ -374,6 +364,7 @@ SaberEnsembleBlockChain::SaberEnsembleBlockChain(const oops::Geometry<MODEL> & g
     }
     if (locBlockChain_) {
       currentOuterGeom.comm().allReduceInPlace(dp2, eckit::mpi::sum());
+      fset4d.commTime().allReduceInPlace(dp2, eckit::mpi::sum());
     }
     oops::Log::info() << std::setprecision(16) << "Info     : Square-root test: y^t (Ax) = " << dp1
                       << ": x^t (A^t y) = " << dp2 << " : square-root tolerance = "
@@ -389,8 +380,8 @@ SaberEnsembleBlockChain::SaberEnsembleBlockChain(const oops::Geometry<MODEL> & g
     // Check that the fieldsets are similar within tolerance
     bool sqrtComparison = true;
     for (size_t jtime = 0; jtime < fset4d.size(); ++jtime) {
-      sqrtComparison = sqrtComparison && util::compareFieldSets(fset4d[jtime].fieldSet(),
-        fset4dSave[jtime].fieldSet(), localSqrtTolerance, false);
+      sqrtComparison = sqrtComparison && fset4d[jtime].compare_with(fset4dSave[jtime],
+        localSqrtTolerance, false);
     }
     if (sqrtComparison) {
       oops::Log::info() << "Info     : Square-root test passed: U U^t x == B x" << std::endl;

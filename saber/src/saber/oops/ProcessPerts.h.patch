@@ -1,11 +1,10 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ProcessPerts.h.tmp.bak	2023-12-04 08:58:13.817298705 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ProcessPerts.h	2023-12-04 08:42:57.405988680 +0100
-@@ -18,16 +18,14 @@
- #include "eckit/config/LocalConfiguration.h"
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ProcessPerts.h.tmp.bak	2023-12-15 13:25:26.539303212 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ProcessPerts.h	2023-12-15 13:40:23.838069829 +0100
+@@ -19,15 +19,14 @@
  #include "eckit/exception/Exceptions.h"
  
+ #include "oops/base/FieldSets.h"
 -#include "oops/base/Geometry.h"
--
 -#include "oops/base/Increment.h"
 -#include "oops/base/Increment4D.h"
 -#include "oops/base/instantiateCovarFactory.h"
@@ -25,7 +24,7 @@
  #include "oops/mpi/mpi.h"
  #include "oops/runs/Application.h"
  #include "oops/util/ConfigFunctions.h"
-@@ -44,6 +42,9 @@
+@@ -44,6 +43,9 @@
  #include "saber/blocks/SaberOuterBlockChain.h"
  #include "saber/blocks/SaberParametricBlockChain.h"
  
@@ -35,7 +34,7 @@
  #include "saber/oops/Utilities.h"
  
  namespace saber {
-@@ -51,87 +52,107 @@
+@@ -51,87 +53,107 @@
  // -----------------------------------------------------------------------------
  
  /// \brief Top-level options taken by the ProcessPerts application.
@@ -187,7 +186,7 @@
      oops::FieldSet4D fsetXb(xx);
      oops::FieldSet4D fsetFg(xx);
  
-@@ -143,12 +164,13 @@
+@@ -143,21 +165,22 @@
  
      // List of output increments
      const auto & lowpassPerturbations = params.lowpassPerturbations.value();
@@ -205,7 +204,19 @@
      for (std::size_t i = 0; i < vlevs.size() ; ++i) {
        incVars.addMetaData(incVars[i], "levels", vlevs[i]);
      }
-@@ -196,9 +218,10 @@
+ 
+     std::vector<util::DateTime> dates;
+     std::vector<int> ensmems;
+-    oops::FieldSets fsetEns(dates, oops::mpi::myself(), ensmems, oops::mpi::myself());
+-    oops::FieldSets dualResFsetEns(dates, oops::mpi::myself(),
+-                                            ensmems, oops::mpi::myself());
++    oops::FieldSets fsetEns(dates, oops::mpi::myself(), ensmems, eckit::mpi::self());
++    oops::FieldSets dualResFsetEns(dates, eckit::mpi::self(),
++                                            ensmems, eckit::mpi::self());
+     eckit::LocalConfiguration covarConf;
+     covarConf.set("iterative ensemble loading", false);
+     covarConf.set("inverse test", false);
+@@ -199,9 +222,10 @@
      for (int jm = 0; jm < nincrements; ++jm) {
        //  Read ensemble member perturbation
        oops::FieldSet3D fsetI(fsetEnsI[jm]);
@@ -218,7 +229,7 @@
  
        //  Copy perturbation
        oops::FieldSet3D fset(fsetI);
-@@ -213,12 +236,13 @@
+@@ -216,12 +240,13 @@
        saberFilterBlocks->filter(fset4dDx);
  
        if (lowpassPerturbations != boost::none) {
@@ -235,7 +246,7 @@
          dxLowPass.write(lowpassPerturbationsUpdated);
          oops::Log::test() << "Norm of low pass perturbation : member  " << jm+1
                            << ": " << dxLowPass.norm() << std::endl;
-@@ -229,10 +253,11 @@
+@@ -232,10 +257,11 @@
        fset4dDxI += fset4dDx;
  
        // Write high pass
@@ -249,7 +260,7 @@
        dxI.write(incrementsWriteParamsUpdated);
  
        oops::Log::test() << "Norm of high pass perturbation : member  " << jm+1
-@@ -242,16 +267,6 @@
+@@ -245,16 +271,6 @@
      return 0;
    }
  // -----------------------------------------------------------------------------

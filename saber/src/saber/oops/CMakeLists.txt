@@ -17,6 +17,7 @@ Localization.h
 
 # Application
 ErrorCovarianceToolbox.h
+ProcessPerts.h
 
 # Utilities
 Utilities.h

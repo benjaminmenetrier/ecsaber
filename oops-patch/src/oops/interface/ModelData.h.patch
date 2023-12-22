@@ -1,5 +1,5 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/oops-patch/src/oops/interface/ModelData.h.tmp	2023-11-10 16:12:20.356297644 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/oops-patch/src/oops/interface/ModelData.h	2023-11-08 14:13:25.217626046 +0100
+--- /home/benjaminm/code/oops-bundle/ecsaber/oops-patch/src/oops/interface/ModelData.h.tmp.bak	2023-12-19 10:46:53.557094346 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/oops-patch/src/oops/interface/ModelData.h	2023-12-19 10:42:21.073432022 +0100
 @@ -11,8 +11,7 @@
  #include <memory>
  #include <string>
@@ -20,34 +20,32 @@
  
   public:
    static const std::string classname() {return "oops::ModelData";}
-@@ -44,7 +42,7 @@
+@@ -43,8 +41,6 @@
+ 
   private:
    void print(std::ostream &) const override;
- 
+-
 -  std::unique_ptr<ModelData_> modeldata_;  // pointer to the ModelData implementation
-+//  std::unique_ptr<ModelData_> modeldata_;  // pointer to the ModelData implementation
  };
  
  // -----------------------------------------------------------------------------
-@@ -54,7 +52,7 @@
+@@ -54,7 +50,6 @@
  {
    Log::trace() << "ModelData<MODEL>::ModelData starting" << std::endl;
    util::Timer timer(classname(), "ModelData");
 -  modeldata_.reset(new ModelData_(geometry.geometry()));
-+//  modeldata_.reset(new ModelData_(geometry.geometry()));
    Log::trace() << "ModelData<MODEL>::ModelData done" << std::endl;
  }
  
-@@ -64,7 +62,7 @@
+@@ -64,7 +59,6 @@
  ModelData<MODEL>::~ModelData() {
    Log::trace() << "ModelData<MODEL>::~ModelData starting" << std::endl;
    util::Timer timer(classname(), "~ModelData");
 -  modeldata_.reset();
-+//  modeldata_.reset();
    Log::trace() << "ModelData<MODEL>::~ModelData done" << std::endl;
  }
  
-@@ -74,8 +72,11 @@
+@@ -74,8 +68,11 @@
  const eckit::LocalConfiguration ModelData<MODEL>::modelData() const {
    Log::trace() << "ModelData<MODEL>::modelData starting" << std::endl;
    util::Timer timer(classname(), "modelData");
@@ -60,12 +58,11 @@
  }
  
  // -----------------------------------------------------------------------------
-@@ -84,7 +85,7 @@
+@@ -84,7 +81,6 @@
  void ModelData<MODEL>::print(std::ostream & os) const {
    Log::trace() << "ModelData<MODEL>::print starting" << std::endl;
    util::Timer timer(classname(), "print");
 -  os << *modeldata_;
-+//  os << *modeldata_;
    Log::trace() << "ModelData<MODEL>::print done" << std::endl;
  }
  

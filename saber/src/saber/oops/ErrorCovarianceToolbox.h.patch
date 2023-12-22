@@ -1,5 +1,5 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ErrorCovarianceToolbox.h.tmp	2023-12-04 09:00:38.295298153 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ErrorCovarianceToolbox.h	2023-12-04 08:59:52.754813797 +0100
+--- /home/sbbm/code/Harmonie/bundle/ecsaber/saber/src/saber/oops/ErrorCovarianceToolbox.h.tmp.bak	2023-12-22 09:32:41.487719232 +0000
++++ /home/sbbm/code/Harmonie/bundle/ecsaber/saber/src/saber/oops/ErrorCovarianceToolbox.h	2023-12-22 09:36:32.630596260 +0000
 @@ -1,38 +1,30 @@
  /*
 - * (C) Copyright 2021-2023 UCAR
@@ -94,7 +94,7 @@
  
    /// Dirac location/variables parameters.
    oops::OptionalParameter<eckit::LocalConfiguration> dirac{"dirac", this};
-@@ -93,69 +84,36 @@
+@@ -93,72 +84,36 @@
  
  // -----------------------------------------------------------------------------
  
@@ -111,13 +111,13 @@
 -  typedef ErrorCovarianceToolboxParameters<MODEL>         ErrorCovarianceToolboxParameters_;
 +template <typename MODEL>
 +class ErrorCovarianceToolbox : public oops::Application {
-+  using CovarianceFactory_ = oops::CovarianceFactory<MODEL>;
++  using Covariance4DFactory_ = oops::Covariance4DFactory<MODEL>;
 +  using Geometry_ = oops::Geometry<MODEL>;
 +  using Increment_ = oops::Increment<MODEL>;
 +  using Increment4D_ = oops::Increment4D<MODEL>;
 +  using Localization_ = oops::Localization<MODEL>;
 +  using Model_ = oops::Model<MODEL>;
-+  using CovarianceBase_ = oops::ModelSpaceCovarianceBase<MODEL>;
++  using Covariance4DBase_ = oops::ModelSpaceCovariance4DBase<MODEL>;
 +  using State_ = oops::State<MODEL>;
 +  using State4D_ = oops::State4D<MODEL>;
 +  using Variables_ = oops::Variables<MODEL>;
@@ -160,11 +160,14 @@
 -      const size_t ntasks = this->getComm().size();
 -      size_t mysubwin = 0;
 -      size_t nsublocal = nsubwin;
--      if (params.parallel) {
--        ASSERT(ntasks % nsubwin == 0);
+-      if (params.parallel && (ntasks % nsubwin == 0)) {
 -        nsublocal = 1;
 -        mysubwin = this->getComm().rank() / (ntasks / nsubwin);
 -        ASSERT(mysubwin < nsubwin);
+-      } else if (params.parallel) {
+-        oops::Log::warning() << "Parallel time subwindows specified in yaml "
+-                             << "but number of tasks is not divisible by "
+-                             << "the number of subwindows, ignoring." << std::endl;
 -      }
 -
 -      // Create a communicator for same sub-window, to be used for communications in space
@@ -183,7 +186,7 @@
  
      // Get number of MPI tasks and OpenMP threads
      size_t ntasks = commSpace->size();
-@@ -173,38 +131,51 @@
+@@ -176,38 +131,51 @@
      util::seekAndReplace(fullConfigUpdated, "_OMP_", std::to_string(nthreads));
      params.deserialize(fullConfigUpdated);
  
@@ -249,7 +252,7 @@
        oops::Log::test() << "Input Dirac increment:" << dxi << std::endl;
  
        // Test configuration
-@@ -219,39 +190,39 @@
+@@ -222,39 +190,39 @@
          testConf.set("diagnostic points", *diagnostic);
        }
  
@@ -278,13 +281,14 @@
 +    const auto & randomizationSize = covarParams.getInt("randomization size", 0);
 +    if ((diracParams == boost::none) || (randomizationSize > 0)) {
        // Background error covariance training
-       std::unique_ptr<CovarianceBase_> Bmat(CovarianceFactory_::create(
+-      std::unique_ptr<CovarianceBase_> Bmat(CovarianceFactory_::create(
 -                                            geom, vars, covarParams, xx, xx));
-+                                            covarParams, geom, varsT, xx[0]));
++      std::unique_ptr<Covariance4DBase_> Bmat(Covariance4DFactory_::create(
++                                              covarParams, geom, varsT, xx));
 +
 +      // Linearize
 +      const std::string covarianceModel(covarParams.getString("covariance"));
-+      Bmat->linearize(xx[0], geom);
++      Bmat->linearize(xx, geom);
  
        // Randomization
 -      randomization(params, geom, vars, xx, Bmat, ntasks);
@@ -307,7 +311,7 @@
   private:
    std::string appname() const override {
      return "oops::ErrorCovarianceToolbox<" + MODEL::name() + ">";
-@@ -265,15 +236,15 @@
+@@ -268,15 +236,15 @@
  
      // Create diagnostic field
      Increment4D_ diagPoints(data);
@@ -330,7 +334,7 @@
      }
  
      oops::Log::trace() << appname() << "::print_value_at_position done" << std::endl;
-@@ -284,7 +255,7 @@
+@@ -287,15 +255,19 @@
               const eckit::LocalConfiguration & testConf,
               std::string & id,
               const Geometry_ & geom,
@@ -339,24 +343,21 @@
               const State4D_ & xx,
               const Increment4D_ & dxi) const {
      // Define output increment
-@@ -292,10 +263,14 @@
+     Increment4D_ dxo(dxi, false);
  
      // Covariance
-     std::unique_ptr<CovarianceBase_> Bmat(CovarianceFactory_::create(
+-    std::unique_ptr<CovarianceBase_> Bmat(CovarianceFactory_::create(
 -                                          geom, vars, covarConf, xx, xx));
-+                                          covarConf, geom, vars, xx[0]));
++    std::unique_ptr<Covariance4DBase_> Bmat(Covariance4DFactory_::create(
++                                            covarConf, geom, vars, xx));
 +
 +    // Linearize
 +    const std::string covarianceModel(covarConf.getString("covariance"));
-+    Bmat->linearize(xx[0], geom);
++    Bmat->linearize(xx, geom);
  
      // Multiply
--    Bmat->multiply(dxi, dxo);
-+    Bmat->multiply(dxi[0], dxo[0]);
- 
-     // Update ID
-     if (id != "") id.append("_");
-@@ -324,17 +299,13 @@
+     Bmat->multiply(dxi, dxo);
+@@ -327,16 +299,40 @@
      oops::Log::test() << "Covariance(" << id << ") * Increment:" << dxo << std::endl;
  
      // Look for hybrid or ensemble covariance models
@@ -370,26 +371,60 @@
 -        const eckit::LocalConfiguration componentConfig(conf, "covariance");
 -        dirac(componentConfig, testConf, idC, geom, vars, xx, dxi);
 -        ++componentIndex;
--      }
 +      eckit::LocalConfiguration staticConfig(covarConf, "static_covariance");
 +      std::string staticID = "hybrid1";
 +      dirac(staticConfig, testConf, staticID, geom, vars, xx, dxi);
 +      eckit::LocalConfiguration ensembleConfig(covarConf, "ensemble_covariance");
 +      std::string ensembleID = "hybrid2";
 +      dirac(ensembleConfig, testConf, ensembleID, geom, vars, xx, dxi);
++    }
++    if (covarianceModel == "SABER") {
++      const std::string saberCentralBlockName =
++        covarConf.getString("saber central block.saber block name");
++      if (saberCentralBlockName == "Hybrid") {
++        // Check for outer blocks (can't pass the correct geometry/variables in that case)
++        if (!covarConf.has("saber outer blocks")) {
++          std::vector<eckit::LocalConfiguration> confs;
++          covarConf.get("saber central block.components", confs);
++          size_t componentIndex(1);
++          for (const auto & conf : confs) {
++            std::string idC(id + std::to_string(componentIndex));
++            eckit::LocalConfiguration componentConfig(conf, "covariance");
++            componentConfig.set("covariance", "SABER");
++            if (covarConf.has("adjoint test")) {
++              componentConfig.set("adjoint test", covarConf.getBool("adjoint test"));
++            }
++            if (covarConf.has("inverse test")) {
++              componentConfig.set("inverse test", covarConf.getBool("inverse test"));
++            }
++            if (covarConf.has("square-root test")) {
++              componentConfig.set("square-root test", covarConf.getBool("square-root test"));
++            }
++            dirac(componentConfig, testConf, idC, geom, vars, xx, dxi);
++            ++componentIndex;
++          }
++        }
+       }
      }
-     if (covarianceModel == "ensemble" && covarConf.has("localization")) {
-       // Localization configuration
-@@ -348,7 +319,7 @@
+     if (covarianceModel == "SABER") {
+@@ -379,7 +375,15 @@
        Localization_ Lmat(geom, vars, locConfig);
  
        // Apply localization
 -      Lmat.multiply(dxo);
-+      Lmat.multiply(dxo[0]);
++      Increment_ dxTmp(dxo[0]);
++      for (size_t jsub = 1; jsub < dxo.times().size(); ++jsub) {
++        dxTmp.axpy(1.0, dxo[jsub], false);
++      }
++      Lmat.multiply(dxTmp);
++      for (size_t jsub = 0; jsub < dxo.times().size(); ++jsub) {
++        dxo[jsub].zero();
++        dxo[jsub].axpy(1.0, dxTmp, false);
++      }
  
        // Update ID
        std::string idL(id);
-@@ -375,9 +346,9 @@
+@@ -406,11 +410,11 @@
      }
    }
  // -----------------------------------------------------------------------------
@@ -399,9 +434,12 @@
 -                     const oops::patch::Variables & vars,
 +                     const Variables_ & vars,
                       const State4D_ & xx,
-                      const std::unique_ptr<CovarianceBase_> & Bmat,
+-                     const std::unique_ptr<CovarianceBase_> & Bmat,
++                     const std::unique_ptr<Covariance4DBase_> & Bmat,
                       const size_t & ntasks) const {
-@@ -387,9 +358,9 @@
+     if (Bmat->randomizationSize() > 0) {
+       oops::Log::info() << "Info     : " << std::endl;
+@@ -418,9 +422,9 @@
        oops::Log::info() << "Info     : -----------------------" << std::endl;
  
        // Create increments
@@ -414,16 +452,7 @@
  
        // Initialize variance
        variance.zero();
-@@ -405,7 +376,7 @@
-       for (size_t jm = 0; jm < Bmat->randomizationSize(); ++jm) {
-         // Generate member
-         oops::Log::info() << "Info     : Member " << jm << std::endl;
--        Bmat->randomize(dx);
-+        Bmat->randomize(dx[0]);
- 
-         if ((outputPerturbations != boost::none) || (outputStates != boost::none)) {
-           // Save member
-@@ -414,7 +385,9 @@
+@@ -445,7 +449,9 @@
  
          // Square perturbation
          dxsq = dx;
@@ -434,7 +463,7 @@
  
          // Update variance
          variance += dxsq;
-@@ -430,8 +403,8 @@
+@@ -461,8 +467,8 @@
  
            if (outputPerturbations != boost::none) {
              // Update config
@@ -445,7 +474,7 @@
              setMPI(outputPerturbationsUpdated, ntasks);
  
              // Write perturbation
-@@ -440,8 +413,8 @@
+@@ -471,8 +477,8 @@
  
            if (outputStates != boost::none) {
              // Update config

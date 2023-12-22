@@ -52,6 +52,7 @@ Fields::Fields(const Geometry & geom, const Variables & vars,
 
   for (const auto & var : vars_.variablesList()) {
     // Create field
+
     atlas::Field field = geom_->functionSpace().createField<double>(
       atlas::option::name(var) | atlas::option::levels(geom_->levels(var)));
     fset_.add(field);
@@ -664,9 +665,6 @@ void Fields::read(const eckit::Configuration & config) {
 
   // Copy configuration
   eckit::LocalConfiguration conf(config);
-  if (geom_->functionSpace().type() == "PointCloud") {
-    conf.set("one file per task", true);
-  }
 
   // Read fieldset
   util::readFieldSet(geom_->getComm(),
@@ -682,9 +680,6 @@ void Fields::write(const eckit::Configuration & config) const {
   oops::Log::trace() << "Fields::write starting" << std::endl;
   // Copy configuration
   eckit::LocalConfiguration conf(config);
-  if (geom_->functionSpace().type() == "PointCloud") {
-    conf.set("one file per task", true);
-  }
 
   // Write fieldset
   util::writeFieldSet(geom_->getComm(), conf, fset_);

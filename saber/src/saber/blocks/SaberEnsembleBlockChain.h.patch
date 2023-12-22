@@ -1,9 +1,9 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberEnsembleBlockChain.h.tmp.bak	2023-12-03 10:39:02.123122311 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberEnsembleBlockChain.h	2023-12-03 10:54:52.117348855 +0100
-@@ -16,8 +16,8 @@
- #include "eckit/exception/Exceptions.h"
+--- /home/sbbm/code/Harmonie/bundle/ecsaber/saber/src/saber/blocks/SaberEnsembleBlockChain.h.tmp	2023-12-22 09:44:53.808663246 +0000
++++ /home/sbbm/code/Harmonie/bundle/ecsaber/saber/src/saber/blocks/SaberEnsembleBlockChain.h	2023-12-22 09:47:32.533993810 +0000
+@@ -17,8 +17,8 @@
  
  #include "oops/base/FieldSet4D.h"
+ #include "oops/base/FieldSets.h"
 -#include "oops/base/Geometry.h"
 -#include "oops/base/Increment.h"
 +#include "oops/interface/Geometry.h"
@@ -11,7 +11,7 @@
  #include "oops/interface/ModelData.h"
  #include "oops/util/Logger.h"
  #include "oops/util/Random.h"
-@@ -26,6 +26,7 @@
+@@ -27,6 +27,7 @@
  #include "saber/blocks/SaberBlockParametersBase.h"
  #include "saber/blocks/SaberOuterBlockChain.h"
  #include "saber/blocks/SaberParametricBlockChain.h"
@@ -19,36 +19,28 @@
  #include "saber/oops/Utilities.h"
  
  namespace saber {
-@@ -74,13 +75,14 @@
-   std::vector<oops::FieldSet3D> ensemble_;
-   /// @brief Control vector size.
-   size_t ctlVecSize_;
--  /// @brief patch::Variables used in the ensemble covariance.
-+  /// @brief Variables used in the ensemble covariance.
+@@ -79,6 +80,7 @@
    /// TODO(AS): check whether this is needed or can be inferred from ensemble.
    oops::patch::Variables vars_;
-   /// @brief Geometry communicator.
-   /// TODO(AS): this can be removed once FieldSet4D/FieldSet3D are used.
-   const eckit::mpi::Comm & comm_;
    int seed_ = 7;  // For reproducibility
 +  const oops::GeometryData geomData_;
  };
  
  // -----------------------------------------------------------------------------
-@@ -99,8 +101,10 @@
-                        std::vector<oops::FieldSet3D> & fsetDualResEns,
+@@ -97,8 +99,10 @@
+                        oops::FieldSets & fsetDualResEns,
                         const eckit::LocalConfiguration & covarConf,
                         const eckit::Configuration & conf)
 -  : outerFunctionSpace_(geom.functionSpace()), outerVariables_(outerVars),
--    ctlVecSize_(0), comm_(geom.getComm()) {
+-    ensemble_(fsetEns), ctlVecSize_(0) {
 +  : outerFunctionSpace_(geom.geometry().functionSpace()), outerVariables_(outerVars),
-+    ctlVecSize_(0), comm_(eckit::mpi::comm()),
++    ensemble_(fsetEns), ctlVecSize_(0),
 +    geomData_(geom.geometry().functionSpace(), geom.geometry().fields(),
 +    geom.geometry().levelsAreTopDown(), eckit::mpi::comm()) {
    oops::Log::trace() << "SaberEnsembleBlockChain ctor starting" << std::endl;
  
    // Check that there is an ensemble of at least 2 members.
-@@ -126,7 +130,7 @@
+@@ -123,7 +127,7 @@
    const oops::patch::Variables currentOuterVars = outerBlockChain_ ?
                                             outerBlockChain_->innerVars() : outerVars;
    const oops::GeometryData & currentOuterGeom = outerBlockChain_ ?
@@ -57,7 +49,7 @@
  
    // Get parameters:
    SaberCentralBlockParametersWrapper saberCentralBlockParamsWrapper;
-@@ -154,7 +158,7 @@
+@@ -151,7 +155,7 @@
    eckit::LocalConfiguration centralBlockConf = conf.getSubConfiguration("saber central block");
    const double inflationValue = centralBlockConf.getDouble("inflation value", 1);
    oops::Log::info() << "Info     : Read inflation field" << std::endl;
@@ -66,7 +58,7 @@
    // Read ATLAS inflation file
    if (centralBlockConf.has("inflation field.atlas file")) {
      eckit::LocalConfiguration inflationConf =
-@@ -176,12 +180,15 @@
+@@ -173,12 +177,15 @@
                                centralBlockConf.getSubConfiguration("inflation field.model file");
      // Copy file
      // Read fieldsets as increments
@@ -84,14 +76,3 @@
    }
  
    // Apply inflation on ensemble members
-@@ -382,8 +389,8 @@
-     // Check that the fieldsets are similar within tolerance
-     bool sqrtComparison = true;
-     for (size_t jtime = 0; jtime < fset4d.size(); ++jtime) {
--      sqrtComparison = sqrtComparison && fset4d[jtime].compare_with(fset4dSave[jtime],
--        localSqrtTolerance, false);
-+      sqrtComparison = sqrtComparison && util::compareFieldSets(fset4d[jtime].fieldSet(),
-+        fset4dSave[jtime].fieldSet(), localSqrtTolerance, false);
-     }
-     if (sqrtComparison) {
-       oops::Log::info() << "Info     : Square-root test passed: U U^t x == B x" << std::endl;

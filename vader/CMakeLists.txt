@@ -24,7 +24,7 @@ check_diff_recursively( vader-import.cmake.in "${CMAKE_CURRENT_SOURCE_DIR}/updat
 
 # Check update summary
 if( EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/update_summary.txt")
-    message( FATAL_ERROR "Merge required in ${CMAKE_CURRENT_SOURCE_DIR}/update_summary.txt" )
+    message( FATAL_ERROR "Merge required:\n bash ${CMAKE_CURRENT_SOURCE_DIR}/update_summary.txt" )
 endif()
 
 ## Ecbuild integration

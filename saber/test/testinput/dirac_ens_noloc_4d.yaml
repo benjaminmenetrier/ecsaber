@@ -39,12 +39,33 @@ dirac:
   - lon:
     - 0.0
     lat:
-    - 0.0
+    - -0.001
     level:
     - 1
     variable:
     - stream_function
   - {}
+diagnostic points:
+  - lon:
+    - 10.0
+    lat:
+    - -0.001
+    level:
+    - 1
+    variable:
+    - stream_function
+  - lon:
+    - 0.0
+    - 10.0
+    lat:
+    - -0.001
+    - -0.001
+    level:
+    - 1
+    - 1
+    variable:
+    - stream_function
+    - stream_function
 output dirac:
   mpi pattern: '%MPI%'
   filepath: testdata/dirac_ens_noloc_4d/%MPI%_dirac_%id%

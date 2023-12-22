@@ -17,7 +17,7 @@ namespace saber {
 // -----------------------------------------------------------------------------
 
 oops::patch::Variables getActiveVars(const SaberBlockParametersBase & params,
-                                     const oops::patch::Variables & defaultVars) {
+                              const oops::patch::Variables & defaultVars) {
   oops::Log::trace() << "getActiveVars starting" << std::endl;
   oops::patch::Variables activeVars;
   if (params.mandatoryActiveVars().size() == 0) {

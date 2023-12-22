@@ -1,0 +1,10 @@
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/instantiateCovarFactory.h.tmp	2023-12-18 08:28:35.912185597 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/instantiateCovarFactory.h	2023-12-18 08:05:47.867152592 +0100
+@@ -20,6 +20,7 @@
+ template <typename MODEL> void instantiateCovarFactory() {
+   oops::instantiateCovarFactory<MODEL>();
+   static oops::CovarMaker<MODEL, ErrorCovariance<MODEL> > makerSABER_("SABER");
++  static oops::Covar4DMaker<MODEL, ErrorCovariance4D<MODEL> > makerSABER4D_("SABER");
+   instantiateLocalizationFactory<MODEL>();
+   instantiateBlockChainFactory<MODEL>();
+ }
