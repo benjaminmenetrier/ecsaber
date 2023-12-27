@@ -75,6 +75,7 @@ class LayerHalo : public LayerBase {
   // Rows <=> reduced grid
   size_t xcSize_;
   std::vector<std::tuple<int, int, double>> xcOperations_;
+  size_t xcRecvSize_;
   std::vector<int> xcRecvCounts_;
   std::vector<int> xcRecvDispls_;
   size_t xcSendSize_;
@@ -85,6 +86,7 @@ class LayerHalo : public LayerBase {
   // Columns <=> rows
   size_t ycSize_;
   std::vector<std::tuple<int, int, double>> ycOperations_;
+  size_t ycRecvSize_;
   std::vector<int> ycRecvCounts_;
   std::vector<int> ycRecvDispls_;
   size_t ycSendSize_;

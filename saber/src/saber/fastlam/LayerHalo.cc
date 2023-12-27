@@ -77,6 +77,11 @@ void LayerHalo::setupParallelization() {
     }
   }
 
+  // Buffer size
+  xcRecvSize_ = 0;
+  for (const auto & n : xcRecvCounts_) xcRecvSize_ += n;
+  ASSERT(xcRecvSize_ == xcSize_);
+
   // RecvDispls
   xcRecvDispls_.push_back(0);
   for (size_t jt = 0; jt < comm_.size()-1; ++jt) {
@@ -105,16 +110,18 @@ void LayerHalo::setupParallelization() {
 
   // Ordered received points list
   std::vector<size_t> xcRecvOffset(comm_.size(), 0);
-  std::vector<int> xcRecvPointsListOrdered(xcSize_);
-  std::vector<int> xcRecvMapping(xcSize_);
-  for (size_t jr = 0; jr < xcSize_; ++jr) {
+  std::vector<int> xcRecvPointsListOrdered(xcRecvSize_);
+  std::vector<int> xcRecvMapping(xcRecvSize_);
+  for (size_t jr = 0; jr < xcRecvSize_; ++jr) {
     size_t jt = mpiTask_[xcRecvPointsList[jr]];
     size_t jro = xcRecvDispls_[jt]+xcRecvOffset[jt];
+    ASSERT(jro >= 0);
+    ASSERT(jro < xcRecvSize_);
     xcRecvPointsListOrdered[jro] = xcRecvPointsList[jr];
     xcRecvMapping[jr] = jro;
     ++xcRecvOffset[jt];
   }
-  std::vector<int> xcSendPointsList(xcSendSize_);
+  std::vector<int> xcSendPointsList(xcSendSize_, 0);
   comm_.allToAllv(xcRecvPointsListOrdered.data(), xcRecvCounts_.data(), xcRecvDispls_.data(),
     xcSendPointsList.data(), xcSendCounts_.data(), xcSendDispls_.data());
 
@@ -188,6 +195,11 @@ void LayerHalo::setupParallelization() {
     }
   }
 
+  // Buffer size
+  ycRecvSize_ = 0;
+  for (const auto & n : ycRecvCounts_) ycRecvSize_ += n;
+  ASSERT(ycRecvSize_ == ycSize_);
+
   // RecvDispls
   ycRecvDispls_.push_back(0);
   for (size_t jt = 0; jt < comm_.size()-1; ++jt) {
@@ -216,16 +228,18 @@ void LayerHalo::setupParallelization() {
 
   // Ordered received points list
   std::vector<size_t> ycRecvOffset(comm_.size(), 0);
-  std::vector<int> ycRecvPointsListOrdered(ycSize_);
-  std::vector<int> ycRecvMapping(xcSize_);
-  for (size_t jr = 0; jr < ycSize_; ++jr) {
+  std::vector<int> ycRecvPointsListOrdered(ycRecvSize_);
+  std::vector<int> ycRecvMapping(ycRecvSize_);
+  for (size_t jr = 0; jr < ycRecvSize_; ++jr) {
     size_t jt = mpiTask_[ycRecvPointsList[jr]];
     size_t jro = ycRecvDispls_[jt]+ycRecvOffset[jt];
+    ASSERT(jro >= 0);
+    ASSERT(jro < ycRecvSize_);
     ycRecvPointsListOrdered[jro] = ycRecvPointsList[jr];
     ycRecvMapping[jr] = jro;
     ++ycRecvOffset[jt];
   }
-  std::vector<int> ycSendPointsList(ycSendSize_);
+  std::vector<int> ycSendPointsList(ycSendSize_, 0);
   comm_.allToAllv(ycRecvPointsListOrdered.data(), ycRecvCounts_.data(), ycRecvDispls_.data(),
     ycSendPointsList.data(), ycSendCounts_.data(), ycSendDispls_.data());
 
