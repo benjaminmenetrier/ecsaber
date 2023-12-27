@@ -7,3 +7,6 @@ dirac_fastlam_3
 dirac_fastlam_4
 dirac_fastlam_5
 dirac_fastlam_6
+dirac_fastlam_7
+dirac_fastlam_8
+dirac_fastlam_9

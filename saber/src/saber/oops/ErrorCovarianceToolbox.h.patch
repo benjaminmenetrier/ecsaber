@@ -1,5 +1,5 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ErrorCovarianceToolbox.h.tmp.bak	2023-12-21 09:53:06.461748878 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ErrorCovarianceToolbox.h	2023-12-21 09:53:39.537820084 +0100
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ErrorCovarianceToolbox.h.tmp.bak	2023-12-27 08:22:40.676608736 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ErrorCovarianceToolbox.h	2023-12-27 08:20:13.635272232 +0100
 @@ -1,38 +1,30 @@
  /*
 - * (C) Copyright 2021-2023 UCAR
@@ -197,16 +197,16 @@
      // Setup geometry
 -    const Geometry_ geom(params.geometry, *commSpace, *commTime);
 +    const Geometry_ geom(params.geometry);
-+
+ 
+-    // Setup background
+-    const State4D_ xx(geom, params.background.value(), *commTime);
 +    // Setup model
 +    eckit::LocalConfiguration modelConf;
 +    if (fullConfigUpdated.has("model")) {
 +      modelConf = fullConfigUpdated.getSubConfiguration("model");
 +    }
 +    const Model_ model(geom, modelConf);
- 
--    // Setup background
--    const State4D_ xx(geom, params.background.value(), *commTime);
++
 +    // Setup background state
 +    const State4D_ xx(params.background, geom, model);
  
@@ -377,7 +377,7 @@
  
      // Multiply
      Bmat->multiply(dxi, dxo);
-@@ -327,16 +319,40 @@
+@@ -327,17 +319,13 @@
      oops::Log::test() << "Covariance(" << id << ") * Increment:" << dxo << std::endl;
  
      // Look for hybrid or ensemble covariance models
@@ -391,43 +391,26 @@
 -        const eckit::LocalConfiguration componentConfig(conf, "covariance");
 -        dirac(componentConfig, testConf, idC, geom, vars, xx, dxi);
 -        ++componentIndex;
+-      }
 +      eckit::LocalConfiguration staticConfig(covarConf, "static_covariance");
 +      std::string staticID = "hybrid1";
 +      dirac(staticConfig, testConf, staticID, geom, vars, xx, dxi);
 +      eckit::LocalConfiguration ensembleConfig(covarConf, "ensemble_covariance");
 +      std::string ensembleID = "hybrid2";
 +      dirac(ensembleConfig, testConf, ensembleID, geom, vars, xx, dxi);
-+    }
-+    if (covarianceModel == "SABER") {
-+      const std::string saberCentralBlockName =
-+        covarConf.getString("saber central block.saber block name");
-+      if (saberCentralBlockName == "Hybrid") {
-+        // Check for outer blocks (can't pass the correct geometry/variables in that case)
-+        if (!covarConf.has("saber outer blocks")) {
-+          std::vector<eckit::LocalConfiguration> confs;
-+          covarConf.get("saber central block.components", confs);
-+          size_t componentIndex(1);
-+          for (const auto & conf : confs) {
-+            std::string idC(id + std::to_string(componentIndex));
-+            eckit::LocalConfiguration componentConfig(conf, "covariance");
-+            componentConfig.set("covariance", "SABER");
-+            if (covarConf.has("adjoint test")) {
-+              componentConfig.set("adjoint test", covarConf.getBool("adjoint test"));
-+            }
-+            if (covarConf.has("inverse test")) {
-+              componentConfig.set("inverse test", covarConf.getBool("inverse test"));
-+            }
-+            if (covarConf.has("square-root test")) {
-+              componentConfig.set("square-root test", covarConf.getBool("square-root test"));
-+            }
-+            dirac(componentConfig, testConf, idC, geom, vars, xx, dxi);
-+            ++componentIndex;
-+          }
-+        }
-       }
      }
      if (covarianceModel == "SABER") {
-@@ -379,7 +395,15 @@
+       const std::string saberCentralBlockName =
+@@ -351,7 +339,7 @@
+           for (const auto & conf : confs) {
+             std::string idC(id + std::to_string(componentIndex));
+             eckit::LocalConfiguration componentConfig(conf, "covariance");
+-            componentConfig.set("covariance model", "SABER");
++            componentConfig.set("covariance", "SABER");
+             if (covarConf.has("adjoint test")) {
+               componentConfig.set("adjoint test", covarConf.getBool("adjoint test"));
+             }
+@@ -379,7 +367,15 @@
        Localization_ Lmat(geom, vars, locConfig);
  
        // Apply localization
@@ -444,7 +427,7 @@
  
        // Update ID
        std::string idL(id);
-@@ -406,11 +430,11 @@
+@@ -406,11 +402,11 @@
      }
    }
  // -----------------------------------------------------------------------------
@@ -459,7 +442,7 @@
                       const size_t & ntasks) const {
      if (Bmat->randomizationSize() > 0) {
        oops::Log::info() << "Info     : " << std::endl;
-@@ -418,9 +442,9 @@
+@@ -418,9 +414,9 @@
        oops::Log::info() << "Info     : -----------------------" << std::endl;
  
        // Create increments
@@ -472,7 +455,7 @@
  
        // Initialize variance
        variance.zero();
-@@ -445,7 +469,9 @@
+@@ -445,7 +441,9 @@
  
          // Square perturbation
          dxsq = dx;
@@ -483,7 +466,7 @@
  
          // Update variance
          variance += dxsq;
-@@ -461,8 +487,8 @@
+@@ -461,8 +459,8 @@
  
            if (outputPerturbations != boost::none) {
              // Update config
@@ -494,7 +477,7 @@
              setMPI(outputPerturbationsUpdated, ntasks);
  
              // Write perturbation
-@@ -471,8 +497,8 @@
+@@ -471,8 +469,8 @@
  
            if (outputStates != boost::none) {
              // Update config

@@ -41,20 +41,4 @@ void evalRelativeHumidity_2mTL(atlas::FieldSet & incFlds);
 ///          at the lowest level from the adjoint of the atmospheric relative humidity at 2 m
 void evalRelativeHumidity_2mAD(atlas::FieldSet & HatFlds);
 
-/// \details This calculates the surface pressure increment from the atmospheric
-///          pressure increment at the lowest level
-void evalSurfacePressureTL(atlas::FieldSet & incFlds);
-
-/// \details This calculates the adjoint of the atmospheric pressure
-///          at the lowest level from the adjoint of the surface pressure
-void evalSurfacePressureAD(atlas::FieldSet & HatFlds);
-
-/// \details This calculates the surface temperature increment from the atmospheric
-///          temperature increment at the lowest level
-void evalSurfaceTemperatureTL(atlas::FieldSet & incFlds);
-
-/// \details This calculates the adjoint of the atmospheric temperature
-///          at the lowest level from the adjoint of the surface temperature
-void evalSurfaceTemperatureAD(atlas::FieldSet & HatFlds);
-
 }  // namespace mo

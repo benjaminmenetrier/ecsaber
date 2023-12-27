@@ -122,42 +122,4 @@ void evalRelativeHumidity_2mAD(atlas::FieldSet & HatFlds) {
   }
 }
 
-void evalSurfacePressureTL(atlas::FieldSet & incFlds) {
-  const auto pIncView = make_view<double, 2>(incFlds["air_pressure"]);
-  auto pstarIncView = make_view<double, 2>(incFlds["surface_pressure"]);
-
-  for (atlas::idx_t jn = 0; jn < pstarIncView.shape(0); ++jn) {
-      pstarIncView(jn, 0) = pIncView(jn, 0);
-  }
-}
-
-void evalSurfacePressureAD(atlas::FieldSet & HatFlds) {
-  auto pHatView = make_view<double, 2>(HatFlds["air_pressure"]);
-  auto pstarHatView = make_view<double, 2>(HatFlds["surface_pressure"]);
-
-  for (atlas::idx_t jn = 0; jn < pstarHatView.shape(0); ++jn) {
-    pHatView(jn, 0) += pstarHatView(jn, 0);
-    pstarHatView(jn, 0) = 0.0;
-  }
-}
-
-void evalSurfaceTemperatureTL(atlas::FieldSet & incFlds) {
-  const auto temperIncView = make_view<double, 2>(incFlds["air_temperature"]);
-  auto surfTemperIncView = make_view<double, 2>(incFlds["surface_temperature"]);
-
-  for (atlas::idx_t jn = 0; jn < surfTemperIncView.shape(0); ++jn) {
-      surfTemperIncView(jn, 0) = temperIncView(jn, 0);
-  }
-}
-
-void evalSurfaceTemperatureAD(atlas::FieldSet & HatFlds) {
-  auto temperHatView = make_view<double, 2>(HatFlds["air_temperature"]);
-  auto surfTemperHatView = make_view<double, 2>(HatFlds["surface_temperature"]);
-
-  for (atlas::idx_t jn = 0; jn < surfTemperHatView.shape(0); ++jn) {
-    temperHatView(jn, 0) += surfTemperHatView(jn, 0);
-    surfTemperHatView(jn, 0) = 0.0;
-  }
-}
-
 }  // namespace mo
