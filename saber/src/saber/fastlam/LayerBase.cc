@@ -196,7 +196,8 @@ void LayerBase::setupInterpolation() {
   }
 
   // Define reduced grid horizontal distribution
-  mpiTask_.resize(nx_*ny_, -1);
+  mpiTask_.resize(nx_*ny_, 0);
+  std::vector<int> mpiMask(nx_*ny_, 0);
   for (size_t jnode0 = 0; jnode0 < mSize_; ++jnode0) {
     if (ghostView(jnode0) == 0) {
       for (size_t j = 0; j < ny_; ++j) {
@@ -204,21 +205,26 @@ void LayerBase::setupInterpolation() {
           if (indexIView0(jnode0)-1 == std::round(xCoord[i]) &&
               indexJView0(jnode0)-1 == std::round(yCoord[j])) {
             mpiTask_[i*ny_+j] = myrank_;
+            mpiMask[i*ny_+j] = 1;
           }
         }
       }
     }
   }
 
-  // Check that every point is assigned to a task and remove verification offset
+  // Check that every point is assigned to a task
   comm_.allReduceInPlace(mpiTask_.begin(), mpiTask_.end(), eckit::mpi::sum());
+  comm_.allReduceInPlace(mpiMask.begin(), mpiMask.end(), eckit::mpi::sum());
   for (size_t j = 0; j < ny_; ++j) {
     for (size_t i = 0; i < nx_; ++i) {
-      if (mpiTask_[i*ny_+j] == -static_cast<int>(comm_.size())) {
+      if (mpiMask[i*ny_+j] == 0) {
         oops::Log::info() << "Info     :     Point (i,j) = (" << i << "," << j << ")" << std::endl;
         throw eckit::Exception("task not define for this point", Here());
       }
-      mpiTask_[i*ny_+j] += comm_.size()-1;
+      if (mpiMask[i*ny_+j] > 1) {
+        oops::Log::info() << "Info     :     Point (i,j) = (" << i << "," << j << ")" << std::endl;
+        throw eckit::Exception("task defined more than once for this point", Here());
+      }
     }
   }
 
