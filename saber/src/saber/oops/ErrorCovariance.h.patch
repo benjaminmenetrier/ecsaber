@@ -1,5 +1,5 @@
---- /home/sbbm/code/Harmonie/bundle/ecsaber/saber/src/saber/oops/ErrorCovariance.h.tmp.bak	2023-12-19 15:20:59.170511778 +0000
-+++ /home/sbbm/code/Harmonie/bundle/ecsaber/saber/src/saber/oops/ErrorCovariance.h	2023-12-19 15:13:25.326673507 +0000
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ErrorCovariance.h.tmp	2023-12-27 08:25:00.253905340 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ErrorCovariance.h	2023-12-27 08:24:00.409346998 +0100
 @@ -13,20 +13,18 @@
  
  #include "atlas/field.h"

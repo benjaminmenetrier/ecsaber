@@ -1,5 +1,5 @@
---- /home/sbbm/code/Harmonie/bundle/ecsaber/saber/src/saber/oops/ErrorCovarianceToolbox.h.tmp.bak	2023-12-22 09:32:41.487719232 +0000
-+++ /home/sbbm/code/Harmonie/bundle/ecsaber/saber/src/saber/oops/ErrorCovarianceToolbox.h	2023-12-22 09:36:32.630596260 +0000
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ErrorCovarianceToolbox.h.tmp	2023-12-27 08:25:00.265905452 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/ErrorCovarianceToolbox.h	2023-12-27 08:24:00.409346998 +0100
 @@ -1,38 +1,30 @@
  /*
 - * (C) Copyright 2021-2023 UCAR

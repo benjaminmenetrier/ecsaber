@@ -20,7 +20,7 @@ namespace mo {
 
 void eval_surface_pressure_tl(atlas::FieldSet & incFlds) {
   oops::Log::trace() << "[eval_surface_pressure_tl()] starting ..." << std::endl;
-  const auto pIncView = make_view<double, 2>(incFlds["air_pressure"]);
+  const auto pIncView = make_view<double, 2>(incFlds["air_pressure_levels"]);
   auto pstarIncView = make_view<double, 2>(incFlds["surface_pressure"]);
 
   atlas_omp_parallel_for(atlas::idx_t jn = 0; jn < pstarIncView.shape(0); ++jn) {
@@ -31,7 +31,7 @@ void eval_surface_pressure_tl(atlas::FieldSet & incFlds) {
 
 void eval_surface_pressure_ad(atlas::FieldSet & HatFlds) {
   oops::Log::trace() << "[eval_surface_pressure_ad()] starting ..." << std::endl;
-  auto pHatView = make_view<double, 2>(HatFlds["air_pressure"]);
+  auto pHatView = make_view<double, 2>(HatFlds["air_pressure_levels"]);
   auto pstarHatView = make_view<double, 2>(HatFlds["surface_pressure"]);
 
   atlas_omp_parallel_for(atlas::idx_t jn = 0; jn < pstarHatView.shape(0); ++jn) {
