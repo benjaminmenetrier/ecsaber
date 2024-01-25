@@ -103,36 +103,6 @@ bool evalSpecificHumidity(atlas::FieldSet & fields)
   return rvalue;
 }
 
-bool evalRelativeHumidity(atlas::FieldSet & fields)
-{
-  oops::Log::trace() << "[evalRelativeHumidity()] starting ..." << std::endl;
-
-  bool cap_super_sat(false);
-
-  if (fields["relative_humidity"].metadata().has("cap_super_sat")) {
-    fields["relative_humidity"].metadata().get("cap_super_sat", cap_super_sat);
-  }
-
-  const auto qView = make_view<const double, 2>(fields["specific_humidity"]);
-  const auto qsatView = make_view<const double, 2>(fields["qsat"]);
-  auto rhView = make_view<double, 2>(fields["relative_humidity"]);
-
-  auto conf = Config("levels", fields["relative_humidity"].levels()) |
-              Config("include_halo", true);
-
-  auto evaluateRH = [&] (idx_t i, idx_t j) {
-    rhView(i, j) = fmax(qView(i, j) / qsatView(i, j) * 100.0, 0.0);
-    rhView(i, j) = (cap_super_sat && (rhView(i, j) > 100.0)) ? 100.0 : rhView(i, j);
-  };
-
-  auto fspace = fields["relative_humidity"].functionspace();
-
-  functions::parallelFor(fspace, evaluateRH, conf);
-
-  oops::Log::trace() << "[evalRelativeHumidity()] ... exit" << std::endl;
-
-  return true;
-}
 
 bool evalTotalRelativeHumidity(atlas::FieldSet & fields)
 {

@@ -17,4 +17,12 @@ LayerRC.cc
 LayerRC.h
 )
 
+if( FFTW_FOUND )
+    list(APPEND fastlam_src_files_list
+    # Spectral layer
+    LayerSpec.cc
+    LayerSpec.h
+    )
+endif()
+
 set( fastlam_src_files ${fastlam_src_files_list} PARENT_SCOPE )

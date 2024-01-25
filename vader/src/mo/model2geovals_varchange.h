@@ -70,16 +70,6 @@ bool evalRatioToMt(atlas::FieldSet & fields);
 ///
 bool evalSpecificHumidity(atlas::FieldSet & fields);
 
-/// \brief function to evaluate the 'relative humidity':
-///   rh = q/qsat*100
-/// where ...
-///   q  = specific humidity
-///   qsat  = saturated specific humidity
-///
-/// Note that we have a bool metadata switch that we need here "cap_super_sat"
-/// If it is not present then we assume that it is false (which is the default)
-bool evalRelativeHumidity(atlas::FieldSet & fields);
-
 /// \brief function to evaluate the 'total relative humidity':
 ///   rh = (q+qcl+qci+qrain)/qsat*100
 /// where ...

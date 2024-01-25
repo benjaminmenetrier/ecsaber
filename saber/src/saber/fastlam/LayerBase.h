@@ -54,7 +54,10 @@ class LayerBase : public util::Printable,
 
   // Setup
   virtual void setupParallelization() = 0;
-  virtual void setupNormalization() = 0;
+  virtual void extractConvolution(const size_t &,
+                                  const size_t &,
+                                  std::vector<double> &,
+                                  std::vector<double> &) = 0;
 
   // Multiply square-root and adjoint
   virtual size_t ctlVecSize() const = 0;
@@ -71,6 +74,7 @@ class LayerBase : public util::Printable,
   void setupVerticalCoord(const atlas::Field &, const atlas::Field &);
   void setupInterpolation();
   void setupKernels();
+  void setupNormalization();
 
   // I/O
   void read(const int &);

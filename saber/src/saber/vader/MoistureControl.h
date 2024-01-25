@@ -47,15 +47,36 @@ class MoistureControlCovarianceParameters : public oops::Parameters {
 
 class MoistureControlParameters : public SaberBlockParametersBase {
   OOPS_CONCRETE_PARAMETERS(MoistureControlParameters, SaberBlockParametersBase)
+
  public:
   oops::RequiredParameter<std::string> svp_file{"saturation vapour pressure file", this};
   oops::RequiredParameter<MoistureControlCovarianceParameters>
     moistureControlParams{"covariance data", this};
-  oops::patch::Variables mandatoryActiveVars() const override {return oops::patch::Variables({
-    "qt",
-    "mu",
-    "potential_temperature",
-    "virtual_potential_temperature"});}
+  oops::patch::Variables mandatoryActiveVars() const override {
+    return oops::patch::Variables({
+        "qt",
+        "mu",
+        "potential_temperature",
+        "virtual_potential_temperature"});
+  }
+
+  oops::patch::Variables activeInnerVars(const oops::patch::Variables& outerVars) const override {
+    oops::patch::Variables vars({"virtual_potential_temperature",
+                          "mu"});
+    const int modelLevels = outerVars.getLevels("qt");
+    vars.addMetaData("virtual_potential_temperature", "levels", modelLevels);
+    vars.addMetaData("mu", "levels", modelLevels);
+    return vars;
+  }
+
+  oops::patch::Variables activeOuterVars(const oops::patch::Variables& outerVars) const override {
+    oops::patch::Variables vars({"potential_temperature",
+                          "qt"});
+    for (const auto & var : vars.variables()) {
+      vars.addMetaData(var, "levels", outerVars.getLevels(var));
+    }
+    return vars;
+  }
 };
 
 // -----------------------------------------------------------------------------
@@ -84,7 +105,9 @@ class MoistureControl : public SaberOuterBlockBase {
  private:
   void print(std::ostream &) const override;
   const oops::GeometryData & innerGeometryData_;
-  oops::patch::Variables innerVars_;
+  const oops::patch::Variables innerVars_;
+  const oops::patch::Variables activeOuterVars_;
+  const oops::patch::Variables innerOnlyVars_;
   atlas::FieldSet covFieldSet_;
   atlas::FieldSet augmentedStateFieldSet_;
 };

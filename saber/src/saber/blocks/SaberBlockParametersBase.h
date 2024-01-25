@@ -30,7 +30,7 @@ class SaberBlockParametersBase : public oops::Parameters {
   oops::RequiredParameter<std::string> saberBlockName{"saber block name", this};
 
   // PARAMETERS WITH DEFAULTS
-  // Variables to update with left inverse for background and first guess
+  // patch::Variables to update with left inverse for background and first guess
   oops::Parameter<oops::patch::Variables> inverseVars{"state variables to inverse", oops::patch::Variables(),
     this};
 
@@ -90,6 +90,18 @@ class SaberBlockParametersBase : public oops::Parameters {
   // VIRTUAL METHODS
   // Mandatory active variables
   virtual oops::patch::Variables mandatoryActiveVars() const = 0;
+
+  // Mandatory active inner variables, must be a subset of mandatoryActiveVars()
+  // Used by utilities getUnionOfInnerActiveAndOuterVars() and getInnerOnlyVars()
+  virtual oops::patch::Variables activeInnerVars(const oops::patch::Variables & outerVars) const {
+    return oops::patch::Variables();
+  }
+
+  // Mandatory active outer variables, must be a subset of mandatoryActiveVars()
+  // Can be used to define outer variables to allocate when randomizing
+  virtual oops::patch::Variables activeOuterVars(const oops::patch::Variables & outerVars) const {
+    return oops::patch::Variables();
+  }
 };
 
 // -----------------------------------------------------------------------------

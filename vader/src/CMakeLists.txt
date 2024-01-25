@@ -39,6 +39,8 @@ vader/recipes/HydrostaticExnerLevels.h
 vader/recipes/HydrostaticExnerLevels_A.cc
 vader/recipes/RainMixingRatio.h
 vader/recipes/RainMixingRatio_A.cc
+vader/recipes/RelativeHumidity.h
+vader/recipes/RelativeHumidity_A.cc
 vader/recipes/SurfaceAirPressure.h
 vader/recipes/SurfaceAirPressure_A.cc
 vader/recipes/TestRecipes.cc
@@ -98,6 +100,8 @@ mo/eval_rain_mixing_ratio.h
 mo/eval_rain_mixing_ratio.cc
 mo/eval_ratio.h
 mo/eval_ratio.cc
+mo/eval_relative_humidity.h
+mo/eval_relative_humidity.cc
 mo/eval_sat_vapour_pressure.h
 mo/eval_sat_vapour_pressure.cc
 mo/eval_surface_pressure.h

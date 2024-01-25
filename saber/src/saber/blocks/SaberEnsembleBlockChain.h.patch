@@ -1,5 +1,5 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberEnsembleBlockChain.h.tmp.bak	2023-12-21 09:51:27.185717297 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberEnsembleBlockChain.h	2023-12-19 09:56:11.385907161 +0100
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberEnsembleBlockChain.h.tmp.bak	2024-01-25 15:54:43.170473370 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/blocks/SaberEnsembleBlockChain.h	2024-01-25 15:57:07.390710935 +0100
 @@ -17,8 +17,8 @@
  
  #include "oops/base/FieldSet4D.h"
@@ -19,12 +19,8 @@
  #include "saber/oops/Utilities.h"
  
  namespace saber {
-@@ -75,10 +76,14 @@
-   oops::FieldSets ensemble_;
-   /// @brief Control vector size.
-   size_t ctlVecSize_;
--  /// @brief patch::Variables used in the ensemble covariance.
-+  /// @brief Variables used in the ensemble covariance.
+@@ -78,7 +79,11 @@
+   /// @brief patch::Variables used in the ensemble covariance.
    /// TODO(AS): check whether this is needed or can be inferred from ensemble.
    oops::patch::Variables vars_;
 +  /// @brief Geometry communicator.
@@ -49,8 +45,8 @@
  
    // Check that there is an ensemble of at least 2 members.
 @@ -123,7 +130,7 @@
-   const oops::patch::Variables currentOuterVars = outerBlockChain_ ?
-                                            outerBlockChain_->innerVars() : outerVars;
+   oops::patch::Variables currentOuterVars = outerBlockChain_ ?
+                                      outerBlockChain_->innerVars() : outerVars;
    const oops::GeometryData & currentOuterGeom = outerBlockChain_ ?
 -                                     outerBlockChain_->innerGeometryData() : geom.generic();
 +                                     outerBlockChain_->innerGeometryData() : geomData_;

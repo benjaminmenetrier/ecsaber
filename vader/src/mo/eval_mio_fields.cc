@@ -1,5 +1,5 @@
 /*
- * (C) Crown Copyright 2023 Met Office
+ * (C) Crown Copyright 2023-2024 Met Office
  *
  * This software is licensed under the terms of the Apache Licence Version 2.0
  * which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -33,12 +33,13 @@ void eval_mio_fields_nl(const std::string & mio_path, atlas::FieldSet & augState
 
   auto cleffView = make_view<double, 2>(augStateFlds["cleff"]);
   auto cfeffView = make_view<double, 2>(augStateFlds["cfeff"]);
+  const atlas::idx_t numLevels = augStateFlds["rht"].levels();
 
   Eigen::MatrixXd mioCoeffCl = functions::createMIOCoeff(mio_path, "qcl_coef");
   Eigen::MatrixXd mioCoeffCf = functions::createMIOCoeff(mio_path, "qcf_coef");
 
   for  (atlas::idx_t jn = 0; jn < augStateFlds["rht"].shape(0); ++jn) {
-    for (int jl = 0; jl < augStateFlds["rht"].levels(); ++jl) {
+    for (int jl = 0; jl < numLevels; ++jl) {
       if (jl < constants::mioLevs) {
         std::size_t ibin = (rhtView(jn, jl) > 1.0) ? constants::mioBins - 1 :
                            static_cast<std::size_t>(floor(rhtView(jn, jl) / constants::rHTBin));

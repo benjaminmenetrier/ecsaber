@@ -56,8 +56,10 @@ class GaussUVToGP : public SaberOuterBlockBase {
   void print(std::ostream &) const override;
 
   Parameters_ params_;
-  oops::patch::Variables outerVars_;
-  oops::patch::Variables innerVars_;
+  const oops::patch::Variables outerVars_;
+  const oops::patch::Variables innerVars_;
+  const oops::patch::Variables activeOuterVars_;
+  const oops::patch::Variables innerOnlyVars_;
 
   /// Gaussian (outer) functionspace
   const atlas::functionspace::StructuredColumns gaussFunctionSpace_;

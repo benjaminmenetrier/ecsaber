@@ -1,5 +1,5 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/Utilities.h.tmp.bak	2023-12-19 10:24:19.712545420 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/Utilities.h	2023-12-18 21:40:55.351507151 +0100
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/Utilities.h.tmp.bak	2024-01-25 15:54:43.762474453 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/src/saber/oops/Utilities.h	2024-01-25 15:58:45.386846502 +0100
 @@ -19,15 +19,15 @@
  #include "eckit/config/Configuration.h"
  
@@ -31,7 +31,7 @@
  
  namespace oops {
    class FieldSet3D;
-@@ -51,6 +52,11 @@
+@@ -61,6 +62,11 @@
  
  // -----------------------------------------------------------------------------
  
@@ -43,26 +43,7 @@
  void setMPI(eckit::LocalConfiguration & conf,
              const int & mpi);
  
-@@ -66,12 +72,12 @@
- 
- template<typename MODEL>
- oops::FieldSets readEnsemble(const oops::Geometry<MODEL> & geom,
--                                      const oops::patch::Variables & modelvars,
--                                      const oops::State4D<MODEL> & xb,
--                                      const oops::State4D<MODEL> & fg,
--                                      const eckit::LocalConfiguration & inputConf,
--                                      const bool & iterativeEnsembleLoading,
--                                      eckit::LocalConfiguration & outputConf) {
-+                             const oops::patch::Variables & modelvars,
-+                             const oops::State4D<MODEL> & xb,
-+                             const oops::State4D<MODEL> & fg,
-+                             const eckit::LocalConfiguration & inputConf,
-+                             const bool & iterativeEnsembleLoading,
-+                             eckit::LocalConfiguration & outputConf) {
-   oops::Log::trace() << "readEnsemble starting" << std::endl;
- 
-   // Prepare ensemble configuration
-@@ -80,46 +86,30 @@
+@@ -95,46 +101,30 @@
    // Fill output configuration and set ensemble size
    size_t nens = 0;
    size_t ensembleFound = 0;
@@ -124,7 +105,7 @@
      ++ensembleFound;
    }
  
-@@ -129,52 +119,54 @@
+@@ -144,52 +134,53 @@
    // Check number of ensembles in yaml
    ASSERT(ensembleFound <= 1);
  
@@ -195,7 +176,6 @@
        return fsetEns;
      }
    }
-+
    // Return empty ensemble if none was returned before
    std::vector<util::DateTime> dates;
    std::vector<int> ensmems;
@@ -206,7 +186,7 @@
  }
  
  // -------------------------------------------------------------------------------------------------
-@@ -192,14 +184,17 @@
+@@ -207,14 +198,17 @@
    // Local copy
    eckit::LocalConfiguration localConf(conf);
  
@@ -226,7 +206,7 @@
  
    oops::Log::trace() << "readHybridWeight done" << std::endl;
  }
-@@ -219,54 +214,42 @@
+@@ -234,54 +228,42 @@
    // Fill FieldSet
    size_t ensembleFound = 0;
  

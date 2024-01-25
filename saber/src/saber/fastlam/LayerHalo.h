@@ -42,7 +42,10 @@ class LayerHalo : public LayerBase {
 
   // Setups
   void setupParallelization() override;
-  void setupNormalization() override;
+  void extractConvolution(const size_t &,
+                          const size_t &,
+                          std::vector<double> &,
+                          std::vector<double> &) override;
 
   // Multiply square-root and adjoint
   size_t ctlVecSize() const override {return rSize_*nz_;};

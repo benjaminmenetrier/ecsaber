@@ -1,5 +1,5 @@
---- /home/benjaminm/code/oops-bundle/ecsaber/saber/test/CMakeLists.txt.tmp.bak	2023-12-15 13:25:29.735305237 +0100
-+++ /home/benjaminm/code/oops-bundle/ecsaber/saber/test/CMakeLists.txt	2023-12-15 13:54:18.176377850 +0100
+--- /home/benjaminm/code/oops-bundle/ecsaber/saber/test/CMakeLists.txt.tmp.bak	2024-01-25 15:54:47.178480685 +0100
++++ /home/benjaminm/code/oops-bundle/ecsaber/saber/test/CMakeLists.txt	2024-01-25 16:00:14.846955580 +0100
 @@ -7,9 +7,6 @@
  # Tests activated
  message( STATUS "SABER tests activated:" )
@@ -10,7 +10,7 @@
  # Default SABER_TEST_TIER
  set( SABER_TEST_TIER 1 )
  
-@@ -147,9 +144,10 @@
+@@ -152,9 +149,10 @@
      file( MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/testdata/${test} )
  
      # Link to yaml file
@@ -24,7 +24,7 @@
  
      # Link to reference file
      if( EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/testref/${test}.ref )
-@@ -232,14 +230,44 @@
+@@ -237,14 +235,44 @@
                          list( TRANSFORM deps_list APPEND _${mpi}-${omp} )
                      endif()
  

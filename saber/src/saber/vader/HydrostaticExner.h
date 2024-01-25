@@ -38,6 +38,7 @@ namespace vader {
 // -----------------------------------------------------------------------------
 class HydrostaticExnerParameters : public SaberBlockParametersBase {
   OOPS_CONCRETE_PARAMETERS(HydrostaticExnerParameters, SaberBlockParametersBase)
+
  public:
   oops::RequiredParameter<std::string> svp_file{"saturation vapour pressure file", this};
   oops::RequiredParameter<GpToHpCovarianceParameters>
@@ -49,6 +50,34 @@ class HydrostaticExnerParameters : public SaberBlockParametersBase {
     "hydrostatic_exner_levels",
     "hydrostatic_pressure_levels",
     "unbalanced_pressure_levels_minus_one"});}
+
+  oops::patch::Variables activeInnerVars(const oops::patch::Variables& outerVars) const override {
+    oops::patch::Variables vars({"geostrophic_pressure_levels_minus_one",
+                          "hydrostatic_exner_levels",
+                          "hydrostatic_pressure_levels",
+                          "unbalanced_pressure_levels_minus_one",
+                         });
+    const int modelLevels = outerVars.getLevels("exner_levels_minus_one");
+    vars.addMetaData("geostrophic_pressure_levels_minus_one", "levels", modelLevels);
+    vars.addMetaData("hydrostatic_exner_levels", "levels", modelLevels + 1);
+    vars.addMetaData("hydrostatic_pressure_levels", "levels", modelLevels + 1);
+    vars.addMetaData("unbalanced_pressure_levels_minus_one", "levels", modelLevels);
+    return vars;
+  }
+
+  oops::patch::Variables activeOuterVars(const oops::patch::Variables& outerVars) const override {
+    oops::patch::Variables vars({"air_pressure_levels",
+                          "hydrostatic_exner_levels",
+                          "hydrostatic_pressure_levels",
+                          "exner_levels_minus_one",
+                         });
+    vars.intersection(outerVars);
+
+    for (const auto & var : vars.variables()) {
+      vars.addMetaData(var, "levels", outerVars.getLevels(var));
+    }
+    return vars;
+  }
 };
 
 // -----------------------------------------------------------------------------
@@ -82,8 +111,9 @@ class HydrostaticExner : public SaberOuterBlockBase {
  private:
   void print(std::ostream &) const override;
   const oops::GeometryData & innerGeometryData_;
-  oops::patch::Variables innerVars_;
-  oops::patch::Variables activeVars_;
+  const oops::patch::Variables innerVars_;
+  const oops::patch::Variables activeOuterVars_;
+  const oops::patch::Variables innerOnlyVars_;
   atlas::FieldSet covFieldSet_;
   atlas::FieldSet augmentedStateFieldSet_;
 };

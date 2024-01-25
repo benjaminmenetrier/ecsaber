@@ -65,8 +65,9 @@ class GpToHp : public SaberOuterBlockBase {
  private:
   void print(std::ostream &) const override;
   const oops::GeometryData & innerGeometryData_;
-  oops::patch::Variables innerVars_;
-  oops::patch::Variables activeVars_;
+  const oops::patch::Variables innerVars_;
+  const oops::patch::Variables activeOuterVars_;
+  const oops::patch::Variables innerOnlyVars_;
   atlas::FieldSet covFieldSet_;
   atlas::FieldSet augmentedStateFieldSet_;
 };

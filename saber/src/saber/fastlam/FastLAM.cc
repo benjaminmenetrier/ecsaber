@@ -22,6 +22,7 @@
 #include "oops/util/FloatCompare.h"
 #include "oops/util/Logger.h"
 #include "oops/util/missingValues.h"
+#include "oops/util/RandomField.h"
 
 #define ERR(e) {throw eckit::Exception(nc_strerror(e), Here());}
 
@@ -133,7 +134,49 @@ FastLAM::~FastLAM() {
 
 void FastLAM::randomize(oops::FieldSet3D & fset) const {
   oops::Log::trace() << classname() << "::randomize starting" << std::endl;
-  throw eckit::NotImplemented("randomize method not implemented yet", Here());
+
+  // Create control vector
+  atlas::Field cv("genericCtlVec", atlas::array::make_datatype<double>(),
+    atlas::array::make_shape(ctlVecSize()));
+
+  // Sizes, sendcounts and displs
+  std::vector<int> sendcounts(comm_.size());
+  comm_.allGather(static_cast<int>(ctlVecSize()), sendcounts.begin(), sendcounts.end());
+  size_t ctlVecSizeGlb = 0;
+  for (const auto ctlVecSize : sendcounts) {
+    ctlVecSizeGlb += ctlVecSize;
+  }
+  std::vector<int> displs;
+  displs.push_back(0);
+  for (size_t jt = 0; jt < comm_.size()-1; ++jt) {
+    displs.push_back(displs[jt]+sendcounts[jt]);
+  }
+
+  // Generate global random vector
+  std::vector<double> rand_vec_glb;
+  if (comm_.rank() == 0) {
+    util::NormalDistributionField dist(ctlVecSizeGlb, 0.0, 1.0);
+    rand_vec_glb.resize(ctlVecSizeGlb);
+    for (size_t i = 0; i < ctlVecSizeGlb; ++i) {
+      rand_vec_glb[i] = dist[i];
+    }
+  }
+
+  // Scatter random vector
+  std::vector<double> rand_vec(ctlVecSize());
+  comm_.scatterv(rand_vec_glb.begin(), rand_vec_glb.end(), sendcounts, displs,
+    rand_vec.begin(), rand_vec.end(), 0);
+
+  // Fill control vector
+  auto cvView = atlas::array::make_view<double, 1>(cv);
+  for (size_t jcv = 0; jcv < ctlVecSize(); ++jcv) {
+    cvView(jcv) = rand_vec[jcv];
+  }
+
+  // Square-root multiplication
+  const size_t index = 0;
+  multiplySqrt(cv, fset, index);
+
   oops::Log::trace() << classname() << "::randomize done" << std::endl;
 }
 

@@ -1,5 +1,5 @@
 /*
- * (C) Crown Copyright 2022 Met Office
+ * (C) Crown Copyright 2022-2024 Met Office
  *
  * This software is licensed under the terms of the Apache Licence Version 2.0
  * which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -30,12 +30,13 @@ void thetavP2HexnerTL(atlas::FieldSet & incFlds, const atlas::FieldSet & augStat
   const auto thetavIncView = make_view<const double, 2>(incFlds["virtual_potential_temperature"]);
   const auto pIncView = make_view<const double, 2>(incFlds["air_pressure_levels_minus_one"]);
   auto hexnerIncView = make_view<double, 2>(incFlds["hydrostatic_exner_levels"]);
+  const atlas::idx_t numLevels = incFlds["hydrostatic_exner_levels"].levels();
 
   for (atlas::idx_t jn = 0; jn < incFlds["hydrostatic_exner_levels"].shape(0); ++jn) {
     hexnerIncView(jn, 0) = constants::rd_over_cp *
       hexnerView(jn, 0) * pIncView(jn, 0) / pView(jn, 0);
 
-    for (atlas::idx_t jl = 1; jl < incFlds["hydrostatic_exner_levels"].levels(); ++jl) {
+    for (atlas::idx_t jl = 1; jl < numLevels; ++jl) {
       hexnerIncView(jn, jl) = hexnerIncView(jn, jl-1) +
         ((constants::grav * thetavIncView(jn, jl-1) *
           (hlView(jn, jl) - hlView(jn, jl-1))) /
@@ -234,9 +235,10 @@ void qqclqcf2qtAD(atlas::FieldSet & hatFields, const atlas::FieldSet &) {
   auto qcfHatView = make_view<double, 2>
                     (hatFields["mass_content_of_cloud_ice_in_atmosphere_layer"]);
   auto qtHatView = make_view<double, 2>(hatFields["qt"]);
+  const atlas::idx_t numLevels = hatFields["qt"].levels();
 
   for (atlas::idx_t jn = 0; jn < hatFields["qt"].shape(0); ++jn) {
-    for (atlas::idx_t jl = 0; jl < hatFields["qt"].levels(); ++jl) {
+    for (atlas::idx_t jl = 0; jl < numLevels; ++jl) {
       qHatView(jn, jl) += qtHatView(jn, jl);
       qclHatView(jn, jl) += qtHatView(jn, jl);
       qcfHatView(jn, jl) += qtHatView(jn, jl);
@@ -259,11 +261,11 @@ void qtTemperature2qqclqcfTL(atlas::FieldSet & incFlds,
   auto qcfIncView = make_view<double, 2>
                     (incFlds["mass_content_of_cloud_ice_in_atmosphere_layer"]);
   auto qIncView = make_view<double, 2>(incFlds["specific_humidity"]);
-
+  const atlas::idx_t numLevels = incFlds["qt"].levels();
 
   double maxCldInc;
   for (atlas::idx_t jn = 0; jn < incFlds["qt"].shape(0); ++jn) {
-    for (atlas::idx_t jl = 0; jl < incFlds["qt"].levels(); ++jl) {
+    for (atlas::idx_t jl = 0; jl < numLevels; ++jl) {
         maxCldInc = qtIncView(jn, jl) - qsatView(jn, jl) *
             dlsvpdTView(jn, jl) * temperIncView(jn, jl);
         qclIncView(jn, jl) = cleffView(jn, jl) * maxCldInc;
@@ -287,10 +289,11 @@ void qtTemperature2qqclqcfAD(atlas::FieldSet & hatFlds,
                     (hatFlds["mass_content_of_cloud_liquid_water_in_atmosphere_layer"]);
   auto qcfHatView = make_view<double, 2>
                     (hatFlds["mass_content_of_cloud_ice_in_atmosphere_layer"]);
+  const atlas::idx_t numLevels = hatFlds["qt"].levels();
 
   double qsatdlsvpdT;
   for (atlas::idx_t jn = 0; jn < hatFlds["qt"].shape(0); ++jn) {
-    for (atlas::idx_t jl = 0; jl < hatFlds["qt"].levels(); ++jl) {
+    for (atlas::idx_t jl = 0; jl < numLevels; ++jl) {
       qsatdlsvpdT = qsatView(jn, jl) * dlsvpdTView(jn, jl);
       temperHatView(jn, jl) += ((cleffView(jn, jl) + cfeffView(jn, jl)) * qHatView(jn, jl)
                                 - cleffView(jn, jl) * qclHatView(jn, jl)
@@ -467,9 +470,10 @@ void evalMuThetavTL(atlas::FieldSet & incFlds,  const atlas::FieldSet & augState
   const auto qtIncView = make_view<const double, 2>(incFlds["qt"]);
   auto muIncView = make_view<double, 2>(incFlds["mu"]);
   auto thetavIncView = make_view<double, 2>(incFlds["virtual_potential_temperature"]);
+  const atlas::idx_t numLevels = incFlds["mu"].levels();
 
   for (atlas::idx_t jn = 0; jn < incFlds["mu"].shape(0); ++jn) {
-    for (atlas::idx_t jl = 0; jl < incFlds["mu"].levels(); ++jl) {
+    for (atlas::idx_t jl = 0; jl < numLevels; ++jl) {
       muIncView(jn, jl) = muRow1Column1View(jn, jl)  * qtIncView(jn, jl)
                         + muRow1Column2View(jn, jl)  * thetaIncView(jn, jl);
       thetavIncView(jn, jl) = muRow2Column1View(jn, jl)  * qtIncView(jn, jl)
@@ -488,9 +492,10 @@ void evalMuThetavAD(atlas::FieldSet & hatFlds, const atlas::FieldSet & augState)
   auto qtHatView = make_view<double, 2>(hatFlds["qt"]);
   auto muHatView = make_view<double, 2>(hatFlds["mu"]);
   auto thetavHatView = make_view<double, 2>(hatFlds["virtual_potential_temperature"]);
+  const atlas::idx_t numLevels = hatFlds["mu"].levels();
 
   for (atlas::idx_t jn = 0; jn < hatFlds["mu"].shape(0); ++jn) {
-    for (atlas::idx_t jl = 0; jl < hatFlds["mu"].levels(); ++jl) {
+    for (atlas::idx_t jl = 0; jl < numLevels; ++jl) {
       thetaHatView(jn, jl) += muRow2Column2View(jn, jl) * thetavHatView(jn, jl);
       qtHatView(jn, jl) += muRow2Column1View(jn, jl) * thetavHatView(jn, jl);
       thetaHatView(jn, jl) += muRow1Column2View(jn, jl) * muHatView(jn, jl);
@@ -513,9 +518,10 @@ void evalQtThetaTL(atlas::FieldSet & incFlds, const atlas::FieldSet & augState) 
   const auto thetavIncView = make_view<const double, 2>(incFlds["virtual_potential_temperature"]);
   auto qtIncView = make_view<double, 2>(incFlds["qt"]);
   auto thetaIncView = make_view<double, 2>(incFlds["potential_temperature"]);
+  const atlas::idx_t numLevels = incFlds["mu"].levels();
 
   for (atlas::idx_t jn = 0; jn < incFlds["mu"].shape(0); ++jn) {
-    for (atlas::idx_t jl = 0; jl < incFlds["mu"].levels(); ++jl) {
+    for (atlas::idx_t jl = 0; jl < numLevels; ++jl) {
       // VAR equivalent in Var_UpPFtheta_qT.f90 for thetaIncView
       // (beta2 * muA * theta_v' +   beta1 * mu') /
       // (alpha1 * beta2 * muA - alpha2 * muA * beta1)
@@ -544,9 +550,10 @@ void evalQtThetaAD(atlas::FieldSet & hatFlds, const atlas::FieldSet & augState) 
   auto muHatView = make_view<double, 2>(hatFlds["mu"]);
   auto thetavHatView = make_view<double, 2>(hatFlds["virtual_potential_temperature"]);
   auto thetaHatView = make_view<double, 2>(hatFlds["potential_temperature"]);
+  const atlas::idx_t numLevels = hatFlds["mu"].levels();
 
   for (atlas::idx_t jn = 0; jn < hatFlds["mu"].shape(0); ++jn) {
-    for (atlas::idx_t jl = 0; jl < hatFlds["mu"].levels(); ++jl) {
+    for (atlas::idx_t jl = 0; jl < numLevels; ++jl) {
       thetavHatView(jn, jl) += muRecipDeterView(jn, jl) *
                                muRow1Column1View(jn, jl) * thetaHatView(jn, jl);
       muHatView(jn, jl) -= muRecipDeterView(jn, jl) *

@@ -73,8 +73,8 @@ class HydrostaticPressure : public SaberOuterBlockBase {
  private:
   void print(std::ostream &) const override;
   const oops::GeometryData & innerGeometryData_;
-  oops::patch::Variables innerVars_;
-  oops::patch::Variables activeVars_;
+  const oops::patch::Variables innerVars_;
+  const oops::patch::Variables intermediateTempVars_;
   /// Gaussian (outer) functionspace
   const atlas::functionspace::StructuredColumns gaussFunctionSpace_;
   std::unique_ptr<saber::vader::GpToHp> gptohp_;

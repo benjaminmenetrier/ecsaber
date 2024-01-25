@@ -1,5 +1,5 @@
 /*
- * (C) Crown Copyright 2022 Met Office
+ * (C) Crown Copyright 2022-2024 Met Office
  *
  * This software is licensed under the terms of the Apache Licence Version 2.0
  * which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -25,11 +25,12 @@ void hexner2PThetav(atlas::FieldSet & fields) {
   const auto hexnerView = make_view<const double, 2>(fields["hydrostatic_exner_levels"]);
   auto pView = make_view<double, 2>(fields["air_pressure_levels_minus_one"]);
   auto vthetaView = make_view<double, 2>(fields["virtual_potential_temperature"]);
+  const idx_t numLevels = fields["hydrostatic_exner_levels"].levels();
 
   for (idx_t jn = 0; jn < fields["hydrostatic_exner_levels"].shape(0); ++jn) {
     pView(jn, 0) = constants::p_zero * pow(hexnerView(jn, 0), (constants::cp / constants::rd));
 
-    for (idx_t jl = 1; jl < fields["hydrostatic_exner_levels"].levels(); ++jl) {
+    for (idx_t jl = 1; jl < numLevels; ++jl) {
       vthetaView(jn, jl) = -constants::grav * (rpView(jn, jl) - rpView(jn, jl-1)) /
          (constants::cp * (hexnerView(jn, jl) - hexnerView(jn, jl-1)));
     }
@@ -60,11 +61,12 @@ void evalHydrostaticExnerLevels(atlas::FieldSet & fields) {
   const auto vthetaView = make_view<const double, 2>(fields["virtual_potential_temperature"]);
   const auto pView = make_view<const double, 2>(fields["air_pressure_levels_minus_one"]);
   auto hexnerView = make_view<double, 2>(fields["hydrostatic_exner_levels"]);
+  const idx_t numLevels = fields["hydrostatic_exner_levels"].levels();
 
   for (idx_t jn = 0; jn < fields["hydrostatic_exner_levels"].shape(0); ++jn) {
     hexnerView(jn, 0) = pow(pView(jn, 0) / constants::p_zero,
       constants::rd_over_cp);
-    for (idx_t jl = 1; jl < fields["hydrostatic_exner_levels"].levels(); ++jl) {
+    for (idx_t jl = 1; jl < numLevels; ++jl) {
       hexnerView(jn, jl) = hexnerView(jn, jl-1) -
         (constants::grav * (rpView(jn, jl) - rpView(jn, jl-1))) /
         (constants::cp * vthetaView(jn, jl-1));
@@ -78,9 +80,10 @@ void evalHydrostaticExnerLevels(atlas::FieldSet & fields) {
 void evalHydrostaticPressureLevels(atlas::FieldSet & fields) {
   const auto hexnerView = make_view<double, 2>(fields["hydrostatic_exner_levels"]);
   auto hpView = make_view<double, 2>(fields["hydrostatic_pressure_levels"]);
+  const idx_t numLevels = fields["hydrostatic_pressure_levels"].levels();
 
   for (idx_t jn = 0; jn < fields["hydrostatic_pressure_levels"].shape(0); ++jn) {
-    for (idx_t jl = 0; jl < fields["hydrostatic_pressure_levels"].levels(); ++jl) {
+    for (idx_t jl = 0; jl < numLevels; ++jl) {
        hpView(jn, jl) = constants::p_zero *
          pow(hexnerView(jn, jl), 1.0 / constants::rd_over_cp);
     }
@@ -96,9 +99,10 @@ void qqclqcf2qt(atlas::FieldSet & fields) {
   const auto qcfIncView = make_view<const double, 2>
                     (fields["mass_content_of_cloud_ice_in_atmosphere_layer"]);
   auto qtIncView = make_view<double, 2>(fields["qt"]);
+  const idx_t numLevels = fields["specific_humidity"].levels();
 
   for (atlas::idx_t jn = 0; jn < fields["specific_humidity"].shape(0); ++jn) {
-    for (atlas::idx_t jl = 0; jl < fields["specific_humidity"].levels(); ++jl) {
+    for (atlas::idx_t jl = 0; jl < numLevels; ++jl) {
       qtIncView(jn, jl) = qIncView(jn, jl) + qclIncView(jn, jl) + qcfIncView(jn, jl);
     }
   }
@@ -155,9 +159,11 @@ void evalMoistureControlDependencies(atlas::FieldSet & fields) {
   auto muRow2Column2View = make_view<double, 2>(fields["muRow2Column2"]);
   auto muRecipDeterminantView = make_view<double, 2>(fields["muRecipDeterminant"]);
 
+  const idx_t numLevels = fields["potential_temperature"].levels();
+
   // the comments below are there to allow checking with the VAR code.
   for (atlas::idx_t jn = 0; jn < fields["potential_temperature"].shape(0); ++jn) {
-    for (atlas::idx_t jl = 0; jl < fields["potential_temperature"].levels(); ++jl) {
+    for (atlas::idx_t jl = 0; jl < numLevels; ++jl) {
       muRow1Column1View(jn, jl) = muAView(jn, jl) / qsatView(jn, jl);  // beta2 * muA
       muRow1Column2View(jn, jl) = -  qtView(jn, jl)  * muH1View(jn, jl)
         * exnerView(jn, jl) * dlsvpdTView(jn, jl) * muRow1Column1View(jn, jl);

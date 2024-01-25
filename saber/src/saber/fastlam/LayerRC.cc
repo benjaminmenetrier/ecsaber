@@ -96,7 +96,6 @@ void LayerRC::setupParallelization() {
   // Buffer size
   rRecvSize_ = 0;
   for (const auto & n : rRecvCounts_) rRecvSize_ += n;
-  ASSERT(rRecvSize_ == rSize_);
 
   // RecvDispls
   rRecvDispls_.push_back(0);
@@ -212,8 +211,6 @@ void LayerRC::setupParallelization() {
       xIndex_j.push_back(j+nyStart_[myrank_]);
     }
   }
-  ASSERT(xIndex_i.size() == xSendSize_);
-  ASSERT(xIndex_j.size() == xSendSize_);
   yIndex_i_.resize(ySendSize_);
   yIndex_j_.resize(ySendSize_);
   comm_.allToAllv(xIndex_i.data(), xRecvCounts_.data(), xRecvDispls_.data(),
@@ -302,49 +299,11 @@ void LayerRC::setupParallelization() {
 
 // -----------------------------------------------------------------------------
 
-void LayerRC::setupNormalization() {
-  oops::Log::trace() << classname() << "::setupNormalization starting" << std::endl;
-
-  // Boundary normalization
-
-  // Create boundary normalization
-  xNormSize_ = (xKernelSize_-1)/2;
-  yNormSize_ = (yKernelSize_-1)/2;
-  zNormSize_ = (zKernelSize_-1)/2;
-  xNorm_.resize(xNormSize_);
-  yNorm_.resize(yNormSize_);
-  zNorm_.resize(zNormSize_);
-
-  // Compute boundary normalization
-  std::fill(xNorm_.begin(), xNorm_.end(), 0.0);
-  std::fill(yNorm_.begin(), yNorm_.end(), 0.0);
-  std::fill(zNorm_.begin(), zNorm_.end(), 0.0);
-  for (size_t jn = 0; jn < xNormSize_; ++jn) {
-    for (size_t jk = xNormSize_-jn; jk < xKernelSize_; ++jk) {
-      xNorm_[jn] += xKernel_[jk]*xKernel_[jk];
-    }
-    xNorm_[jn] = 1.0/std::sqrt(xNorm_[jn]);
-  }
-  for (size_t jn = 0; jn < yNormSize_; ++jn) {
-    for (size_t jk = yNormSize_-jn; jk < yKernelSize_; ++jk) {
-      yNorm_[jn] += yKernel_[jk]*yKernel_[jk];
-    }
-    yNorm_[jn] = 1.0/std::sqrt(yNorm_[jn]);
-  }
-  for (size_t jn = 0; jn < zNormSize_; ++jn) {
-    for (size_t jk = zNormSize_-jn; jk < zKernelSize_; ++jk) {
-      zNorm_[jn] += zKernel_[jk]*zKernel_[jk];
-    }
-    zNorm_[jn] = 1.0/std::sqrt(zNorm_[jn]);
-  }
-
-  // Full normalization
-  atlas::Field normField = gdata_.functionSpace().createField<double>(
-    atlas::option::name(myVar_) | atlas::option::levels(nz0_));
-  auto normView = atlas::array::make_view<double, 2>(normField);
-  norm_.add(normField);
-
-  // Cost-efficient normalization
+void LayerRC::extractConvolution(const size_t & nxHalf,
+                                 const size_t & nyHalf,
+                                 std::vector<double> & horConv,
+                                 std::vector<double> & verConv) {
+  oops::Log::trace() << classname() << "::extractConvolution starting" << std::endl;
 
   // Reduced grid indices
   atlas::Field fieldIndexI = fset_["index_i"];
@@ -356,17 +315,12 @@ void LayerRC::setupNormalization() {
   const size_t nzSave = nz_;
   nz_ = 1;
 
-  // Correlation at one reduced grid cell size distance
-
   // Horizontal convolution
   atlas::Field redFieldHor = fspace_.createField<double>(atlas::option::name("dummy") |
     atlas::option::levels(nz_));
   atlas::Field colsFieldHor("dummy", atlas::array::make_datatype<double>(),
     atlas::array::make_shape(nxPerTask_[myrank_], ny_, nz_));
   auto redViewHor = atlas::array::make_view<double, 2>(redFieldHor);
-  size_t nxHalf = xNormSize_+1;
-  size_t nyHalf = yNormSize_+1;
-  std::vector<double> horConv(4*nxHalf*nyHalf, 0.0);
   for (size_t i = 0; i < nxHalf; ++i) {
     for (size_t j = 0; j < nyHalf; ++j) {
       // Setup dirac point
@@ -410,10 +364,8 @@ void LayerRC::setupNormalization() {
   nz_ = nzSave;
 
   // One grid point only
-  size_t nxPerTaskSave = 0;
-  size_t nySave = 0;
-  nxPerTaskSave = nxPerTask_[myrank_];
-  nySave = ny_;
+  const size_t nxPerTaskSave = nxPerTask_[myrank_];
+  const size_t nySave = ny_;
   nxPerTask_[myrank_] = 1;
   ny_ = 1;
 
@@ -421,7 +373,6 @@ void LayerRC::setupNormalization() {
   atlas::Field colsVerField("dummy", atlas::array::make_datatype<double>(),
     atlas::array::make_shape(nxPerTask_[myrank_], ny_, nz_));
   auto colsVerView = atlas::array::make_view<double, 3>(colsVerField);
-  std::vector<double> verConv(2*(nz_-1), 0.0);
   for (size_t k = 0; k < nz_-1; ++k) {
     // Setup dirac point
     colsVerView.assign(0.0);
@@ -446,197 +397,7 @@ void LayerRC::setupNormalization() {
   nxPerTask_[myrank_] = nxPerTaskSave;
   ny_ = nySave;
 
-  // Ghost points
-  const auto ghostView = atlas::array::make_view<int, 1>(gdata_.functionSpace().ghost());
-
-  // Compute horizontal normalization
-  normView.assign(0.0);
-  for (size_t jnode0 = 0; jnode0 < mSize_; ++jnode0) {
-    if (ghostView(jnode0) == 0) {
-      // Define offset
-      size_t offsetI = std::min(std::min(horInterp_[jnode0].index1(),
-        nx_-2-horInterp_[jnode0].index1()), nxHalf-1);
-      size_t offsetJ = std::min(std::min(horInterp_[jnode0].index2(),
-        ny_-2-horInterp_[jnode0].index2()), nyHalf-1);
-      size_t horOffset = 4*(offsetI*nyHalf+offsetJ);
-      ASSERT(horOffset <= 4*(nxHalf*nyHalf-1));
-
-      if (horInterp_[jnode0].interpType() == "c") {
-        // Colocated point, no normalization needed
-        normView(jnode0, 0) = 1.0;
-      } else if (horInterp_[jnode0].interpType() == "x") {
-        // Linear interpolation along x
-        double xW = horConv[horOffset+0]*horInterp_[jnode0].operations()[0].second
-          +horConv[horOffset+1]*horInterp_[jnode0].operations()[1].second;
-        double xE = horConv[horOffset+1]*horInterp_[jnode0].operations()[0].second
-          +horConv[horOffset+0]*horInterp_[jnode0].operations()[1].second;
-        normView(jnode0, 0) = horInterp_[jnode0].operations()[0].second*xW
-          +horInterp_[jnode0].operations()[1].second*xE;
-      } else if (horInterp_[jnode0].interpType() == "y") {
-        // Linear interpolation along y
-        double xS = horConv[horOffset+0]*horInterp_[jnode0].operations()[0].second
-          +horConv[horOffset+2]*horInterp_[jnode0].operations()[1].second;
-        double xN = horConv[horOffset+2]*horInterp_[jnode0].operations()[0].second
-          +horConv[horOffset+0]*horInterp_[jnode0].operations()[1].second;
-        normView(jnode0, 0) = horInterp_[jnode0].operations()[0].second*xS
-          +horInterp_[jnode0].operations()[1].second*xN;
-      } else if (horInterp_[jnode0].interpType() == "b") {
-        // Bilinear interpolation
-        double xSW = horConv[horOffset+0]*horInterp_[jnode0].operations()[0].second
-          +horConv[horOffset+1]*horInterp_[jnode0].operations()[1].second
-          +horConv[horOffset+2]*horInterp_[jnode0].operations()[2].second
-          +horConv[horOffset+3]*horInterp_[jnode0].operations()[3].second;
-        double xSE = horConv[horOffset+1]*horInterp_[jnode0].operations()[0].second
-          +horConv[horOffset+0]*horInterp_[jnode0].operations()[1].second
-          +horConv[horOffset+3]*horInterp_[jnode0].operations()[2].second
-          +horConv[horOffset+2]*horInterp_[jnode0].operations()[3].second;
-        double xNW = horConv[horOffset+2]*horInterp_[jnode0].operations()[0].second
-          +horConv[horOffset+3]*horInterp_[jnode0].operations()[1].second
-          +horConv[horOffset+0]*horInterp_[jnode0].operations()[2].second
-          +horConv[horOffset+1]*horInterp_[jnode0].operations()[3].second;
-        double xNE = horConv[horOffset+3]*horInterp_[jnode0].operations()[0].second
-          +horConv[horOffset+2]*horInterp_[jnode0].operations()[1].second
-          +horConv[horOffset+1]*horInterp_[jnode0].operations()[2].second
-          +horConv[horOffset+0]*horInterp_[jnode0].operations()[3].second;
-        normView(jnode0, 0) = horInterp_[jnode0].operations()[0].second*xSW
-          +horInterp_[jnode0].operations()[1].second*xSE
-          +horInterp_[jnode0].operations()[2].second*xNW
-          +horInterp_[jnode0].operations()[3].second*xNE;
-      } else {
-        throw eckit::Exception("wrong interpolation type: " + horInterp_[jnode0].interpType(),
-          Here());
-      }
-    }
-  }
-
-  // Compute vertical normalization
-  std::vector<double> verNorm(nz0_, 1.0);
-  if (nz0_ > 1) {
-    verNorm[0] = 1.0;
-    verNorm[nz0_-1] = 1.0;
-    for (size_t k0 = 1; k0 < nz0_-1; ++k0) {
-      if (verInterp_[k0].operations().size() > 1) {
-        size_t verOffset = 2*verInterp_[k0].index1();
-        ASSERT(verOffset < 2*(nz_-1));
-        double xB = verConv[verOffset+0]*verInterp_[k0].operations()[0].second
-          +verConv[verOffset+1]*verInterp_[k0].operations()[1].second;
-        double xT = verConv[verOffset+1]*verInterp_[k0].operations()[0].second
-          +verConv[verOffset+0]*verInterp_[k0].operations()[1].second;
-        verNorm[k0] = verInterp_[k0].operations()[0].second*xB
-          +verInterp_[k0].operations()[1].second*xT;
-      }
-    }
-  }
-
-  // Compute 3D normalization
-  for (size_t jnode0 = 0; jnode0 < mSize_; ++jnode0) {
-    if (ghostView(jnode0) == 0) {
-      for (size_t k0 = 0; k0 < nz0_; ++k0) {
-        normView(jnode0, k0) = normView(jnode0, 0)*verNorm[k0];
-      }
-    }
-  }
-
-  // Get normalization factor
-  for (size_t jnode0 = 0; jnode0 < mSize_; ++jnode0) {
-    for (size_t k0 = 0; k0 < nz0_; ++k0) {
-      if (normView(jnode0, k0) > 0.0) {
-        normView(jnode0, k0) = 1.0/std::sqrt(normView(jnode0, k0));
-      }
-    }
-  }
-
-  // Check whether normalization accuracy should be computed
-  bool computeNormAcc = false;
-  std::vector<eckit::LocalConfiguration> outputModelFilesConf
-    = params_.outputModelFilesConf.value().get_value_or({});
-  for (const auto & conf : outputModelFilesConf) {
-    const std::string param = conf.getString("parameter");
-    if (param == "normalization accuracy") {
-      computeNormAcc = true;
-    }
-  }
-
-  if (computeNormAcc) {
-    // Brute-force normalization to assess cost-effective normalization accuracy
-
-    // Create fields
-    atlas::Field modelField = gdata_.functionSpace().createField<double>(
-      atlas::option::name("dummy") | atlas::option::levels(nz0_));
-    atlas::Field redField = fspace_.createField<double>(atlas::option::name("dummy") |
-      atlas::option::levels(nz_));
-    atlas::Field colsField("dummy", atlas::array::make_datatype<double>(),
-      atlas::array::make_shape(nxPerTask_[myrank_], ny_, nz_));
-    auto modelView = atlas::array::make_view<double, 2>(modelField);
-
-    // Model grid indices
-    atlas::Field fieldIndexI0 = gdata_.fieldSet()["index_i"];
-    atlas::Field fieldIndexJ0 = gdata_.fieldSet()["index_j"];
-    auto indexIView0 = atlas::array::make_view<int, 1>(fieldIndexI0);
-    auto indexJView0 = atlas::array::make_view<int, 1>(fieldIndexJ0);
-
-    // Compute normalization accuracy
-    oops::Log::info() << "Info     :     Compute exact normalization" << std::endl;
-    atlas::Field normAccField = gdata_.functionSpace().createField<double>(
-      atlas::option::name(myVar_) | atlas::option::levels(nz0_));
-    auto normAccView = atlas::array::make_view<double, 2>(normAccField);
-    normAccView.assign(util::missingValue<double>());
-    double normAccMax = 0.0;;
-
-    for (size_t i0 = 0; i0 < nx0_; i0 += params_.normAccStride.value()) {
-      for (size_t j0 = 0; j0 < ny0_; j0 += params_.normAccStride.value()) {
-        for (size_t k0 = 0; k0 < nz0_; k0 += params_.normAccStride.value()) {
-          // Set Dirac point
-          modelView.assign(0.0);
-          int myJnode0 = -1;
-          for (size_t jnode0 = 0; jnode0 < mSize_; ++jnode0) {
-            if (indexIView0(jnode0)-1 == static_cast<int>(i0)
-              && indexJView0(jnode0)-1 == static_cast<int>(j0)) {
-              modelView(jnode0, k0) = 1.0;
-              myJnode0 = jnode0;
-            }
-          }
-
-          // Interpolation AD
-          interpolationAD(modelField, redField);
-
-          // Adjoint square-root multiplication
-          multiplyRedSqrtTrans(redField, colsField);
-
-          // Compute exact normalization
-          double exactNorm = 0.0;
-          const auto colsView = atlas::array::make_view<double, 3>(colsField);
-          for (size_t i = 0; i < nxPerTask_[myrank_]; ++i) {
-            for (size_t j = 0; j < ny_; ++j) {
-              for (size_t k = 0; k < nz_; ++k) {
-                exactNorm += colsView(i, j, k)*colsView(i, j, k);
-              }
-            }
-          }
-          comm_.allReduceInPlace(exactNorm, eckit::mpi::sum());
-
-          // Get exact normalization factor
-          if (exactNorm > 0.0) {
-            exactNorm = 1.0/std::sqrt(exactNorm);
-          }
-
-          // Assess cost-efficient normalization quality
-          if (myJnode0 > -1) {
-            if (exactNorm > 0.0) {
-              normAccView(myJnode0, k0) = (normView(myJnode0, k0)-exactNorm)/exactNorm;
-              normAccMax = std::max(normAccMax, std::abs(normAccView(myJnode0, k0)));
-            }
-          }
-        }
-      }
-    }
-    normAcc_.add(normAccField);
-    comm_.allReduceInPlace(normAccMax, eckit::mpi::max());
-    oops::Log::info() << "Info     :     Cost-effective normalization maximum error: "
-      << normAccMax << std::endl;
-  }
-
-  oops::Log::trace() << classname() << "::setupNormalization done" << std::endl;
+  oops::Log::trace() << classname() << "::extractConvolution done" << std::endl;
 }
 
 // -----------------------------------------------------------------------------
@@ -665,7 +426,7 @@ void LayerRC::multiplySqrt(const atlas::Field & cv,
 
   // Create field on reduced grid
   atlas::Field redField = fspace_.createField<double>(atlas::option::name("dummy") |
-                                                      atlas::option::levels(nz_));
+    atlas::option::levels(nz_));
 
   // Square-root multiplication on reduced grid
   multiplyRedSqrt(colsField, redField);
@@ -683,10 +444,9 @@ void LayerRC::multiplySqrtTrans(const atlas::Field & modelField,
                                 const size_t & offset) const {
   oops::Log::trace() << classname() << "::multiplySqrtTrans starting" << std::endl;
 
-
   // Create field on reduced grid
   atlas::Field redField = fspace_.createField<double>(atlas::option::name("dummy") |
-                                                      atlas::option::levels(nz_));
+    atlas::option::levels(nz_));
 
   // Interpolation AD
   interpolationAD(modelField, redField);
@@ -744,8 +504,6 @@ void LayerRC::redToRows(const atlas::Field & redField,
   for (size_t jnode = 0; jnode < rSize_; ++jnode) {
     for (size_t k = 0; k < nz_; ++k) {
       size_t jv = rRecvDispls3D[xTask_[jnode]] + xOffset_[jnode]*nz_ + k;
-      ASSERT(jv >= 0);
-      ASSERT(jv < rSize_*nz_);
       rRecvVec[jv] = redView(jnode, k);
     }
   }
@@ -758,15 +516,10 @@ void LayerRC::redToRows(const atlas::Field & redField,
   // Deserialize
   auto rowsView = atlas::array::make_view<double, 3>(rowsField);
   for (size_t jx = 0; jx < xSendSize_; ++jx) {
-    ASSERT(xIndex_i_[jx] >= 0);
-    ASSERT(xIndex_j_[jx] >= static_cast<int>(nyStart_[myrank_]));
     size_t i = xIndex_i_[jx];
     size_t j = xIndex_j_[jx]-nyStart_[myrank_];
-    ASSERT(i < nx_);
-    ASSERT(j < nyPerTask_[myrank_]);
     for (size_t k = 0; k < nz_; ++k) {
       size_t jv = jx*nz_ + k;
-      ASSERT(jv < xSendSize_*nz_);
       rowsView(i, j, k) = xSendVec[jv];
     }
   }
@@ -796,16 +549,10 @@ void LayerRC::rowsToRed(const atlas::Field & rowsField,
   const auto rowsView = atlas::array::make_view<double, 3>(rowsField);
   std::vector<double> xSendVec(xSendSize_*nz_);
   for (size_t jx = 0; jx < xSendSize_; ++jx) {
-    ASSERT(xIndex_i_[jx] >= 0);
-    ASSERT(xIndex_j_[jx] >= static_cast<int>(nyStart_[myrank_]));
     size_t i = xIndex_i_[jx];
     size_t j = xIndex_j_[jx]-nyStart_[myrank_];
-    ASSERT(i < nx_);
-    ASSERT(j < nyPerTask_[myrank_]);
     for (size_t k = 0; k < nz_; ++k) {
       size_t jv = jx*nz_ + k;
-      ASSERT(jv >= 0);
-      ASSERT(jv < xSendSize_*nz_);
       xSendVec[jv] = rowsView(i, j, k);
     }
   }
@@ -820,7 +567,6 @@ void LayerRC::rowsToRed(const atlas::Field & rowsField,
   for (size_t jnode = 0; jnode < rSize_; ++jnode) {
     for (size_t k = 0; k < nz_; ++k) {
       size_t jv = rRecvDispls3D[xTask_[jnode]] + xOffset_[jnode]*nz_ + k;
-      ASSERT(jv < rSize_*nz_);
       redView(jnode, k) = rRecvVec[jv];
     }
   }
@@ -830,58 +576,30 @@ void LayerRC::rowsToRed(const atlas::Field & rowsField,
 
 // -----------------------------------------------------------------------------
 
-void LayerRC::rowsConvolutionTL(atlas::Field & field) const {
-  oops::Log::trace() << classname() << "::rowsConvolutionTL starting" << std::endl;
+void LayerRC::rowsConvolution(atlas::Field & field) const {
+  oops::Log::trace() << classname() << "::rowsConvolution starting" << std::endl;
 
-    // Copy field
-    atlas::Field copyField = field.clone();
-    const auto copyView = atlas::array::make_view<double, 3>(copyField);
+  // Copy field
+  atlas::Field copyField = field.clone();
+  const auto copyView = atlas::array::make_view<double, 3>(copyField);
 
-    // Apply kernel
-    auto view = atlas::array::make_view<double, 3>(field);
-    view.assign(0.0);
-    for (size_t j = 0; j < nyPerTask_[myrank_]; ++j) {
-      for (size_t i = 0; i < nx_; ++i) {
-        for (size_t jk = 0; jk < xKernelSize_; ++jk) {
-          size_t ii = i-jk+(xKernelSize_-1)/2;
-          if (ii >= 0 && ii < nx_) {
-            for (size_t k = 0; k < nz_; ++k) {
-              view(i, j, k) += copyView(ii, j, k)*xKernel_[jk];
-            }
+  // Apply kernel
+  auto view = atlas::array::make_view<double, 3>(field);
+  view.assign(0.0);
+  for (size_t j = 0; j < nyPerTask_[myrank_]; ++j) {
+    for (size_t i = 0; i < nx_; ++i) {
+      for (size_t jk = 0; jk < xKernelSize_; ++jk) {
+        size_t ii = i-jk+(xKernelSize_-1)/2;
+        if (ii >= 0 && ii < nx_) {
+          for (size_t k = 0; k < nz_; ++k) {
+            view(i, j, k) += copyView(ii, j, k)*xKernel_[jk];
           }
         }
       }
     }
+  }
 
-  oops::Log::trace() << classname() << "::rowsConvolutionTL done" << std::endl;
-}
-
-// -----------------------------------------------------------------------------
-
-void LayerRC::rowsConvolutionAD(atlas::Field & field) const {
-  oops::Log::trace() << classname() << "::rowsConvolutionAD starting" << std::endl;
-
-    // Copy field
-    atlas::Field copyField = field.clone();
-    const auto copyView = atlas::array::make_view<double, 3>(copyField);
-
-    // Apply kernel
-    auto view = atlas::array::make_view<double, 3>(field);
-    view.assign(0.0);
-    for (size_t j = 0; j < nyPerTask_[myrank_]; ++j) {
-      for (size_t i = 0; i < nx_; ++i) {
-        for (size_t jk = 0; jk < xKernelSize_; ++jk) {
-          size_t ii = i-jk+(xKernelSize_-1)/2;
-          if (ii >= 0 && ii < nx_) {
-            for (size_t k = 0; k < nz_; ++k) {
-              view(i, j, k) += copyView(ii, j, k)*xKernel_[jk];
-            }
-          }
-        }
-      }
-    }
-
-  oops::Log::trace() << classname() << "::rowsConvolutionAD done" << std::endl;
+  oops::Log::trace() << classname() << "::rowsConvolution done" << std::endl;
 }
 
 // -----------------------------------------------------------------------------
@@ -889,16 +607,16 @@ void LayerRC::rowsConvolutionAD(atlas::Field & field) const {
 void LayerRC::rowsNormalization(atlas::Field & field) const {
   oops::Log::trace() << classname() << "::rowsNormalization starting" << std::endl;
 
-    // Apply normalization
-    auto view = atlas::array::make_view<double, 3>(field);
-    for (size_t j = 0; j < nyPerTask_[myrank_]; ++j) {
-      for (size_t i = 0; i < xNormSize_; ++i) {
-        for (size_t k = 0; k < nz_; ++k) {
-          view(i, j, k) *= xNorm_[i];
-          view(nx_-1-i, j, k) *= xNorm_[i];
-        }
+  // Apply normalization
+  auto view = atlas::array::make_view<double, 3>(field);
+  for (size_t j = 0; j < nyPerTask_[myrank_]; ++j) {
+    for (size_t i = 0; i < xNormSize_; ++i) {
+      for (size_t k = 0; k < nz_; ++k) {
+        view(i, j, k) *= xNorm_[i];
+        view(nx_-1-i, j, k) *= xNorm_[i];
       }
     }
+  }
 
   oops::Log::trace() << classname() << "::rowsNormalization done" << std::endl;
 }
@@ -928,7 +646,6 @@ void LayerRC::rowsToCols(const atlas::Field & rowsField,
     for (size_t j = 0; j < nyPerTask_[myrank_]; ++j) {
       for (size_t k = 0; k < nz_; ++k) {
         size_t jv = xRecvDispls3D[yTask_[j][i]] + yOffset_[j][i]*nz_ + k;
-        ASSERT(jv < xRecvSize_*nz_);
         xRecvVec[jv] = rowsView(i, j, k);
       }
     }
@@ -942,15 +659,10 @@ void LayerRC::rowsToCols(const atlas::Field & rowsField,
   // Deserialize
   auto colsView = atlas::array::make_view<double, 3>(colsField);
   for (size_t jy = 0; jy < ySendSize_; ++jy) {
-    ASSERT(yIndex_i_[jy] >= static_cast<int>(nxStart_[myrank_]));
-    ASSERT(yIndex_j_[jy] >= 0);
     size_t i = yIndex_i_[jy]-nxStart_[myrank_];
     size_t j = yIndex_j_[jy];
-    ASSERT(i < nxPerTask_[myrank_]);
-    ASSERT(j < ny_);
     for (size_t k = 0; k < nz_; ++k) {
       size_t jv = jy*nz_ + k;
-      ASSERT(jv < ySendSize_*nz_);
       colsView(i, j, k) = ySendVec[jv];
     }
   }
@@ -980,15 +692,10 @@ void LayerRC::colsToRows(const atlas::Field & colsField,
   const auto colsView = atlas::array::make_view<double, 3>(colsField);
   std::vector<double> ySendVec(ySendSize_*nz_);
   for (size_t jy = 0; jy < ySendSize_; ++jy) {
-    ASSERT(yIndex_i_[jy] >= static_cast<int>(nxStart_[myrank_]));
-    ASSERT(yIndex_j_[jy] >= 0);
     size_t i = yIndex_i_[jy]-nxStart_[myrank_];
     size_t j = yIndex_j_[jy];
-    ASSERT(i < nxPerTask_[myrank_]);
-    ASSERT(j < ny_);
     for (size_t k = 0; k < nz_; ++k) {
       size_t jv = jy*nz_ + k;
-      ASSERT(jv < ySendSize_*nz_);
       ySendVec[jv] = colsView(i, j, k);
     }
   }
@@ -1004,7 +711,6 @@ void LayerRC::colsToRows(const atlas::Field & colsField,
     for (size_t j = 0; j < nyPerTask_[myrank_]; ++j) {
       for (size_t k = 0; k < nz_; ++k) {
         size_t jv = xRecvDispls3D[yTask_[j][i]] + yOffset_[j][i]*nz_ + k;
-        ASSERT(jv < xRecvSize_*nz_);
         rowsView(i, j, k) = xRecvVec[jv];
       }
     }
@@ -1015,58 +721,30 @@ void LayerRC::colsToRows(const atlas::Field & colsField,
 
 // -----------------------------------------------------------------------------
 
-void LayerRC::colsConvolutionTL(atlas::Field & field) const {
-  oops::Log::trace() << classname() << "::colsConvolutionTL starting" << std::endl;
+void LayerRC::colsConvolution(atlas::Field & field) const {
+  oops::Log::trace() << classname() << "::colsConvolution starting" << std::endl;
 
-    // Copy field
-    atlas::Field copyField = field.clone();
-    const auto copyView = atlas::array::make_view<double, 3>(copyField);
+  // Copy field
+  atlas::Field copyField = field.clone();
+  const auto copyView = atlas::array::make_view<double, 3>(copyField);
 
-    // Apply kernel
-    auto view = atlas::array::make_view<double, 3>(field);
-    view.assign(0.0);
-    for (size_t i = 0; i < nxPerTask_[myrank_]; ++i) {
-      for (size_t j = 0; j < ny_; ++j) {
-        for (size_t jk = 0; jk < yKernelSize_; ++jk) {
-          size_t jj = j-jk+(yKernelSize_-1)/2;
-          if (jj >= 0 && jj < ny_) {
-            for (size_t k = 0; k < nz_; ++k) {
-              view(i, j, k) += copyView(i, jj, k)*yKernel_[jk];
-            }
+  // Apply kernel
+  auto view = atlas::array::make_view<double, 3>(field);
+  view.assign(0.0);
+  for (size_t i = 0; i < nxPerTask_[myrank_]; ++i) {
+    for (size_t j = 0; j < ny_; ++j) {
+      for (size_t jk = 0; jk < yKernelSize_; ++jk) {
+        size_t jj = j-jk+(yKernelSize_-1)/2;
+        if (jj >= 0 && jj < ny_) {
+          for (size_t k = 0; k < nz_; ++k) {
+            view(i, j, k) += copyView(i, jj, k)*yKernel_[jk];
           }
         }
       }
     }
+  }
 
-  oops::Log::trace() << classname() << "::colsConvolutionTL done" << std::endl;
-}
-
-// -----------------------------------------------------------------------------
-
-void LayerRC::colsConvolutionAD(atlas::Field & field) const {
-  oops::Log::trace() << classname() << "::colsConvolutionAD starting" << std::endl;
-
-    // Copy field
-    atlas::Field copyField = field.clone();
-    const auto copyView = atlas::array::make_view<double, 3>(copyField);
-
-    // Apply kernel
-    auto view = atlas::array::make_view<double, 3>(field);
-    view.assign(0.0);
-    for (size_t i = 0; i < nxPerTask_[myrank_]; ++i) {
-      for (size_t j = 0; j < ny_; ++j) {
-        for (size_t jk = 0; jk < yKernelSize_; ++jk) {
-          size_t jj = j-jk+(yKernelSize_-1)/2;
-          if (jj >= 0 && jj < ny_) {
-            for (size_t k = 0; k < nz_; ++k) {
-              view(i, j, k) += copyView(i, jj, k)*yKernel_[jk];
-            }
-          }
-        }
-      }
-    }
-
-  oops::Log::trace() << classname() << "::colsConvolutionAD done" << std::endl;
+  oops::Log::trace() << classname() << "::colsConvolution done" << std::endl;
 }
 
 // -----------------------------------------------------------------------------
@@ -1074,16 +752,16 @@ void LayerRC::colsConvolutionAD(atlas::Field & field) const {
 void LayerRC::colsNormalization(atlas::Field & field) const {
   oops::Log::trace() << classname() << "::colsNormalization starting" << std::endl;
 
-    // Apply normalization
-    auto view = atlas::array::make_view<double, 3>(field);
-    for (size_t i = 0; i < nxPerTask_[myrank_]; ++i) {
-      for (size_t j = 0; j < yNormSize_; ++j) {
-        for (size_t k = 0; k < nz_; ++k) {
-          view(i, j, k) *= yNorm_[j];
-          view(i, ny_-1-j, k) *= yNorm_[j];
-        }
+  // Apply normalization
+  auto view = atlas::array::make_view<double, 3>(field);
+  for (size_t i = 0; i < nxPerTask_[myrank_]; ++i) {
+    for (size_t j = 0; j < yNormSize_; ++j) {
+      for (size_t k = 0; k < nz_; ++k) {
+        view(i, j, k) *= yNorm_[j];
+        view(i, ny_-1-j, k) *= yNorm_[j];
       }
     }
+  }
 
   oops::Log::trace() << classname() << "::colsNormalization done" << std::endl;
 }
@@ -1093,25 +771,25 @@ void LayerRC::colsNormalization(atlas::Field & field) const {
 void LayerRC::vertConvolution(atlas::Field & field) const {
   oops::Log::trace() << classname() << "::vertConvolution starting" << std::endl;
 
-    // Copy field
-    atlas::Field copyField = field.clone();
-    const auto copyView = atlas::array::make_view<double, 3>(copyField);
+  // Copy field
+  atlas::Field copyField = field.clone();
+  const auto copyView = atlas::array::make_view<double, 3>(copyField);
 
-    // Apply kernel
-    auto view = atlas::array::make_view<double, 3>(field);
-    view.assign(0.0);
-    for (size_t i = 0; i < nxPerTask_[myrank_]; ++i) {
-      for (size_t j = 0; j < ny_; ++j) {
-        for (size_t k = 0; k < nz_; ++k) {
-          for (size_t jk = 0; jk < zKernelSize_; ++jk) {
-            size_t kk = k-jk+(zKernelSize_-1)/2;
-            if (kk >= 0 && kk < nz_) {
-              view(i, j, k) += copyView(i, j, kk)*zKernel_[jk];
-            }
+  // Apply kernel
+  auto view = atlas::array::make_view<double, 3>(field);
+  view.assign(0.0);
+  for (size_t i = 0; i < nxPerTask_[myrank_]; ++i) {
+    for (size_t j = 0; j < ny_; ++j) {
+      for (size_t k = 0; k < nz_; ++k) {
+        for (size_t jk = 0; jk < zKernelSize_; ++jk) {
+          size_t kk = k-jk+(zKernelSize_-1)/2;
+          if (kk >= 0 && kk < nz_) {
+            view(i, j, k) += copyView(i, j, kk)*zKernel_[jk];
           }
         }
       }
     }
+  }
 
   oops::Log::trace() << classname() << "::vertConvolution done" << std::endl;
 }
@@ -1122,15 +800,15 @@ void LayerRC::vertNormalization(atlas::Field & field) const {
   oops::Log::trace() << classname() << "::vertNormalization starting" << std::endl;
 
   // Apply normalization
-    auto view = atlas::array::make_view<double, 3>(field);
-    for (size_t i = 0; i < nxPerTask_[myrank_]; ++i) {
-      for (size_t j = 0; j < ny_; ++j) {
-        for (size_t k = 0; k < zNormSize_; ++k) {
-          view(i, j, k) *= zNorm_[k];
-          view(i, j, nz_-1-k) *= zNorm_[k];
-        }
+  auto view = atlas::array::make_view<double, 3>(field);
+  for (size_t i = 0; i < nxPerTask_[myrank_]; ++i) {
+    for (size_t j = 0; j < ny_; ++j) {
+      for (size_t k = 0; k < zNormSize_; ++k) {
+        view(i, j, k) *= zNorm_[k];
+        view(i, j, nz_-1-k) *= zNorm_[k];
       }
     }
+  }
 
   oops::Log::trace() << classname() << "::vertNormalization done" << std::endl;
 }
@@ -1156,7 +834,7 @@ void LayerRC::multiplyRedSqrt(const atlas::Field & colsField,
   }
 
   // Apply kernel on columns
-  colsConvolutionTL(colsFieldTmp);
+  colsConvolution(colsFieldTmp);
 
   // Apply normalization on columns
   colsNormalization(colsFieldTmp);
@@ -1165,7 +843,7 @@ void LayerRC::multiplyRedSqrt(const atlas::Field & colsField,
   colsToRows(colsFieldTmp, rowsField);
 
   // Apply kernel on rows
-  rowsConvolutionTL(rowsField);
+  rowsConvolution(rowsField);
 
   // Apply normalization on rows
   rowsNormalization(rowsField);
@@ -1193,7 +871,7 @@ void LayerRC::multiplyRedSqrtTrans(const atlas::Field & redField,
   rowsNormalization(rowsField);
 
   // Apply kernel on rows
-  rowsConvolutionAD(rowsField);
+  rowsConvolution(rowsField);
 
   // Rows to columns
   rowsToCols(rowsField, colsField);
@@ -1202,7 +880,7 @@ void LayerRC::multiplyRedSqrtTrans(const atlas::Field & redField,
   colsNormalization(colsField);
 
   // Apply kernel on columns
-  colsConvolutionAD(colsField);
+  colsConvolution(colsField);
 
   if (nz_ > 1) {
     // Apply vertical normalization

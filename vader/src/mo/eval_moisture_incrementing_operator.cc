@@ -1,5 +1,5 @@
 /*
- * (C) Crown Copyright 2023 Met Office
+ * (C) Crown Copyright 2023-2024 Met Office
  *
  * This software is licensed under the terms of the Apache Licence Version 2.0
  * which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -35,10 +35,11 @@ void eval_moisture_incrementing_operator_tl(atlas::FieldSet & incFlds,
   auto qcfIncView = make_view<double, 2>
                     (incFlds["mass_content_of_cloud_ice_in_atmosphere_layer"]);
   auto qIncView = make_view<double, 2>(incFlds["specific_humidity"]);
+  const atlas::idx_t numLevels = incFlds["qt"].levels();
 
   double maxCldInc;
   for (atlas::idx_t jn = 0; jn < incFlds["qt"].shape(0); ++jn) {
-    for (atlas::idx_t jl = 0; jl < incFlds["qt"].levels(); ++jl) {
+    for (atlas::idx_t jl = 0; jl < numLevels; ++jl) {
         maxCldInc = qtIncView(jn, jl) - qsatView(jn, jl) *
             dlsvpdTView(jn, jl) * temperIncView(jn, jl);
         qclIncView(jn, jl) = cleffView(jn, jl) * maxCldInc;
@@ -69,10 +70,11 @@ void eval_moisture_incrementing_operator_ad(atlas::FieldSet & hatFlds,
                     (hatFlds["mass_content_of_cloud_liquid_water_in_atmosphere_layer"]);
   auto qcfHatView = make_view<double, 2>
                     (hatFlds["mass_content_of_cloud_ice_in_atmosphere_layer"]);
+  const atlas::idx_t numLevels = hatFlds["qt"].levels();
 
   double qsatdlsvpdT;
   for (atlas::idx_t jn = 0; jn < hatFlds["qt"].shape(0); ++jn) {
-    for (atlas::idx_t jl = 0; jl < hatFlds["qt"].levels(); ++jl) {
+    for (atlas::idx_t jl = 0; jl < numLevels; ++jl) {
       qsatdlsvpdT = qsatView(jn, jl) * dlsvpdTView(jn, jl);
       temperHatView(jn, jl) += ((cleffView(jn, jl) + cfeffView(jn, jl)) * qHatView(jn, jl)
                                 - cleffView(jn, jl) * qclHatView(jn, jl)
@@ -102,9 +104,10 @@ void eval_total_water_tl(atlas::FieldSet & incFlds,
                       (incFlds["mass_content_of_cloud_ice_in_atmosphere_layer"]);
 
   auto qtIncView = make_view<double, 2>(incFlds["qt"]);
+  const atlas::idx_t numLevels = incFlds["qt"].levels();
 
   for (atlas::idx_t jnode = 0; jnode < incFlds["qt"].shape(0); jnode++) {
-    for (atlas::idx_t jlev = 0; jlev < incFlds["qt"].levels(); jlev++) {
+    for (atlas::idx_t jlev = 0; jlev < numLevels; jlev++) {
       qtIncView(jnode, jlev) = qIncView(jnode, jlev)
                              + qclIncView(jnode, jlev)
                              + qcfIncView(jnode, jlev);
@@ -123,9 +126,10 @@ void eval_total_water_ad(atlas::FieldSet & hatFlds,
   auto qcfIncView = make_view<double, 2>
                       (hatFlds["mass_content_of_cloud_ice_in_atmosphere_layer"]);
   auto qtIncView = make_view<double, 2>(hatFlds["qt"]);
+  const atlas::idx_t numLevels = hatFlds["qt"].levels();
 
   for (atlas::idx_t jnode = 0; jnode < hatFlds["qt"].shape(0); jnode++) {
-    for (atlas::idx_t jlev = 0; jlev < hatFlds["qt"].levels(); jlev++) {
+    for (atlas::idx_t jlev = 0; jlev < numLevels; jlev++) {
       qIncView(jnode, jlev) += qtIncView(jnode, jlev);
       qclIncView(jnode, jlev) += qtIncView(jnode, jlev);
       qcfIncView(jnode, jlev) += qtIncView(jnode, jlev);

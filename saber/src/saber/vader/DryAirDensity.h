@@ -40,6 +40,23 @@ class DryAirDensityParameters : public SaberBlockParametersBase {
     "dry_air_density_levels_minus_one",
     "air_pressure_levels",
     "virtual_potential_temperature"});}
+
+  oops::patch::Variables activeInnerVars(const oops::patch::Variables& outerVars) const override {
+    oops::patch::Variables vars({"air_pressure_levels",
+                          "virtual_potential_temperature"});
+    const int modelLevels = outerVars.getLevels("dry_air_density_levels_minus_one");
+    vars.addMetaData("air_pressure_levels", "levels", modelLevels + 1);
+    vars.addMetaData("virtual_potential_temperature", "levels", modelLevels);
+    return vars;
+  }
+
+  oops::patch::Variables activeOuterVars(const oops::patch::Variables& outerVars) const override {
+    oops::patch::Variables vars({"dry_air_density_levels_minus_one"});
+    for (const auto & var : vars.variables()) {
+      vars.addMetaData(var, "levels", outerVars.getLevels(var));
+    }
+    return vars;
+  }
 };
 
 // -----------------------------------------------------------------------------
@@ -68,6 +85,8 @@ class DryAirDensity : public SaberOuterBlockBase {
   void print(std::ostream &) const override;
   const oops::GeometryData & innerGeometryData_;
   oops::patch::Variables innerVars_;
+  const oops::patch::Variables activeOuterVars_;
+  const oops::patch::Variables innerOnlyVars_;
   atlas::FieldSet augmentedStateFieldSet_;
 };
 

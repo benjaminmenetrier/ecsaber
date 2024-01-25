@@ -47,8 +47,18 @@ namespace saber {
 
 // -----------------------------------------------------------------------------
 
-oops::patch::Variables getActiveVars(const SaberBlockParametersBase &,
-                              const oops::patch::Variables &);
+oops::patch::Variables getActiveVars(const SaberBlockParametersBase & params,
+                              const oops::patch::Variables & defaultVars);
+
+// -----------------------------------------------------------------------------
+
+oops::patch::Variables getUnionOfInnerActiveAndOuterVars(const SaberBlockParametersBase & params,
+                                                  const oops::patch::Variables & outerVars);
+
+// -----------------------------------------------------------------------------
+
+oops::patch::Variables getInnerOnlyVars(const SaberBlockParametersBase & params,
+                                 const oops::patch::Variables & outerVars);
 
 // -----------------------------------------------------------------------------
 
@@ -62,22 +72,27 @@ void setMPI(eckit::LocalConfiguration & conf,
 
 // -----------------------------------------------------------------------------
 
-void allocateFields(oops::FieldSet3D & fset,
-                    const oops::patch::Variables & varsToAllocate,
-                    const oops::patch::Variables & varsWithLevels,
-                    const atlas::FunctionSpace & functionSpace,
-                    const bool haloExchange = true);
+void checkFieldsAreNotAllocated(const oops::FieldSet3D & fset,
+                                const oops::patch::Variables & vars);
+
+// -----------------------------------------------------------------------------
+
+void allocateMissingFields(oops::FieldSet3D & fset,
+                           const oops::patch::Variables & varsToAllocate,
+                           const oops::patch::Variables & varsWithLevels,
+                           const atlas::FunctionSpace & functionSpace,
+                           const bool haloExchange = true);
 
 // -----------------------------------------------------------------------------
 
 template<typename MODEL>
 oops::FieldSets readEnsemble(const oops::Geometry<MODEL> & geom,
-                             const oops::patch::Variables & modelvars,
-                             const oops::State4D<MODEL> & xb,
-                             const oops::State4D<MODEL> & fg,
-                             const eckit::LocalConfiguration & inputConf,
-                             const bool & iterativeEnsembleLoading,
-                             eckit::LocalConfiguration & outputConf) {
+                                      const oops::patch::Variables & modelvars,
+                                      const oops::State4D<MODEL> & xb,
+                                      const oops::State4D<MODEL> & fg,
+                                      const eckit::LocalConfiguration & inputConf,
+                                      const bool & iterativeEnsembleLoading,
+                                      eckit::LocalConfiguration & outputConf) {
   oops::Log::trace() << "readEnsemble starting" << std::endl;
 
   // Prepare ensemble configuration
@@ -161,7 +176,6 @@ oops::FieldSets readEnsemble(const oops::Geometry<MODEL> & geom,
       return fsetEns;
     }
   }
-
   // Return empty ensemble if none was returned before
   std::vector<util::DateTime> dates;
   std::vector<int> ensmems;

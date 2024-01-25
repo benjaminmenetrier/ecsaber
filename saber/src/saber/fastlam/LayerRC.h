@@ -41,7 +41,10 @@ class LayerRC : public LayerBase {
 
   // Setups
   void setupParallelization() override;
-  void setupNormalization() override;
+  void extractConvolution(const size_t &,
+                          const size_t &,
+                          std::vector<double> &,
+                          std::vector<double> &) override;
 
   // Multiply square-root and adjoint
   size_t ctlVecSize() const override {return nxPerTask_[myrank_]*ny_*nz_;};
@@ -62,10 +65,8 @@ class LayerRC : public LayerBase {
   void colsToRows(const atlas::Field &, atlas::Field &) const;
 
   // Convolutions
-  void rowsConvolutionTL(atlas::Field &) const;
-  void rowsConvolutionAD(atlas::Field &) const;
-  void colsConvolutionTL(atlas::Field &) const;
-  void colsConvolutionAD(atlas::Field &) const;
+  void rowsConvolution(atlas::Field &) const;
+  void colsConvolution(atlas::Field &) const;
   void vertConvolution(atlas::Field &) const;
 
   // Normalizations

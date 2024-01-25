@@ -19,8 +19,7 @@ using atlas::idx_t;
 
 namespace mo {
 
-/// \details Calculate the hydrostatic pressure (on levels)
-///          from hydrostatic exner.
+/// \details Calculates air temperature from potential temperature and exner.
 void eval_air_temperature_nl(atlas::FieldSet & stateFlds) {
   oops::Log::trace() << "[eval_air_temperature_nl()] starting ..." << std::endl;
 

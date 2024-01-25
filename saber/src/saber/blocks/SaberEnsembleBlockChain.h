@@ -76,7 +76,7 @@ class SaberEnsembleBlockChain : public SaberBlockChainBase {
   oops::FieldSets ensemble_;
   /// @brief Control vector size.
   size_t ctlVecSize_;
-  /// @brief Variables used in the ensemble covariance.
+  /// @brief patch::Variables used in the ensemble covariance.
   /// TODO(AS): check whether this is needed or can be inferred from ensemble.
   oops::patch::Variables vars_;
   /// @brief Geometry communicator.
@@ -127,8 +127,8 @@ SaberEnsembleBlockChain::SaberEnsembleBlockChain(const oops::Geometry<MODEL> & g
   }
 
   // Outer variables and geometry for the ensemble covariance
-  const oops::patch::Variables currentOuterVars = outerBlockChain_ ?
-                                           outerBlockChain_->innerVars() : outerVars;
+  oops::patch::Variables currentOuterVars = outerBlockChain_ ?
+                                     outerBlockChain_->innerVars() : outerVars;
   const oops::GeometryData & currentOuterGeom = outerBlockChain_ ?
                                      outerBlockChain_->innerGeometryData() : geomData_;
 
@@ -221,7 +221,7 @@ SaberEnsembleBlockChain::SaberEnsembleBlockChain(const oops::Geometry<MODEL> & g
     }
     std::unique_ptr<SaberOuterBlockChain> ensTransBlockChain =
            std::make_unique<SaberOuterBlockChain>(geom,
-             outerVars, fset4dXb, fset4dFg, ensemble_,
+             currentOuterVars, fset4dXb, fset4dFg, ensemble_,
              covarConfUpdated, ensTransOuterBlocksParams);
 
     // Left inverse of ensemble transform on ensemble members
@@ -247,6 +247,9 @@ SaberEnsembleBlockChain::SaberEnsembleBlockChain(const oops::Geometry<MODEL> & g
     } else {
       outerBlockChain_ = std::move(ensTransBlockChain);
     }
+
+    // Update outer variables
+    currentOuterVars = outerBlockChain_->innerVars();
   }
 
   // Localization
@@ -254,7 +257,7 @@ SaberEnsembleBlockChain::SaberEnsembleBlockChain(const oops::Geometry<MODEL> & g
   if (locConf != boost::none) {
     // Initialize localization blockchain
     locBlockChain_ = std::make_unique<SaberParametricBlockChain>(geom, dualResGeom,
-      outerVars, fset4dXb, fset4dFg, ensemble_, fsetDualResEns, covarConfUpdated, *locConf);
+      currentOuterVars, fset4dXb, fset4dFg, ensemble_, fsetDualResEns, covarConfUpdated, *locConf);
   }
   // Direct calibration
   oops::Log::info() << "Info     : Direct calibration" << std::endl;
