@@ -777,7 +777,7 @@ void LayerSpec::rowsToCols(const atlas::Field & rowsField,
 // -----------------------------------------------------------------------------
 
 void LayerSpec::colsToRows(const atlas::Field & colsField,
-                         atlas::Field & rowsField) const {
+                           atlas::Field & rowsField) const {
   oops::Log::trace() << classname() << "::colsToRows starting" << std::endl;
 
   // Scale counts and displs for all levels
