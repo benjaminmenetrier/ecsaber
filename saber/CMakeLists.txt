@@ -9,7 +9,7 @@
 
 cmake_minimum_required( VERSION 3.12 )
 
-project( saber VERSION 1.8.0 LANGUAGES CXX Fortran )
+project( saber VERSION 1.9.0 LANGUAGES CXX Fortran )
 
 # Remove update summary
 file( REMOVE "${CMAKE_CURRENT_SOURCE_DIR}/update_summary.txt" )
@@ -54,9 +54,9 @@ if(OPENMP)
 endif()
 find_package( MPI REQUIRED COMPONENTS Fortran )
 find_package( NetCDF REQUIRED COMPONENTS C Fortran )
-find_package( eckit 1.23.0 REQUIRED COMPONENTS MPI )
-find_package( fckit 0.10.1 REQUIRED )
-find_package( atlas 0.33.0 REQUIRED COMPONENTS OMP_Fortran )
+find_package( eckit 1.24.4 REQUIRED COMPONENTS MPI )
+find_package( fckit 0.11.0 REQUIRED )
+find_package( atlas 0.35.0 REQUIRED COMPONENTS OMP_Fortran TESSELATION)
 
 if( ENABLE_MKL )
     find_package( MKL )
@@ -72,8 +72,9 @@ find_package( oops REQUIRED )
 find_package( oops-patch REQUIRED )
 
 # Optionals
-find_package( gsibec 1.1.2 QUIET )
-find_package( vader 1.4.0 QUIET )
+find_package( FFTW 3.3.8 QUIET )
+find_package( gsibec 1.1.3 QUIET )
+find_package( vader 1.6.0 QUIET )
 
 # Optional SABER blocks
 if( gsibec_FOUND )
@@ -82,15 +83,20 @@ if( gsibec_FOUND )
 else()
     message( STATUS "SABER block GSI is NOT enabled" )
 endif()
+if( FFTW_FOUND )
+    message( STATUS "SABER block FastLAM spectral layer is enabled" )
+else()
+    message( STATUS "SABER block FastLAM spectral layer is NOT enabled" )
+endif()
 if( atlas_TRANS_FOUND OR atlas_ECTRANS_FOUND )
     message( STATUS "SABER block SPECTRALB is enabled" )
 else()
     message( STATUS "SABER block SPECTRALB is NOT enabled" )
 endif()
 if( vader_FOUND )
-    message( STATUS "SABER blocks VADER are enabled" )
+    message( STATUS "SABER blocks based on VADER are enabled" )
 else()
-    message( STATUS "SABER blocks VADER are NOT enabled" )
+    message( STATUS "SABER blocks based on VADER are NOT enabled" )
 endif()
 
 ## SABER instrumentation
